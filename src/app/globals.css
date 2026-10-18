@@ -250,3 +250,100 @@ body {
   }
 }
 
+/* ── Clerk Custom Theme & Branding Elimination ───────────────── */
+.cl-footer a[href*="clerk.com"],
+.cl-footer [data-localization-key*="secured-by-clerk"],
+.cl-internal-b3fm6y,
+.cl-badge,
+.cl-development-badge,
+.cl-footerPages,
+div[class*="footerPages"],
+div[class*="footer__branding"],
+div[class*="badge__root"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.cl-rootBox {
+  width: 100% !important;
+}
+
+.cl-card {
+  background-color: #0f1011 !important;
+  border: 1px solid #23252a !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 0.75rem !important;
+}
+
+.cl-footer {
+  background: transparent !important;
+}
+
+.cl-headerTitle {
+  color: #f7f8f8 !important;
+  letter-spacing: -0.6px !important;
+  font-weight: 600 !important;
+}
+
+.cl-headerSubtitle {
+  color: #8a8f98 !important;
+}
+
+.cl-socialButtonsBlockButton {
+  background-color: #141516 !important;
+  border: 1px solid #23252a !important;
+  color: #f7f8f8 !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  background-color: #18191a !important;
+  border-color: #34343a !important;
+}
+
+.cl-dividerLine {
+  background-color: #23252a !important;
+}
+
+.cl-dividerText {
+  color: #62666d !important;
+}
+
+.cl-formFieldLabel {
+  color: #8a8f98 !important;
+}
+
+.cl-formFieldInput {
+  background-color: #141516 !important;
+  border: 1px solid #23252a !important;
+  color: #f7f8f8 !important;
+}
+
+.cl-formFieldInput:focus {
+  border-color: #5e6ad2 !important;
+  box-shadow: 0 0 0 1px #5e6ad2 !important;
+}
+
+.cl-formButtonPrimary {
+  background-color: #5e6ad2 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(94, 106, 210, 0.25) !important;
+}
+
+.cl-formButtonPrimary:hover {
+  background-color: #6e79d6 !important;
+}
+
+.cl-footerActionText {
+  color: #8a8f98 !important;
+}
+
+.cl-footerActionLink {
+  color: #5e6ad2 !important;
+}
+
+.cl-footerActionLink:hover {
+  color: #6e79d6 !important;
+}
+

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
 import { Providers } from "@/components/providers";
-import { Sidebar } from "@/components/sidebar";
-import { SpotlightSearch } from "@/components/search/spotlight-search";
+import { AppLayout } from "@/components/app-layout";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,17 +17,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: "#5e6ad2",
+          colorBackground: "#0f1011",
+          colorInputBackground: "#141516",
+          colorInputText: "#f7f8f8",
+          colorText: "#f7f8f8",
+          colorTextSecondary: "#8a8f98",
+          borderRadius: "0.5rem",
+        },
+      }}
+    >
       <html lang="en" className="dark">
         <body className="bg-canvas text-ink antialiased">
           <Providers>
-            <div className="flex min-h-screen bg-canvas">
-              <Sidebar />
-              <main className="flex-1 overflow-x-hidden flex flex-col">
-                {children}
-              </main>
-            </div>
-            <SpotlightSearch />
+            <AppLayout>{children}</AppLayout>
           </Providers>
         </body>
       </html>

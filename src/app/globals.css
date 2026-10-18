@@ -1,0 +1,252 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Motion tokens from transitions-dev ────────────────────────── */
+:root {
+  /* Durations */
+  --duration-stagger: 40ms;
+  --duration-micro: 80ms;
+  --duration-quick: 150ms;
+  --duration-fast: 250ms;
+  --duration-medium: 350ms;
+  --duration-slow: 400ms;
+  --duration-very-slow: 500ms;
+
+  /* Easings */
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: ease-in-out;
+  --ease-out: ease-out;
+  --ease-linear: linear;
+  --ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
+
+  /* Distances */
+  --distance-micro: 4px;
+  --distance-small: 6px;
+  --distance-base: 8px;
+  --distance-medium: 12px;
+
+  /* Scales */
+  --scale-large: 0.96;
+  --scale-medium: 0.97;
+  --scale-small: 0.98;
+
+  /* Blurs */
+  --blur-small: 2px;
+  --blur-medium: 3px;
+
+  /* Modal open / close (06-modal.md) */
+  --modal-open-dur: 250ms;
+  --modal-close-dur: 150ms;
+  --modal-scale: 0.96;
+  --modal-scale-close: 0.96;
+  --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Icon swap (09-icon-swap.md) */
+  --icon-swap-dur: 250ms;
+  --icon-swap-blur: 2px;
+  --icon-swap-start-scale: 0.25;
+  --icon-swap-ease: ease-in-out;
+
+  /* Tabs sliding (16-tabs-sliding.md) */
+  --tabs-dur: 250ms;
+  --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --tabs-text-muted: #8a8f98;
+  --tabs-text-active: #f7f8f8;
+  --tabs-bar-bg: #141516;
+  --tabs-pill-bg: #23252a;
+}
+
+/* Base Linear Styling */
+body {
+  background-color: #010102;
+  color: #f7f8f8;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #010102;
+}
+::-webkit-scrollbar-thumb {
+  background: #23252a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #34343a;
+}
+
+/* ── Modal transition (06-modal.md) ───────────────────────────── */
+.t-modal {
+  transform-origin: center;
+  transform: scale(var(--modal-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-open-dur) var(--modal-ease),
+    opacity var(--modal-open-dur) var(--modal-ease);
+  will-change: transform, opacity;
+}
+.t-modal.is-open {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.t-modal.is-closing {
+  transform: scale(var(--modal-scale-close));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-close-dur) var(--modal-ease),
+    opacity var(--modal-close-dur) var(--modal-ease);
+}
+
+/* ── Icon swap transition (09-icon-swap.md) ──────────────────── */
+.t-icon-swap {
+  position: relative;
+  display: inline-grid;
+}
+.t-icon-swap .t-icon {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--icon-swap-dur) var(--icon-swap-ease),
+    filter var(--icon-swap-dur) var(--icon-swap-ease),
+    transform var(--icon-swap-dur) var(--icon-swap-ease);
+}
+.t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="b"] {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+.t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="a"] {
+  opacity: 0;
+  filter: blur(var(--icon-swap-blur));
+  transform: scale(var(--icon-swap-start-scale));
+}
+
+/* ── Tabs sliding (16-tabs-sliding.md) ────────────────────────── */
+.t-tabs {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--tabs-bar-bg);
+  border: 1px solid #23252a;
+}
+.t-tabs-pill {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 6px;
+  background: var(--tabs-pill-bg);
+  transition:
+    transform var(--tabs-dur) var(--tabs-ease),
+    width var(--tabs-dur) var(--tabs-ease);
+  pointer-events: none;
+}
+.t-tab {
+  position: relative;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  height: 28px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tabs-text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  z-index: 1;
+  transition: color var(--tabs-dur) var(--tabs-ease);
+}
+.t-tab:hover {
+  color: #d0d6e0;
+}
+.t-tab[aria-selected="true"] {
+  color: var(--tabs-text-active);
+}
+
+/* ── Checkbox check (25-checkbox-check.md) ────────────────────── */
+.t-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid #34343a;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.t-check:hover {
+  border-color: #5e6ad2;
+}
+.t-check[aria-checked="true"] {
+  background: #5e6ad2;
+  border-color: #5e6ad2;
+}
+.t-check svg {
+  width: 10px;
+  height: 10px;
+  overflow: visible;
+}
+.t-check svg path {
+  stroke: #ffffff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+  transition: stroke-dashoffset 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.t-check[aria-checked="true"] svg path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 350ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Success check (10-success-check.md) ──────────────────────── */
+.t-success-check {
+  display: inline-block;
+  transform-origin: center;
+  opacity: 0;
+  will-change: transform, opacity, filter;
+}
+.t-success-check[data-state="in"] {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition:
+    opacity 500ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 500ms cubic-bezier(0.34, 1.35, 0.64, 1),
+    filter 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Accessibility prefers-reduced-motion guard ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .t-modal,
+  .t-modal.is-closing,
+  .t-icon-swap .t-icon,
+  .t-tabs-pill,
+  .t-tab,
+  .t-check,
+  .t-check svg path,
+  .t-success-check {
+    transition: none !important;
+  }
+}
+

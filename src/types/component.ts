@@ -1,0 +1,58 @@
+export type ComponentFramework =
+  | "REACT"
+  | "NEXTJS"
+  | "VUE"
+  | "SVELTE"
+  | "HTML_CSS";
+
+export type ComponentStyling =
+  | "TAILWIND"
+  | "CSS_MODULES"
+  | "VANILLA_CSS"
+  | "STYLED_COMPONENTS";
+
+export interface ComponentProjectRef {
+  id: string;
+  title: string;
+}
+
+export interface UIComponentItem {
+  id: string;
+  userId: string;
+  projectId: string | null;
+  name: string;
+  description: string | null;
+  framework: ComponentFramework;
+  styling: ComponentStyling;
+  code: string;
+  previewCode: string | null;
+  tags: string[];
+  favorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+  project?: ComponentProjectRef | null;
+}
+
+export interface CreateComponentPayload {
+  name: string;
+  description?: string;
+  framework?: ComponentFramework;
+  styling?: ComponentStyling;
+  code: string;
+  previewCode?: string;
+  tags?: string[];
+  projectId?: string | null;
+  favorite?: boolean;
+}
+
+export interface UpdateComponentPayload {
+  name?: string;
+  description?: string | null;
+  framework?: ComponentFramework;
+  styling?: ComponentStyling;
+  code?: string;
+  previewCode?: string | null;
+  tags?: string[];
+  projectId?: string | null;
+  favorite?: boolean;
+}

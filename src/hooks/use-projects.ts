@@ -1,0 +1,198 @@
+"use client";
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { sound } from "@/lib/audio";
+import {
+  Project,
+  CreateProjectPayload,
+  UpdateProjectPayload,
+  ProjectStatus,
+} from "@/types/project";
+
+export function useProjects(status?: ProjectStatus | "ALL", search?: string) {
+  return useQuery<Project[]>({
+    queryKey: ["projects", { status, search }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (status && status !== "ALL") params.append("status", status);
+      if (search && search.trim()) params.append("search", search.trim());
+
+      const queryStr = params.toString() ? `?${params.toString()}` : "";
+      return apiClient.get<Project[]>(`/projects${queryStr}`);
+    },
+  });
+}
+
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CreateProjectPayload) => {
+      return apiClient.post<Project>("/projects", payload);
+    },
+    // 0ms Optimistic UI Update (ADR 009)
+    onMutate: async (newProject) => {
+      sound.playClick(900);
+      await queryClient.cancelQueries({ queryKey: ["projects"] });
+      const previousProjects = queryClient.getQueryData<Project[]>(["projects"]);
+
+      const optimisticProject: Project = {
+        id: `optimistic-${Date.now()}`,
+        userId: "user_current",
+        title: newProject.title,
+        description: newProject.description ?? null,
+        status: newProject.status ?? "PLANNING",
+        repositoryUrl: newProject.repositoryUrl ?? null,
+        liveUrl: newProject.liveUrl ?? null,
+        techStack: newProject.techStack ?? [],
+        favorite: newProject.favorite ?? false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        _count: {
+          tasks: 0,
+          snippets: 0,
+          components: 0,
+          notes: 0,
+          bookmarks: 0,
+        },
+      };
+
+      queryClient.setQueriesData<Project[]>({ queryKey: ["projects"] }, (old) => {
+        return old ? [optimisticProject, ...old] : [optimisticProject];
+      });
+
+      return { previousProjects };
+    },
+    onSuccess: () => {
+      sound.playSuccess();
+    },
+    onError: (_err, _newProject, context) => {
+      if (context?.previousProjects) {
+        queryClient.setQueriesData(
+          { queryKey: ["projects"] },
+          context.previousProjects
+        );
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdateProjectPayload;
+    }) => {
+      return apiClient.put<Project>(`/projects/${id}`, payload);
+    },
+    onMutate: async ({ id, payload }) => {
+      sound.playClick();
+      await queryClient.cancelQueries({ queryKey: ["projects"] });
+      const previousProjects = queryClient.getQueryData<Project[]>(["projects"]);
+
+      queryClient.setQueriesData<Project[]>({ queryKey: ["projects"] }, (old) => {
+        if (!old) return [];
+        return old.map((proj) =>
+          proj.id === id ? { ...proj, ...payload, updatedAt: new Date().toISOString() } : proj
+        );
+      });
+
+      return { previousProjects };
+    },
+    onSuccess: () => {
+      sound.playSuccess();
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousProjects) {
+        queryClient.setQueriesData(
+          { queryKey: ["projects"] },
+          context.previousProjects
+        );
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return apiClient.delete(`/projects/${id}`);
+    },
+    onMutate: async (id) => {
+      sound.playClick(400);
+      await queryClient.cancelQueries({ queryKey: ["projects"] });
+      const previousProjects = queryClient.getQueryData<Project[]>(["projects"]);
+
+      queryClient.setQueriesData<Project[]>({ queryKey: ["projects"] }, (old) => {
+        if (!old) return [];
+        return old.filter((p) => p.id !== id);
+      });
+
+      return { previousProjects };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousProjects) {
+        queryClient.setQueriesData(
+          { queryKey: ["projects"] },
+          context.previousProjects
+        );
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useToggleFavorite() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      favorite,
+    }: {
+      id: string;
+      favorite: boolean;
+    }) => {
+      return apiClient.put<Project>(`/projects/${id}`, { favorite });
+    },
+    onMutate: async ({ id, favorite }) => {
+      sound.playClick(favorite ? 850 : 500);
+      await queryClient.cancelQueries({ queryKey: ["projects"] });
+      const previousProjects = queryClient.getQueryData<Project[]>(["projects"]);
+
+      queryClient.setQueriesData<Project[]>({ queryKey: ["projects"] }, (old) => {
+        if (!old) return [];
+        return old.map((p) => (p.id === id ? { ...p, favorite } : p));
+      });
+
+      return { previousProjects };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousProjects) {
+        queryClient.setQueriesData(
+          { queryKey: ["projects"] },
+          context.previousProjects
+        );
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}

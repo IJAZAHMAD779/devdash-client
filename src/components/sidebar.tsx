@@ -9,14 +9,10 @@ import {
   Component,
   BookOpen,
   Search,
-  Volume2,
-  VolumeX,
   Layers,
   Sparkles,
   LogIn,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { UserButton, useUser } from "@clerk/nextjs";
 
@@ -37,23 +33,9 @@ const navigationItems: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [muted, setMuted] = useState(false);
   const { isSignedIn, user } = useUser();
 
-  useEffect(() => {
-    setMuted(sound.getMuted());
-  }, []);
-
-  const handleToggleSound = () => {
-    const isMuted = sound.toggleMute();
-    setMuted(isMuted);
-    if (!isMuted) {
-      sound.playClick();
-    }
-  };
-
   const handleOpenSearch = () => {
-    sound.playClick(950);
     window.dispatchEvent(
       new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true })
     );
@@ -66,7 +48,6 @@ export function Sidebar() {
         <Link
           href="/projects"
           className="flex items-center gap-2.5 group"
-          onClick={() => sound.playClick()}
         >
           <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center text-white shadow-sm shadow-primary/20 group-hover:scale-105 transition-transform duration-150">
             <Layers className="w-4 h-4" />
@@ -112,9 +93,6 @@ export function Sidebar() {
             <Link
               key={item.name}
               href={item.badge ? "#" : item.href}
-              onClick={() => {
-                if (!item.badge) sound.playClick();
-              }}
               className={cn(
                 "flex items-center justify-between px-2.5 py-2 rounded-md text-sm font-medium transition-colors duration-150 group",
                 isActive
@@ -151,18 +129,6 @@ export function Sidebar() {
             <span className="w-1.5 h-1.5 rounded-full bg-semantic-success animate-pulse" />
             <span>API Active</span>
           </div>
-
-          <button
-            onClick={handleToggleSound}
-            title={muted ? "Unmute tactile audio" : "Mute tactile audio"}
-            className="p-1 rounded hover:bg-surface-2 text-ink-subtle hover:text-ink transition-colors"
-          >
-            {muted ? (
-              <VolumeX className="w-3.5 h-3.5 text-ink-tertiary" />
-            ) : (
-              <Volume2 className="w-3.5 h-3.5 text-primary" />
-            )}
-          </button>
         </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-hairline/50 px-1">

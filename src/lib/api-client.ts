@@ -25,7 +25,7 @@ export interface ApiResponse<T = any> {
   error?: {
     code: string;
     message: string;
-    details?: any[];
+    details?: any;
   };
 }
 
@@ -121,8 +121,14 @@ export async function apiRequest<T = any>(
     }));
 
     if (!res.ok || !json.success) {
-      const errorMsg =
-        json.error?.message || `Request failed with status ${res.status}`;
+      const detailsStr =
+        json.error?.details
+          ? typeof json.error.details === "string"
+            ? json.error.details
+            : JSON.stringify(json.error.details)
+          : null;
+      const baseMsg = json.error?.message || `Request failed with status ${res.status}`;
+      const errorMsg = detailsStr && detailsStr !== baseMsg ? `${baseMsg}: ${detailsStr}` : baseMsg;
       const err: any = new Error(errorMsg);
       err.code = json.error?.code || "HTTP_ERROR";
       err.status = res.status;

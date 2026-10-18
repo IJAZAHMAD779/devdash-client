@@ -70,9 +70,6 @@ export default function ResourcesPage() {
             <h1 className="text-2xl font-semibold tracking-[-0.6px] text-ink">
               Resources & Knowledge
             </h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-surface-2 border border-hairline text-ink-subtle">
-              Phase 4
-            </span>
           </div>
           <p className="text-xs text-ink-muted">
             Personal markdown knowledge base, curated developer bookmarks, and automated Weekly Digest.

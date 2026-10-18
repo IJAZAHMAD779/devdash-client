@@ -29,15 +29,6 @@ export interface ApiResponse<T = any> {
   };
 }
 
-// Global Cold-Start event dispatcher for ADR 004
-function notifyColdStart(isWarming: boolean) {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new CustomEvent("devdash:cold-start", { detail: { isWarming } })
-    );
-  }
-}
-
 export async function getAuthToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
 
@@ -93,23 +84,11 @@ export async function apiRequest<T = any>(
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 
-  // Cold start timer (trigger banner if request exceeds 2.5s)
-  let coldStartTriggered = false;
-  const timer = setTimeout(() => {
-    coldStartTriggered = true;
-    notifyColdStart(true);
-  }, 2500);
-
   try {
     const res = await fetch(url, {
       ...options,
       headers,
     });
-
-    clearTimeout(timer);
-    if (coldStartTriggered) {
-      notifyColdStart(false);
-    }
 
     const json: ApiResponse<T> = await res.json().catch(() => ({
       success: false,
@@ -138,10 +117,6 @@ export async function apiRequest<T = any>(
 
     return json.data;
   } catch (error: any) {
-    clearTimeout(timer);
-    if (coldStartTriggered) {
-      notifyColdStart(false);
-    }
     throw error;
   }
 }

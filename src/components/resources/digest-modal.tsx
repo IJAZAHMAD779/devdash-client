@@ -32,9 +32,7 @@ export function DigestModal({ isOpen, onClose }: Props) {
     sound.playClick(900);
     try {
       const res = await sendDigest.mutateAsync();
-      setSentSuccessMessage(
-        `Dispatched to ${res.recipient} (${res.mode === "live" ? "via Resend" : "simulated test mode"})`
-      );
+      setSentSuccessMessage(`Digest sent to ${res.recipient}`);
     } catch {
       // Error handled by hook
     }
@@ -57,11 +55,8 @@ export function DigestModal({ isOpen, onClose }: Props) {
               <Mail className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold tracking-[-0.3px] text-ink flex items-center gap-2">
-                <span>Weekly Developer Digest</span>
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-primary/20 text-primary border border-primary/30">
-                  Resend API
-                </span>
+              <h2 className="text-sm font-semibold tracking-[-0.3px] text-ink">
+                Weekly Developer Digest
               </h2>
               <p className="text-[11px] text-ink-muted">
                 Personalized summary of tasks shipped, active repos, and saved assets.

@@ -44,7 +44,7 @@ export function Sidebar() {
   return (
     <aside className="w-64 flex-shrink-0 bg-surface-1 border-r border-hairline flex flex-col h-screen sticky top-0 select-none">
       {/* Brand Header */}
-      <div className="h-14 px-4 flex items-center justify-between border-b border-hairline">
+      <div className="h-14 px-4 flex items-center border-b border-hairline">
         <Link
           href="/projects"
           className="flex items-center gap-2.5 group"
@@ -52,19 +52,10 @@ export function Sidebar() {
           <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center text-white shadow-sm shadow-primary/20 group-hover:scale-105 transition-transform duration-150">
             <Layers className="w-4 h-4" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold tracking-[-0.6px] text-ink leading-tight">
-              DevDash
-            </span>
-            <span className="text-[10px] font-mono text-ink-subtle leading-none">
-              Workspace v1.0
-            </span>
-          </div>
+          <span className="text-sm font-semibold tracking-[-0.6px] text-ink leading-tight">
+            DevDash
+          </span>
         </Link>
-        <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-surface-3 border border-hairline text-ink-subtle">
-          <Sparkles className="w-2.5 h-2.5 text-primary" />
-          Free
-        </span>
       </div>
 
       {/* Navigation Links */}
@@ -124,14 +115,7 @@ export function Sidebar() {
 
       {/* Footer Controls & User Profile */}
       <div className="p-3 border-t border-hairline bg-surface-1/50 flex flex-col gap-2">
-        <div className="flex items-center justify-between px-2 py-1.5 text-xs text-ink-subtle">
-          <div className="flex items-center gap-1.5 font-mono text-[11px]">
-            <span className="w-1.5 h-1.5 rounded-full bg-semantic-success animate-pulse" />
-            <span>API Active</span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-2 border-t border-hairline/50 px-1">
+        <div className="flex items-center justify-between px-1">
           {isSignedIn ? (
             <div className="flex items-center gap-2.5">
               <UserButton

@@ -21,6 +21,8 @@ export function useProjects(status?: ProjectStatus | "ALL", search?: string) {
       const queryStr = params.toString() ? `?${params.toString()}` : "";
       return apiClient.get<Project[]>(`/projects${queryStr}`);
     },
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 

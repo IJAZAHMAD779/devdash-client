@@ -5,12 +5,16 @@
  */
 
 export function getApiBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
+  // Always use the verified Render production backend on non-localhost hosts (such as Vercel)
   if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
     return "https://devdash-api-gf3p.onrender.com/api/v1";
   }
+
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && envUrl.includes("devdash-api-gf3p.onrender.com")) {
+    return envUrl;
+  }
+
   return "http://localhost:5000/api/v1";
 }
 
@@ -38,18 +42,33 @@ export async function getAuthToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
 
   try {
-    // Attempt to read from window.Clerk session if available
-    const clerk = (window as any).Clerk;
+    let clerk = (window as any).Clerk;
+    // If Clerk or session is still hydrating, wait up to 3 seconds
+    if (!clerk || !clerk.session) {
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        clerk = (window as any).Clerk;
+        if (clerk?.session) break;
+      }
+    }
+
     if (clerk?.session) {
       const token = await clerk.session.getToken();
       if (token) return token;
     }
-  } catch {
-    // Clerk not ready
+  } catch (err) {
+    console.warn("[AuthToken] Error obtaining Clerk token:", err);
   }
 
-  // Development fallback token if Clerk keys are placeholders
-  return "dev_user_token";
+  // Development fallback token if Clerk keys are placeholders in local dev
+  if (
+    process.env.NODE_ENV === "development" ||
+    (typeof window !== "undefined" && window.location.hostname === "localhost")
+  ) {
+    return "dev_user_token";
+  }
+
+  return null;
 }
 
 interface FetchOptions extends RequestInit {

@@ -11,12 +11,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (isAuthPage) {
     return (
-      <main className="min-h-screen w-full flex flex-col items-center justify-center bg-canvas relative overflow-hidden">
-        {/* Subtle ambient background glow */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[350px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="relative z-10 w-full flex flex-col items-center justify-center p-4">
-          {children}
-        </div>
+      <main className="h-screen max-h-screen w-screen overflow-hidden bg-canvas">
+        {children}
       </main>
     );
   }

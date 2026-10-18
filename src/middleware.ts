@@ -1,11 +1,11 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)"]);
+const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
 
 export default clerkMiddleware((auth, request) => {
-  // Allow all routes by default in dev/demo mode; protect when live
+  // Protect all private workspace routes; redirect unauthenticated users to /sign-in
   if (!isPublicRoute(request)) {
-    // Optionally auth().protect()
+    auth().protect();
   }
 });
 

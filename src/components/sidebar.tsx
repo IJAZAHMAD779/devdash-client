@@ -13,6 +13,7 @@ import {
   VolumeX,
   Layers,
   Sparkles,
+  LogIn,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { sound } from "@/lib/audio";
@@ -184,12 +185,13 @@ export function Sidebar() {
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs text-ink-muted">
-              <div className="w-6 h-6 rounded-full bg-surface-3 flex items-center justify-center font-mono text-[10px] text-primary border border-hairline">
-                DEV
-              </div>
-              <span className="text-xs font-mono text-ink-muted">Workspace Dev</span>
-            </div>
+            <Link
+              href="/sign-in"
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight transition-colors shadow-sm shadow-primary/20"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In / Register</span>
+            </Link>
           )}
         </div>
       </div>

@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { Layers } from "lucide-react";
+import React, { useState, useRef } from "react";
 
 interface IsometricWorkspaceProps {
   className?: string;
@@ -12,7 +11,7 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
 
-  // Smooth mouse tilt effect
+  // Smooth mouse tilt tracking
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -27,32 +26,42 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
     setMousePos({ x: 0, y: 0 });
   };
 
-  // 3D rotation angles based on cursor offset
-  const rotateX = isHovered ? -mousePos.y * 14 : 0;
-  const rotateY = isHovered ? mousePos.x * 18 : 0;
+  // Parallax 3D tilt angles
+  const rotateX = isHovered ? -mousePos.y * 12 : 0;
+  const rotateY = isHovered ? mousePos.x * 16 : 0;
 
-  // Geometry constants for rounded isometric slabs
-  // Slabs stack vertically: layer 0 (top) down to layer 4 (bottom)
+  // ── True Isometric Cube Geometry ──
+  // A cube in isometric projection has a 1:1 bounding silhouette
   const cx = 190;
-  const rx = 120;
-  const ry = 68;
-  const t = 0.14; // corner curve factor
-  const h = 10; // slab vertical thickness
+  const rx = 105;
+  const ry = 60.6; // exact 30° isometric angle (105 * tan(30°))
+  const t = 0.08; // subtle rounded corner factor
+  const layerH = 20; // thick solid cube slice
 
-  // Base Y positions for 5 slabs
-  // When hovered, the stack expands like an exploded architectural blueprint
-  const baseSpacing = 22;
-  const hoverSpacing = 32;
-  const spacing = isHovered ? hoverSpacing : baseSpacing;
+  // Base Y position for the cube stack
+  const baseY = 110;
 
-  // Base coordinates for the top face of a slab at (cx, cy)
-  const getSlabPaths = (cy: number) => {
+  // Slices configuration: 5 slices total (forming a complete cube)
+  // When idle: Slice 0 (top block) floats elevated like in the reference image
+  // When hovered: The entire cube explodes/expands vertically
+  const getSliceY = (index: number) => {
+    if (index === 0) {
+      // Top slice is lifted above the rest of the cube
+      return isHovered ? baseY - 38 : baseY - 22;
+    }
+    const stackBase = baseY + 8;
+    const spacing = isHovered ? 28 : layerH + 2;
+    return stackBase + (index - 1) * spacing;
+  };
+
+  // Helper to generate coordinates for a slice at vertical center cy
+  const getSlicePaths = (cy: number) => {
     const pTop = { x: cx, y: cy - ry };
     const pRight = { x: cx + rx, y: cy };
     const pBottom = { x: cx, y: cy + ry };
     const pLeft = { x: cx - rx, y: cy };
 
-    // Curved corners
+    // Rounded corners
     const topCornerStart = { x: cx - rx * t, y: cy - ry * (1 - t) };
     const topCornerEnd = { x: cx + rx * t, y: cy - ry * (1 - t) };
 
@@ -65,7 +74,7 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
     const leftCornerStart = { x: cx - rx * (1 - t), y: cy + ry * t };
     const leftCornerEnd = { x: cx - rx * (1 - t), y: cy - ry * t };
 
-    // Top face path
+    // Top face
     const topFace = `
       M ${topCornerStart.x} ${topCornerStart.y}
       Q ${pTop.x} ${pTop.y} ${topCornerEnd.x} ${topCornerEnd.y}
@@ -78,38 +87,53 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
       Z
     `;
 
-    // Front-Left face
-    const frontLeft = `
+    // Left wall face (thickness)
+    const leftFace = `
       M ${leftCornerEnd.x} ${leftCornerEnd.y}
-      L ${leftCornerEnd.x} ${leftCornerEnd.y + h}
-      L ${bottomCornerEnd.x} ${bottomCornerEnd.y + h}
+      L ${leftCornerEnd.x} ${leftCornerEnd.y + layerH}
+      L ${bottomCornerEnd.x} ${bottomCornerEnd.y + layerH}
       L ${bottomCornerEnd.x} ${bottomCornerEnd.y}
       Z
     `;
 
-    // Front-Right face
-    const frontRight = `
+    // Right wall face (thickness)
+    const rightFace = `
       M ${bottomCornerStart.x} ${bottomCornerStart.y}
-      L ${bottomCornerStart.x} ${bottomCornerStart.y + h}
-      L ${rightCornerEnd.x} ${rightCornerEnd.y + h}
+      L ${bottomCornerStart.x} ${bottomCornerStart.y + layerH}
+      L ${rightCornerEnd.x} ${rightCornerEnd.y + layerH}
       L ${rightCornerEnd.x} ${rightCornerEnd.y}
       Z
     `;
 
-    // Front-Center rounded corner drop
-    const frontCenter = `
+    // Center vertical ridge rounded corner
+    const centerRidge = `
       M ${bottomCornerEnd.x} ${bottomCornerEnd.y}
       Q ${pBottom.x} ${pBottom.y} ${bottomCornerStart.x} ${bottomCornerStart.y}
-      L ${bottomCornerStart.x} ${bottomCornerStart.y + h}
-      Q ${pBottom.x} ${pBottom.y + h} ${bottomCornerEnd.x} ${bottomCornerEnd.y + h}
+      L ${bottomCornerStart.x} ${bottomCornerStart.y + layerH}
+      Q ${pBottom.x} ${pBottom.y + layerH} ${bottomCornerEnd.x} ${bottomCornerEnd.y + layerH}
       Z
     `;
 
-    return { topFace, frontLeft, frontRight, frontCenter, pTop, pRight, pBottom, pLeft };
+    return {
+      topFace,
+      leftFace,
+      rightFace,
+      centerRidge,
+      pTop,
+      pRight,
+      pBottom,
+      pLeft,
+    };
   };
 
-  const layers = [0, 1, 2, 3, 4];
-  const startY = 115;
+  const slices = [0, 1, 2, 3, 4];
+  const topSliceY = getSliceY(0);
+  const secondSliceY = getSliceY(1);
+  const bottomSliceY = getSliceY(4);
+
+  const topPaths = getSlicePaths(topSliceY);
+  const secondPaths = getSlicePaths(secondSliceY);
+  const bottomPaths = getSlicePaths(bottomSliceY);
 
   return (
     <div
@@ -120,13 +144,13 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
       className={`relative w-full flex items-center justify-center select-none cursor-pointer group ${className}`}
       style={{ perspective: "1000px" }}
     >
-      {/* Dynamic ambient purple glow behind the stack */}
+      {/* Dynamic ambient violet-blue glow behind the cube */}
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] rounded-full blur-[80px] pointer-events-none transition-all duration-700"
         style={{
           background: isHovered
             ? "radial-gradient(circle, rgba(94, 106, 210, 0.28) 0%, rgba(94, 106, 210, 0.05) 70%, transparent 100%)"
-            : "radial-gradient(circle, rgba(94, 106, 210, 0.16) 0%, rgba(94, 106, 210, 0.02) 70%, transparent 100%)",
+            : "radial-gradient(circle, rgba(94, 106, 210, 0.14) 0%, rgba(94, 106, 210, 0.02) 70%, transparent 100%)",
           transform: `translate(-50%, -50%) translate3d(${mousePos.x * 20}px, ${mousePos.y * 20}px, 0)`,
         }}
       />
@@ -140,108 +164,127 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
       >
         <svg
           viewBox="0 0 380 340"
-          className="w-[300px] h-[270px] xl:w-[340px] xl:h-[305px] overflow-visible"
+          className="w-[310px] h-[280px] xl:w-[350px] xl:h-[315px] overflow-visible"
         >
           <defs>
             {/* Top face gradient */}
-            <linearGradient id="slab-top" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#18191c" />
-              <stop offset="50%" stopColor="#121315" />
-              <stop offset="100%" stopColor="#0b0c0d" />
+            <linearGradient id="cube-top" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#1a1b1f" />
+              <stop offset="50%" stopColor="#131417" />
+              <stop offset="100%" stopColor="#0c0d0f" />
             </linearGradient>
 
-            {/* Top layer highlighted top face */}
-            <linearGradient id="slab-top-hero" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1f2025" />
-              <stop offset="50%" stopColor="#151619" />
-              <stop offset="100%" stopColor="#0e0f11" />
+            {/* Top elevated block highlight */}
+            <linearGradient id="cube-top-hero" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#22232a" />
+              <stop offset="50%" stopColor="#17181d" />
+              <stop offset="100%" stopColor="#0f1013" />
             </linearGradient>
 
-            {/* Front faces gradients for 3D depth */}
-            <linearGradient id="slab-front-left" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#0a0a0c" />
-              <stop offset="100%" stopColor="#0f1012" />
+            {/* Cube Left Wall (Shadow face) */}
+            <linearGradient id="cube-left-wall" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#090a0c" />
+              <stop offset="100%" stopColor="#0e0f12" />
             </linearGradient>
 
-            <linearGradient id="slab-front-right" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#0f1012" />
-              <stop offset="100%" stopColor="#070809" />
+            {/* Cube Right Wall (Lit face) */}
+            <linearGradient id="cube-right-wall" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#141518" />
+              <stop offset="100%" stopColor="#0a0b0d" />
             </linearGradient>
 
-            {/* Glowing stroke for top layer */}
-            <linearGradient id="glow-stroke" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#5e6ad2" stopOpacity="0.8" />
-              <stop offset="50%" stopColor="#8a8f98" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#23252a" stopOpacity="0.6" />
+            {/* Glowing stroke for active state */}
+            <linearGradient id="cube-glow-stroke" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#5e6ad2" stopOpacity="0.9" />
+              <stop offset="50%" stopColor="#8a8f98" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#343842" stopOpacity="0.7" />
             </linearGradient>
           </defs>
 
-          {/* ── Corner Projection Dashed Guidelines ── */}
-          {/* Top-back, left, right, and bottom corner vertical dashed guidelines */}
-          {(() => {
-            const topPaths = getSlabPaths(startY);
-            const bottomPaths = getSlabPaths(startY + (layers.length - 1) * spacing);
-            return (
-              <g className="transition-all duration-500 ease-out" opacity={isHovered ? 0.35 : 0.2}>
-                {/* Back corner guide */}
+          {/* ── Dashed Projection Guide Lines (Matching Reference Image) ── */}
+          {/* Vertical dashed lines connecting the lifted top slice to the cube below */}
+          <g className="transition-all duration-500 ease-out" opacity={isHovered ? 0.45 : 0.28}>
+            {/* Back corner guide line */}
+            <line
+              x1={topPaths.pTop.x}
+              y1={topPaths.pTop.y}
+              x2={secondPaths.pTop.x}
+              y2={secondPaths.pTop.y}
+              stroke="#5e6ad2"
+              strokeWidth="1.2"
+              strokeDasharray="3 3"
+            />
+            {/* Left corner guide line */}
+            <line
+              x1={topPaths.pLeft.x}
+              y1={topPaths.pLeft.y}
+              x2={secondPaths.pLeft.x}
+              y2={secondPaths.pLeft.y}
+              stroke="#8a8f98"
+              strokeWidth="1.2"
+              strokeDasharray="3 3"
+            />
+            {/* Right corner guide line */}
+            <line
+              x1={topPaths.pRight.x}
+              y1={topPaths.pRight.y}
+              x2={secondPaths.pRight.x}
+              y2={secondPaths.pRight.y}
+              stroke="#8a8f98"
+              strokeWidth="1.2"
+              strokeDasharray="3 3"
+            />
+            {/* Front center ridge guide line */}
+            <line
+              x1={topPaths.pBottom.x}
+              y1={topPaths.pBottom.y + layerH}
+              x2={secondPaths.pBottom.x}
+              y2={secondPaths.pBottom.y}
+              stroke="#5e6ad2"
+              strokeWidth="1.2"
+              strokeDasharray="3 3"
+            />
+
+            {/* Outer bounding cube vertical dashed lines when hovered */}
+            {isHovered && (
+              <>
                 <line
-                  x1={topPaths.pTop.x}
-                  y1={topPaths.pTop.y}
-                  x2={bottomPaths.pTop.x}
-                  y2={bottomPaths.pTop.y + h}
-                  stroke="#5e6ad2"
-                  strokeWidth="1"
-                  strokeDasharray="3 3"
-                />
-                {/* Left corner guide */}
-                <line
-                  x1={topPaths.pLeft.x}
-                  y1={topPaths.pLeft.y}
+                  x1={secondPaths.pLeft.x}
+                  y1={secondPaths.pLeft.y + layerH}
                   x2={bottomPaths.pLeft.x}
-                  y2={bottomPaths.pLeft.y + h}
-                  stroke="#8a8f98"
-                  strokeWidth="1"
-                  strokeDasharray="3 3"
-                />
-                {/* Right corner guide */}
-                <line
-                  x1={topPaths.pRight.x}
-                  y1={topPaths.pRight.y}
-                  x2={bottomPaths.pRight.x}
-                  y2={bottomPaths.pRight.y + h}
-                  stroke="#8a8f98"
-                  strokeWidth="1"
-                  strokeDasharray="3 3"
-                />
-                {/* Front corner guide */}
-                <line
-                  x1={topPaths.pBottom.x}
-                  y1={topPaths.pBottom.y}
-                  x2={bottomPaths.pBottom.x}
-                  y2={bottomPaths.pBottom.y + h}
+                  y2={bottomPaths.pLeft.y + layerH}
                   stroke="#5e6ad2"
                   strokeWidth="1"
                   strokeDasharray="3 3"
                 />
-              </g>
-            );
-          })()}
+                <line
+                  x1={secondPaths.pRight.x}
+                  y1={secondPaths.pRight.y + layerH}
+                  x2={bottomPaths.pRight.x}
+                  y2={bottomPaths.pRight.y + layerH}
+                  stroke="#5e6ad2"
+                  strokeWidth="1"
+                  strokeDasharray="3 3"
+                />
+              </>
+            )}
+          </g>
 
-          {/* ── Slabs Rendered from Bottom to Top (4 to 0) ── */}
-          {[...layers].reverse().map((layerIndex) => {
-            const isHeroLayer = layerIndex === 0;
-            const currentY = startY + layerIndex * spacing;
-            const paths = getSlabPaths(currentY);
+          {/* ── Cube Slices Rendered from Bottom to Top (4 down to 0) ── */}
+          {[...slices].reverse().map((sliceIndex) => {
+            const isHero = sliceIndex === 0;
+            const currentY = getSliceY(sliceIndex);
+            const paths = getSlicePaths(currentY);
 
-            // Autonomous floating oscillation offset:
-            // Top layers oscillate with higher amplitude, creating a breathing harmonic wave
-            const floatAmplitude = (4 - layerIndex) * 2.8;
-            const animDuration = 4.5 + layerIndex * 0.4;
-            const animDelay = layerIndex * 0.25;
+            // Autonomous floating breathing motion:
+            // Top slice floats up and down continuously
+            const floatAmplitude = isHero ? 7 : (4 - sliceIndex) * 1.5;
+            const animDuration = 3.6 + sliceIndex * 0.3;
+            const animDelay = sliceIndex * 0.2;
 
             return (
               <g
-                key={layerIndex}
+                key={sliceIndex}
                 className="anim-iso-float transition-all duration-500 ease-out"
                 style={{
                   animationDelay: `${animDelay}s`,
@@ -249,53 +292,53 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
                   "--float-amp": `${floatAmplitude}px`,
                 } as React.CSSProperties}
               >
-                {/* Front Left Thickness Face */}
+                {/* Cube Left Wall Slice */}
                 <path
-                  d={paths.frontLeft}
-                  fill="url(#slab-front-left)"
+                  d={paths.leftFace}
+                  fill="url(#cube-left-wall)"
                   stroke="#23252a"
                   strokeWidth="1"
                   strokeLinejoin="round"
                 />
 
-                {/* Front Right Thickness Face */}
+                {/* Cube Right Wall Slice */}
                 <path
-                  d={paths.frontRight}
-                  fill="url(#slab-front-right)"
+                  d={paths.rightFace}
+                  fill="url(#cube-right-wall)"
                   stroke="#1c1d21"
                   strokeWidth="1"
                   strokeLinejoin="round"
                 />
 
-                {/* Front Center Rounded Corner Thickness */}
+                {/* Center Vertical Ridge */}
                 <path
-                  d={paths.frontCenter}
-                  fill="#0e0f11"
+                  d={paths.centerRidge}
+                  fill="#101114"
                   stroke="#282a30"
                   strokeWidth="0.8"
                 />
 
-                {/* Slab Top Face */}
+                {/* Cube Slice Top Face */}
                 <path
                   d={paths.topFace}
-                  fill={isHeroLayer ? "url(#slab-top-hero)" : "url(#slab-top)"}
-                  stroke={isHeroLayer ? (isHovered ? "url(#glow-stroke)" : "#3a3d46") : "#26282e"}
-                  strokeWidth={isHeroLayer ? "1.2" : "1"}
+                  fill={isHero ? "url(#cube-top-hero)" : "url(#cube-top)"}
+                  stroke={isHero ? (isHovered ? "url(#cube-glow-stroke)" : "#3a3d46") : "#282a30"}
+                  strokeWidth={isHero ? "1.3" : "1"}
                   strokeLinejoin="round"
                   className="transition-colors duration-300"
                 />
 
-                {/* ── Top Hero Layer Details (Concentric Seal & Icon) ── */}
-                {isHeroLayer && (
+                {/* ── Top Hero Layer Details (Concentric Seal & Document/Layers Icon) ── */}
+                {isHero && (
                   <g className="transition-all duration-300">
-                    {/* Outer dashed isometric orbit */}
+                    {/* Outer isometric circular orbit */}
                     <ellipse
                       cx={cx}
                       cy={currentY}
-                      rx="38"
-                      ry="21"
+                      rx="36"
+                      ry="20.8"
                       fill="none"
-                      stroke={isHovered ? "#5e6ad2" : "#343842"}
+                      stroke={isHovered ? "#5e6ad2" : "#32353e"}
                       strokeWidth="1"
                       strokeDasharray="3 3"
                       className="transition-colors duration-300"
@@ -305,30 +348,30 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
                     <ellipse
                       cx={cx}
                       cy={currentY}
-                      rx="27"
+                      rx="26"
                       ry="15"
                       fill="#121316"
-                      stroke={isHovered ? "#6e79d6" : "#2e313a"}
+                      stroke={isHovered ? "#6e79d6" : "#282a32"}
                       strokeWidth="1"
                       className="transition-colors duration-300"
                     />
 
-                    {/* Inner glowing center */}
+                    {/* Inner glowing core */}
                     <ellipse
                       cx={cx}
                       cy={currentY}
-                      rx="18"
-                      ry="10"
+                      rx="17"
+                      ry="9.8"
                       fill="#1a1b22"
                       stroke="#5e6ad2"
                       strokeWidth="1.2"
                       strokeOpacity={isHovered ? "0.9" : "0.5"}
                     />
 
-                    {/* Top Layer Icon (Layers) */}
+                    {/* Embossed Icon in center (Matching Document / Layers Icon in Reference) */}
                     <g transform={`translate(${cx - 7}, ${currentY - 7}) scale(0.65)`}>
                       <path
-                        d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"
+                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
                         fill="none"
                         stroke="#f7f8f8"
                         strokeWidth="2"
@@ -336,7 +379,7 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
                         strokeLinejoin="round"
                       />
                       <path
-                        d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"
+                        d="M14 2v6h6"
                         fill="none"
                         stroke="#5e6ad2"
                         strokeWidth="2"
@@ -344,12 +387,25 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
                         strokeLinejoin="round"
                       />
                       <path
-                        d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"
+                        d="M16 13H8"
                         fill="none"
                         stroke="#8a8f98"
                         strokeWidth="2"
                         strokeLinecap="round"
-                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M16 17H8"
+                        fill="none"
+                        stroke="#8a8f98"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M10 9H8"
+                        fill="none"
+                        stroke="#8a8f98"
+                        strokeWidth="2"
+                        strokeLinecap="round"
                       />
                     </g>
                   </g>

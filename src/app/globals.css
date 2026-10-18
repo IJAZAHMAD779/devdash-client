@@ -367,3 +367,18 @@ div[class*="badge__root"],
   color: #6e79d6 !important;
 }
 
+/* ── Isometric 3D Stack Motion Tokens ───────────────────────── */
+@keyframes isometricLayerFloat {
+  0% {
+    transform: translateY(0px);
+  }
+  100% {
+    transform: translateY(calc(-1 * var(--float-amp, 6px)));
+  }
+}
+
+.anim-iso-float {
+  animation: isometricLayerFloat var(--anim-dur, 4s) cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+}
+
+

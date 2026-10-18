@@ -44,9 +44,11 @@ export default function SignInPage() {
               formButtonPrimary:
                 "!bg-primary hover:!bg-primary-hover !text-white !text-xs !font-medium !h-10 !tracking-tight !shadow-sm !shadow-primary/25 !transition-all !rounded-lg",
               footerAction: "!bg-transparent !border-t !border-hairline !pt-4 !mt-4",
+              footerAction__branding: "hidden",
               footerActionText: "!text-ink-muted !text-xs",
               footerActionLink: "!text-primary hover:!text-primary-hover !text-xs !font-medium",
               footer: "!bg-transparent",
+              footerPages: "hidden",
               badge: "hidden",
               developmentBadge: "hidden",
             },

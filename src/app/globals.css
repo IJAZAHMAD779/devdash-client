@@ -253,17 +253,34 @@ body {
 /* ── Clerk Custom Theme & Branding Elimination ───────────────── */
 .cl-footer a[href*="clerk.com"],
 .cl-footer [data-localization-key*="secured-by-clerk"],
+.cl-footer [data-localization-key*="developmentMode"],
 .cl-internal-b3fm6y,
+.cl-internal-102i4h7,
+.cl-internal-21w9q5,
+.cl-internal-1574g1q,
+.cl-internal-3t7kdr,
+.cl-internal-17lyvsn,
 .cl-badge,
 .cl-development-badge,
 .cl-footerPages,
 div[class*="footerPages"],
 div[class*="footer__branding"],
-div[class*="badge__root"] {
+div[class*="footerAction__branding"],
+div[class*="badge__root"],
+.cl-footerAction > div:nth-child(2),
+.cl-footerAction > div:last-child:not(:first-child),
+[class*="footerAction"] > div:nth-child(2),
+[class*="footerAction"] > div:last-child:not(:first-child) {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
   pointer-events: none !important;
+  overflow: hidden !important;
 }
 
 .cl-rootBox {

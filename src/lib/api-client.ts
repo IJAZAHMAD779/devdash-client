@@ -4,8 +4,15 @@
  * Automatically injects Clerk Bearer tokens and handles Render cold-start detection.
  */
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+export function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+    return "https://devdash-api-gf3p.onrender.com/api/v1";
+  }
+  return "http://localhost:5000/api/v1";
+}
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -64,7 +71,8 @@ export async function apiRequest<T = any>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 
   // Cold start timer (trigger banner if request exceeds 2.5s)
   let coldStartTriggered = false;

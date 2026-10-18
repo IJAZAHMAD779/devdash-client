@@ -251,6 +251,8 @@ body {
 }
 
 /* ── Clerk Custom Theme & Branding Elimination ───────────────── */
+.cl-footerAction,
+.cl-footer,
 .cl-footer a[href*="clerk.com"],
 .cl-footer [data-localization-key*="secured-by-clerk"],
 .cl-footer [data-localization-key*="developmentMode"],
@@ -263,6 +265,7 @@ body {
 .cl-badge,
 .cl-development-badge,
 .cl-footerPages,
+div[class*="footerAction"],
 div[class*="footerPages"],
 div[class*="footer__branding"],
 div[class*="footerAction__branding"],

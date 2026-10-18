@@ -1,6 +1,7 @@
 import { SignUp } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import { Layers } from "lucide-react";
+import Link from "next/link";
 
 export default function SignUpPage() {
   return (
@@ -43,17 +44,25 @@ export default function SignUpPage() {
                 "!bg-surface-2 !border !border-hairline !text-ink !text-xs !rounded-lg focus:!border-primary focus:!ring-1 focus:!ring-primary !h-10 !transition-colors",
               formButtonPrimary:
                 "!bg-primary hover:!bg-primary-hover !text-white !text-xs !font-medium !h-10 !tracking-tight !shadow-sm !shadow-primary/25 !transition-all !rounded-lg",
-              footerAction: "!bg-transparent !border-t !border-hairline !pt-4 !mt-4",
-              footerAction__branding: "hidden",
-              footerActionText: "!text-ink-muted !text-xs",
-              footerActionLink: "!text-primary hover:!text-primary-hover !text-xs !font-medium",
-              footer: "!bg-transparent",
+              footer: "hidden",
+              footerAction: "hidden",
               footerPages: "hidden",
               badge: "hidden",
               developmentBadge: "hidden",
             },
           }}
         />
+      </div>
+
+      {/* Clean, Non-Branded Auth Switch Link */}
+      <div className="mt-5 text-center text-xs text-ink-muted">
+        Already have an account?{" "}
+        <Link
+          href="/sign-in"
+          className="text-primary hover:text-primary-hover font-medium hover:underline transition-colors ml-0.5"
+        >
+          Sign in
+        </Link>
       </div>
     </div>
   );

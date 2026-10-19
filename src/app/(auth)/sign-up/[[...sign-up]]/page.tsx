@@ -21,7 +21,7 @@ export default function SignUpPage() {
           appearance={{
             baseTheme: dark,
             variables: {
-              colorPrimary: "#5e6ad2",
+              colorPrimary: "#2563eb",
               colorBackground: "#0f1011",
               colorInputBackground: "#141516",
               colorInputText: "#f7f8f8",

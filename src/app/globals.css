@@ -193,11 +193,11 @@ body {
     border-color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .t-check:hover {
-  border-color: #5e6ad2;
+  border-color: #2563eb;
 }
 .t-check[aria-checked="true"] {
-  background: #5e6ad2;
-  border-color: #5e6ad2;
+  background: #2563eb;
+  border-color: #2563eb;
 }
 .t-check svg {
   width: 10px;
@@ -341,18 +341,18 @@ div[class*="badge__root"],
 }
 
 .cl-formFieldInput:focus {
-  border-color: #5e6ad2 !important;
-  box-shadow: 0 0 0 1px #5e6ad2 !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 1px #2563eb !important;
 }
 
 .cl-formButtonPrimary {
-  background-color: #5e6ad2 !important;
+  background-color: #2563eb !important;
   color: #ffffff !important;
-  box-shadow: 0 1px 3px 0 rgba(94, 106, 210, 0.25) !important;
+  box-shadow: 0 1px 3px 0 rgba(37, 99, 235, 0.25) !important;
 }
 
 .cl-formButtonPrimary:hover {
-  background-color: #6e79d6 !important;
+  background-color: #3b82f6 !important;
 }
 
 .cl-footerActionText {
@@ -360,11 +360,11 @@ div[class*="badge__root"],
 }
 
 .cl-footerActionLink {
-  color: #5e6ad2 !important;
+  color: #2563eb !important;
 }
 
 .cl-footerActionLink:hover {
-  color: #6e79d6 !important;
+  color: #3b82f6 !important;
 }
 
 /* ── Isometric 3D Stack Motion Tokens ───────────────────────── */

@@ -22,9 +22,9 @@ const config: Config = {
           tertiary: "#3e3e44",
         },
         primary: {
-          DEFAULT: "#5e6ad2",
-          hover: "#828fff",
-          focus: "#5e69d1",
+          DEFAULT: "#2563eb",
+          hover: "#3b82f6",
+          focus: "#1d4ed8",
         },
         ink: {
           DEFAULT: "#f7f8f8",

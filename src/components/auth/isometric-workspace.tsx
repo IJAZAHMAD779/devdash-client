@@ -149,8 +149,8 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] rounded-full blur-[80px] pointer-events-none transition-all duration-700"
         style={{
           background: isHovered
-            ? "radial-gradient(circle, rgba(94, 106, 210, 0.28) 0%, rgba(94, 106, 210, 0.05) 70%, transparent 100%)"
-            : "radial-gradient(circle, rgba(94, 106, 210, 0.14) 0%, rgba(94, 106, 210, 0.02) 70%, transparent 100%)",
+            ? "radial-gradient(circle, rgba(37, 99, 235, 0.28) 0%, rgba(37, 99, 235, 0.05) 70%, transparent 100%)"
+            : "radial-gradient(circle, rgba(37, 99, 235, 0.14) 0%, rgba(37, 99, 235, 0.02) 70%, transparent 100%)",
           transform: `translate(-50%, -50%) translate3d(${mousePos.x * 20}px, ${mousePos.y * 20}px, 0)`,
         }}
       />
@@ -195,8 +195,8 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
 
             {/* Glowing stroke for active state */}
             <linearGradient id="cube-glow-stroke" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#5e6ad2" stopOpacity="0.9" />
-              <stop offset="50%" stopColor="#8a8f98" stopOpacity="0.5" />
+              <stop offset="0%" stopColor="#2563eb" stopOpacity="0.9" />
+              <stop offset="50%" stopColor="#60a5fa" stopOpacity="0.5" />
               <stop offset="100%" stopColor="#343842" stopOpacity="0.7" />
             </linearGradient>
           </defs>
@@ -210,7 +210,7 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
               y1={topPaths.pTop.y}
               x2={secondPaths.pTop.x}
               y2={secondPaths.pTop.y}
-              stroke="#5e6ad2"
+              stroke="#2563eb"
               strokeWidth="1.2"
               strokeDasharray="3 3"
             />
@@ -240,7 +240,7 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
               y1={topPaths.pBottom.y + layerH}
               x2={secondPaths.pBottom.x}
               y2={secondPaths.pBottom.y}
-              stroke="#5e6ad2"
+              stroke="#2563eb"
               strokeWidth="1.2"
               strokeDasharray="3 3"
             />
@@ -253,7 +253,7 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
                   y1={secondPaths.pLeft.y + layerH}
                   x2={bottomPaths.pLeft.x}
                   y2={bottomPaths.pLeft.y + layerH}
-                  stroke="#5e6ad2"
+                  stroke="#2563eb"
                   strokeWidth="1"
                   strokeDasharray="3 3"
                 />
@@ -262,7 +262,7 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
                   y1={secondPaths.pRight.y + layerH}
                   x2={bottomPaths.pRight.x}
                   y2={bottomPaths.pRight.y + layerH}
-                  stroke="#5e6ad2"
+                  stroke="#2563eb"
                   strokeWidth="1"
                   strokeDasharray="3 3"
                 />
@@ -338,7 +338,7 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
                       rx="36"
                       ry="20.8"
                       fill="none"
-                      stroke={isHovered ? "#5e6ad2" : "#32353e"}
+                      stroke={isHovered ? "#2563eb" : "#32353e"}
                       strokeWidth="1"
                       strokeDasharray="3 3"
                       className="transition-colors duration-300"
@@ -351,7 +351,7 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
                       rx="26"
                       ry="15"
                       fill="#121316"
-                      stroke={isHovered ? "#6e79d6" : "#282a32"}
+                      stroke={isHovered ? "#3b82f6" : "#282a32"}
                       strokeWidth="1"
                       className="transition-colors duration-300"
                     />
@@ -363,7 +363,7 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
                       rx="17"
                       ry="9.8"
                       fill="#1a1b22"
-                      stroke="#5e6ad2"
+                      stroke="#2563eb"
                       strokeWidth="1.2"
                       strokeOpacity={isHovered ? "0.9" : "0.5"}
                     />
@@ -381,7 +381,7 @@ export function IsometricWorkspace({ className = "" }: IsometricWorkspaceProps) 
                       <path
                         d="M14 2v6h6"
                         fill="none"
-                        stroke="#5e6ad2"
+                        stroke="#2563eb"
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"

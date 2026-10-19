@@ -240,7 +240,7 @@ export function EditComponentModal({ component, isOpen, onClose }: Props) {
           {/* Framework & Styling Selectors */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-ink-muted mb-1.5 flex items-center gap-1.5">
+              <label className="text-xs font-medium text-ink-muted mb-1.5 flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-ink-tertiary" />
                 <span>Framework</span>
               </label>
@@ -260,7 +260,7 @@ export function EditComponentModal({ component, isOpen, onClose }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-ink-muted mb-1.5 flex items-center gap-1.5">
+              <label className="text-xs font-medium text-ink-muted mb-1.5 flex items-center gap-1.5">
                 <Palette className="w-3.5 h-3.5 text-ink-tertiary" />
                 <span>Styling Engine</span>
               </label>

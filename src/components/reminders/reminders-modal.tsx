@@ -214,7 +214,7 @@ export function RemindersModal({
             {/* Time Picker & Presets */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-ink-muted mb-1 flex items-center gap-1">
+                <label className="text-xs font-medium text-ink-muted mb-1 flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-primary" />
                   Date & Time (When to remind) *
                 </label>
@@ -268,7 +268,7 @@ export function RemindersModal({
             {/* Recipient Email & Linked Task */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-ink-muted mb-1 flex items-center gap-1">
+                <label className="text-xs font-medium text-ink-muted mb-1 flex items-center gap-1">
                   <Mail className="w-3.5 h-3.5 text-ink-tertiary" />
                   Email Destination *
                 </label>

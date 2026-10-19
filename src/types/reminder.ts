@@ -6,6 +6,7 @@ export interface Reminder {
   remindAt: string;
   isSent: boolean;
   sentAt?: string | null;
+  failureReason?: string | null;
   taskId?: string | null;
   task?: {
     id: string;
@@ -22,4 +23,9 @@ export interface CreateReminderInput {
   remindAt: string; // ISO string
   taskId?: string;
   recipientEmail?: string;
+}
+
+export interface ReminderHealth {
+  isConfigured: boolean;
+  fromAddress: string;
 }

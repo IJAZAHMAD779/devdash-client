@@ -12,12 +12,15 @@ import {
   Loader2,
   Mail,
   AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import {
   useReminders,
   useCreateReminder,
   useDeleteReminder,
+  useRetryReminder,
+  useReminderHealth,
 } from "@/hooks/use-reminders";
 import { useTasks } from "@/hooks/use-tasks";
 import { cn, formatDate } from "@/lib/utils";
@@ -37,9 +40,11 @@ export function RemindersModal({
 }: Props) {
   const { user } = useUser();
   const { data: reminders, isLoading } = useReminders();
+  const { data: health } = useReminderHealth();
   const { data: tasks } = useTasks();
   const createReminder = useCreateReminder();
   const deleteReminder = useDeleteReminder();
+  const retryReminder = useRetryReminder();
 
   const [title, setTitle] = useState(defaultTitle || "");
   const [description, setDescription] = useState("");
@@ -136,8 +141,19 @@ export function RemindersModal({
     }
   };
 
-  const upcomingReminders = reminders?.filter((r) => !r.isSent) || [];
-  const sentReminders = reminders?.filter((r) => r.isSent) || [];
+  const handleRetry = async (id: string) => {
+    setFormError(null);
+    setSuccessMsg(null);
+    try {
+      await retryReminder.mutateAsync(id);
+      setSuccessMsg("Reminder retry dispatched successfully via Resend!");
+    } catch (err: any) {
+      setFormError(err?.message || "Failed to retry reminder");
+    }
+  };
+
+  const upcomingReminders = reminders?.filter((r) => !r.isSent || !!r.failureReason) || [];
+  const sentReminders = reminders?.filter((r) => r.isSent && !r.failureReason) || [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -174,6 +190,19 @@ export function RemindersModal({
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Health Warning Banner */}
+          {health && !health.isConfigured && (
+            <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold text-amber-300">Live Email Delivery Inactive</p>
+                <p className="text-[11px] text-amber-200/80 leading-relaxed">
+                  Your backend environment currently has <code className="px-1.5 py-0.5 rounded bg-surface-2 font-mono text-[10px] text-amber-300 border border-amber-500/30">RESEND_API_KEY</code> set to placeholder. To deliver live notification emails to your inbox, set your free API key from <a href="https://resend.com/api-keys" target="_blank" rel="noreferrer" className="underline font-medium text-amber-300 hover:text-white">resend.com</a> in your Render environment variables.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Notification Feedback */}
           {successMsg && (
             <div className="p-3 rounded-lg bg-semantic-success/10 border border-semantic-success/20 flex items-center gap-2.5 text-xs text-semantic-success animate-in fade-in">
@@ -358,41 +387,82 @@ export function RemindersModal({
                 {upcomingReminders.map((rem) => {
                   const remDate = new Date(rem.remindAt);
                   const isOverdue = remDate.getTime() <= Date.now();
+                  const hasFailed = !!rem.failureReason;
+
                   return (
                     <div
                       key={rem.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-surface-2 border border-hairline text-xs group hover:border-hairline-strong transition-colors"
+                      className={cn(
+                        "p-3 rounded-lg border text-xs group transition-colors",
+                        hasFailed
+                          ? "bg-surface-2 border-rose-500/30 hover:border-rose-500/50"
+                          : "bg-surface-2 border-hairline hover:border-hairline-strong"
+                      )}
                     >
-                      <div className="flex items-start gap-2.5 min-w-0 flex-1 mr-3">
-                        <Clock className={cn("w-4 h-4 shrink-0 mt-0.5", isOverdue ? "text-amber-400" : "text-primary")} />
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-ink truncate">{rem.title}</div>
-                          {rem.description && (
-                            <div className="text-[11px] text-ink-muted truncate mt-0.5">
-                              {rem.description}
-                            </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-start gap-2.5 min-w-0 flex-1 mr-3">
+                          {hasFailed ? (
+                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                          ) : (
+                            <Clock className={cn("w-4 h-4 shrink-0 mt-0.5", isOverdue ? "text-amber-400" : "text-primary")} />
                           )}
-                          <div className="flex items-center gap-2 mt-1 text-[11px] font-mono text-ink-tertiary">
-                            <span className={cn(isOverdue && "text-amber-400 font-semibold")}>
-                              {isOverdue ? "Due now" : `Due: ${formatDate(rem.remindAt)}`}
-                            </span>
-                            {rem.task && (
-                              <span className="px-1.5 py-0.2 rounded bg-surface-3 border border-hairline text-ink-subtle truncate max-w-[150px]">
-                                Task: {rem.task.title}
-                              </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-ink truncate">{rem.title}</span>
+                              {hasFailed && (
+                                <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-mono text-[10px] uppercase">
+                                  Delivery Failed
+                                </span>
+                              )}
+                            </div>
+                            {rem.description && (
+                              <div className="text-[11px] text-ink-muted truncate mt-0.5">
+                                {rem.description}
+                              </div>
                             )}
+                            <div className="flex items-center gap-2 mt-1 text-[11px] font-mono text-ink-tertiary">
+                              <span className={cn(isOverdue && !hasFailed && "text-amber-400 font-semibold")}>
+                                {isOverdue ? "Due now" : `Due: ${formatDate(rem.remindAt)}`}
+                              </span>
+                              {rem.task && (
+                                <span className="px-1.5 py-0.2 rounded bg-surface-3 border border-hairline text-ink-subtle truncate max-w-[150px]">
+                                  Task: {rem.task.title}
+                                </span>
+                              )}
+                            </div>
                           </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {hasFailed && (
+                            <button
+                              type="button"
+                              onClick={() => handleRetry(rem.id)}
+                              disabled={retryReminder.isPending}
+                              title="Retry sending notification email"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-[10px] font-medium transition-colors cursor-pointer"
+                            >
+                              <RotateCcw className={cn("w-3 h-3", retryReminder.isPending && "animate-spin")} />
+                              <span>Retry</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(rem.id)}
+                            disabled={deleteReminder.isPending}
+                            title="Delete reminder"
+                            className="p-1.5 rounded hover:bg-surface-3 text-ink-subtle hover:text-rose-400 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => handleDelete(rem.id)}
-                        disabled={deleteReminder.isPending}
-                        title="Delete reminder"
-                        className="p-1.5 rounded hover:bg-surface-3 text-ink-subtle hover:text-rose-400 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {hasFailed && (
+                        <div className="mt-2.5 pt-2 border-t border-rose-500/20 flex items-start gap-1.5 text-[11px] text-rose-300/90 leading-tight">
+                          <span className="font-semibold text-rose-300 shrink-0">Error:</span>
+                          <span className="break-words">{rem.failureReason}</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

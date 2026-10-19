@@ -55,6 +55,14 @@
   --tabs-text-active: #f7f8f8;
   --tabs-bar-bg: #141516;
   --tabs-pill-bg: #23252a;
+
+  /* Toast open / close (22-toast.md) */
+  --toast-open: 350ms;
+  --toast-close: 250ms;
+  --toast-distance: 16px;
+  --toast-blur: 2px;
+  --toast-scale: 0.97;
+  --toast-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Base Linear Styling */
@@ -380,5 +388,44 @@ div[class*="badge__root"],
 .anim-iso-float {
   animation: isometricLayerFloat var(--anim-dur, 4s) cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
 }
+
+/* ── Toast open / close (22-toast.md) ────────────────────────── */
+.t-toast {
+  opacity: 0;
+  transform: translateY(var(--toast-distance, 16px)) scale(var(--toast-scale, 0.97));
+  filter: blur(var(--toast-blur, 2px));
+  will-change: transform, opacity, filter;
+  transition:
+    opacity var(--toast-close, 250ms) var(--toast-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    transform var(--toast-close, 250ms) var(--toast-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    filter var(--toast-close, 250ms) var(--toast-ease, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.t-toast.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+  transition:
+    opacity var(--toast-open, 350ms) var(--toast-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    transform var(--toast-open, 350ms) var(--toast-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    filter var(--toast-open, 350ms) var(--toast-ease, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.t-toast.is-closing {
+  opacity: 0;
+  transform: translateY(var(--toast-distance, 16px)) scale(var(--toast-scale, 0.97));
+  filter: blur(var(--toast-blur, 2px));
+  transition:
+    opacity var(--toast-close, 250ms) var(--toast-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    transform var(--toast-close, 250ms) var(--toast-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    filter var(--toast-close, 250ms) var(--toast-ease, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-toast {
+    transition: none !important;
+  }
+}
+
 
 

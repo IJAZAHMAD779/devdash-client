@@ -7,6 +7,7 @@ import { useProjects } from "@/hooks/use-projects";
 import { Task, TaskStatus, Priority } from "@/types/task";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface Props {
   task: Task | null;
@@ -71,9 +72,14 @@ export function EditTaskModal({ task, isOpen, onClose }: Props) {
         },
       });
 
+      toast.success("Task updated", {
+        description: `Changes saved for "${title.trim()}".`,
+      });
       handleClose();
     } catch (err: any) {
-      setError(err.message || "Failed to update task");
+      const msg = err.message || "Failed to update task";
+      setError(msg);
+      toast.error("Failed to update task", { description: msg });
     }
   };
 

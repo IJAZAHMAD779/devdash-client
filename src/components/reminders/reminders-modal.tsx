@@ -24,6 +24,7 @@ import {
 } from "@/hooks/use-reminders";
 import { useTasks } from "@/hooks/use-tasks";
 import { cn, formatDate } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface Props {
   isOpen: boolean;
@@ -124,20 +125,26 @@ export function RemindersModal({
         recipientEmail: recipientEmail.trim() || undefined,
       });
 
-      setSuccessMsg(`Reminder scheduled! An email will be dispatched to ${recipientEmail || "your email"} when the time hits.`);
+      toast.success("Reminder scheduled", {
+        description: `Notification will be dispatched to ${recipientEmail || "your email"} when due.`,
+      });
       setTitle("");
       setDescription("");
-      setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setFormError(err?.message || "Failed to schedule reminder");
+      const msg = err?.message || "Failed to schedule reminder";
+      setFormError(msg);
+      toast.error("Failed to schedule reminder", { description: msg });
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteReminder.mutateAsync(id);
+      toast.info("Reminder deleted", { description: "The reminder has been cleared from your schedule." });
     } catch (err: any) {
-      setFormError(err?.message || "Failed to delete reminder");
+      const msg = err?.message || "Failed to delete reminder";
+      setFormError(msg);
+      toast.error("Delete failed", { description: msg });
     }
   };
 
@@ -146,9 +153,13 @@ export function RemindersModal({
     setSuccessMsg(null);
     try {
       await retryReminder.mutateAsync(id);
-      setSuccessMsg("Reminder retry dispatched successfully via Resend!");
+      toast.success("Reminder dispatched via Resend", {
+        description: "Email was successfully handed off for delivery.",
+      });
     } catch (err: any) {
-      setFormError(err?.message || "Failed to retry reminder");
+      const msg = err?.message || "Failed to retry reminder";
+      setFormError(msg);
+      toast.error("Retry failed", { description: msg });
     }
   };
 

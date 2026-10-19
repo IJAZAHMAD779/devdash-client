@@ -7,6 +7,7 @@ import { useProjects } from "@/hooks/use-projects";
 import { TaskStatus, Priority } from "@/types/task";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface Props {
   isOpen: boolean;
@@ -73,9 +74,14 @@ export function NewTaskModal({
         dueDate: dueDate ? new Date(dueDate).toISOString() : null,
       });
 
+      toast.success("Task created", {
+        description: `"${title.trim()}" added to ${status.toLowerCase()} column.`,
+      });
       handleClose();
     } catch (err: any) {
-      setError(err.message || "Failed to create task");
+      const msg = err.message || "Failed to create task";
+      setError(msg);
+      toast.error("Failed to create task", { description: msg });
     }
   };
 

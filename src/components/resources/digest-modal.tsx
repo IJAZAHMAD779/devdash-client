@@ -15,6 +15,7 @@ import { useUser } from "@clerk/nextjs";
 import { useDigestPreview, useSendDigest } from "@/hooks/use-digest";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface Props {
   isOpen: boolean;
@@ -49,15 +50,15 @@ export function DigestModal({ isOpen, onClose }: Props) {
       const res = await sendDigest.mutateAsync({
         recipientEmail: recipientEmail.trim() || undefined,
       });
-      setSentSuccessMessage(
-        `Digest successfully dispatched to ${res.recipient} (${
-          res.mode === "live"
-            ? "Live via Resend"
-            : "Simulated - configure RESEND_API_KEY in server env"
-        })`
-      );
+      const modeStr = res.mode === "live" ? "Live via Resend" : "Simulated";
+      setSentSuccessMessage(`Digest successfully dispatched to ${res.recipient} (${modeStr})`);
+      toast.success("Weekly digest sent!", {
+        description: `Dispatched to ${res.recipient} (${modeStr}).`,
+      });
     } catch (err: any) {
-      setErrorMessage(err?.message || "Failed to dispatch email via Resend");
+      const msg = err?.message || "Failed to dispatch email via Resend";
+      setErrorMessage(msg);
+      toast.error("Failed to send digest", { description: msg });
     }
   };
 

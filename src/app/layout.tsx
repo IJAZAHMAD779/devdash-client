@@ -3,6 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import { Providers } from "@/components/providers";
 import { AppLayout } from "@/components/app-layout";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -46,6 +47,7 @@ export default function RootLayout({
         <body className="bg-canvas text-ink antialiased">
           <Providers>
             <AppLayout>{children}</AppLayout>
+            <Toaster />
           </Providers>
         </body>
       </html>

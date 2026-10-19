@@ -5,6 +5,7 @@ import { Copy, Check, Eye, EyeOff } from "lucide-react";
 import { codeToHtml } from "shiki";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface Props {
   code: string;
@@ -100,9 +101,13 @@ export function CodeBlock({
       await navigator.clipboard.writeText(code);
       sound.playSuccess();
       setCopied(true);
+      toast.success("Copied to clipboard", {
+        description: filename ? `Snippet from ${filename} copied.` : `${language.toUpperCase()} code copied.`,
+      });
       setTimeout(() => setCopied(false), 2000);
     } catch {
       sound.playClick(400);
+      toast.error("Failed to copy code to clipboard");
     }
   };
 

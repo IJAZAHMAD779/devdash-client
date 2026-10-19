@@ -1,10 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Plus, Bookmark as BookmarkIcon, Loader2, Link2 } from "lucide-react";
+import {
+  X,
+  Plus,
+  Bookmark as BookmarkIcon,
+  Loader2,
+  Link2,
+  Clipboard,
+} from "lucide-react";
 import { useCreateBookmark } from "@/hooks/use-bookmarks";
 import { useProjects } from "@/hooks/use-projects";
-import { BookmarkCategory } from "@/types/bookmark";
+import {
+  PRESET_BOOKMARK_CATEGORIES,
+  BookmarkCategory,
+  BookmarkPreviewData,
+} from "@/types/bookmark";
+import { apiClient } from "@/lib/api-client";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
@@ -13,15 +25,6 @@ interface Props {
   onClose: () => void;
 }
 
-const CATEGORIES: { id: BookmarkCategory; label: string }[] = [
-  { id: "DOCS", label: "Documentation" },
-  { id: "ARTICLE", label: "Article / Post" },
-  { id: "TOOL", label: "Developer Tool" },
-  { id: "LIBRARY", label: "Library / SDK" },
-  { id: "VIDEO", label: "Video" },
-  { id: "TUTORIAL", label: "Tutorial" },
-];
-
 export function NewBookmarkModal({ isOpen, onClose }: Props) {
   const createBookmark = useCreateBookmark();
   const { data: projects } = useProjects();
@@ -29,26 +32,83 @@ export function NewBookmarkModal({ isOpen, onClose }: Props) {
   const [isClosing, setIsClosing] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
-  const [category, setCategory] = useState<BookmarkCategory>("DOCS");
+  const [category, setCategory] = useState<BookmarkCategory>("tools");
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
   const [notes, setNotes] = useState("");
   const [projectId, setProjectId] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const [isFetchingPreview, setIsFetchingPreview] = useState(false);
+  const [previewFavicon, setPreviewFavicon] = useState<string | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       setTitle("");
       setUrl("");
-      setCategory("DOCS");
+      setCategory("tools");
+      setIsCustomCategory(false);
+      setCustomCategoryInput("");
       setNotes("");
       setProjectId("");
       setTags([]);
       setTagInput("");
       setError(null);
       setIsClosing(false);
+      setPreviewFavicon(null);
+      setIsFetchingPreview(false);
     }
   }, [isOpen]);
+
+  const fetchPreview = async (targetUrl: string) => {
+    if (!targetUrl || !targetUrl.includes(".")) return;
+    setIsFetchingPreview(true);
+    try {
+      const res = await apiClient.get<BookmarkPreviewData>(
+        `/bookmarks/preview?url=${encodeURIComponent(targetUrl.trim())}`
+      );
+      if (res) {
+        if ((!title.trim() || title === "Untitled") && res.title) {
+          setTitle(res.title);
+        }
+        if (!notes.trim() && res.description) {
+          setNotes(res.description);
+        }
+        if (res.favicon) {
+          setPreviewFavicon(res.favicon);
+        }
+      }
+    } catch {
+      // Graceful fallback to domain
+      try {
+        const domain = new URL(targetUrl.startsWith("http") ? targetUrl : `https://${targetUrl}`).hostname.replace(/^www\./, "");
+        if (!title.trim()) {
+          setTitle(domain);
+        }
+        setPreviewFavicon(`https://www.google.com/s2/favicons?domain=${domain}&sz=64`);
+      } catch {
+        // ignore
+      }
+    } finally {
+      setIsFetchingPreview(false);
+    }
+  };
+
+  const handlePaste = async () => {
+    sound.playClick(850);
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        const clean = text.trim();
+        setUrl(clean);
+        fetchPreview(clean);
+      }
+    } catch (err) {
+      console.warn("Clipboard access denied:", err);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -96,11 +156,17 @@ export function NewBookmarkModal({ isOpen, onClose }: Props) {
       return;
     }
 
+    const finalCategory = (
+      isCustomCategory
+        ? customCategoryInput.trim()
+        : category
+    ).toLowerCase() || "tools";
+
     try {
       await createBookmark.mutateAsync({
         title: title.trim(),
         url: url.trim(),
-        category,
+        category: finalCategory,
         notes: notes.trim() || undefined,
         projectId: projectId || null,
         tags,
@@ -173,38 +239,113 @@ export function NewBookmarkModal({ isOpen, onClose }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-ink-muted mb-1.5">
-              URL <span className="text-primary">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-ink-muted">
+                URL <span className="text-primary">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={handlePaste}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono bg-surface-2 hover:bg-surface-3 text-ink-muted hover:text-ink border border-hairline transition-colors cursor-pointer"
+                title="Paste URL from clipboard"
+              >
+                <Clipboard className="w-3 h-3 text-primary" />
+                <span>Paste</span>
+              </button>
+            </div>
             <div className="relative">
-              <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
+              {previewFavicon ? (
+                <img
+                  src={previewFavicon}
+                  alt=""
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-xs object-contain"
+                  onError={() => setPreviewFavicon(null)}
+                />
+              ) : (
+                <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
+              )}
               <input
                 type="url"
                 placeholder="https://nextjs.org/docs"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
+                onBlur={() => fetchPreview(url)}
                 required
-                className="w-full pl-9 pr-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink placeholder:text-ink-tertiary transition-colors"
+                className="w-full pl-9 pr-24 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink placeholder:text-ink-tertiary transition-colors"
               />
+              {isFetchingPreview && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[10px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Fetching...</span>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-ink-muted mb-1.5">
-                Category
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as BookmarkCategory)}
-                className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink transition-colors"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-medium text-ink-muted">
+                  Category
+                </label>
+                {!isCustomCategory ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomCategory(true);
+                      setCustomCategoryInput("");
+                    }}
+                    className="text-[10px] font-mono text-primary hover:underline cursor-pointer"
+                  >
+                    + Custom
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomCategory(false);
+                      setCategory("tools");
+                    }}
+                    className="text-[10px] font-mono text-ink-muted hover:text-ink cursor-pointer"
+                  >
+                    Presets
+                  </button>
+                )}
+              </div>
+
+              {isCustomCategory ? (
+                <input
+                  type="text"
+                  placeholder="e.g. repo, prompts, ai..."
+                  value={customCategoryInput}
+                  onChange={(e) => {
+                    const clean = e.target.value.toLowerCase().replace(/\s+/g, "-");
+                    setCustomCategoryInput(clean);
+                  }}
+                  className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink placeholder:text-ink-tertiary transition-colors font-mono"
+                  autoFocus
+                />
+              ) : (
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    if (e.target.value === "__custom__") {
+                      setIsCustomCategory(true);
+                      setCustomCategoryInput("");
+                    } else {
+                      setCategory(e.target.value);
+                    }
+                  }}
+                  className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink transition-colors capitalize"
+                >
+                  {PRESET_BOOKMARK_CATEGORIES.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                  <option value="__custom__">+ Custom Category...</option>
+                </select>
+              )}
             </div>
 
             <div>

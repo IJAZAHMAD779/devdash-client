@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { X, Save, Bookmark as BookmarkIcon, Loader2, Link2 } from "lucide-react";
 import { useUpdateBookmark } from "@/hooks/use-bookmarks";
 import { useProjects } from "@/hooks/use-projects";
-import { Bookmark, BookmarkCategory } from "@/types/bookmark";
+import {
+  Bookmark,
+  BookmarkCategory,
+  PRESET_BOOKMARK_CATEGORIES,
+} from "@/types/bookmark";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
@@ -14,15 +18,6 @@ interface Props {
   onClose: () => void;
 }
 
-const CATEGORIES: { id: BookmarkCategory; label: string }[] = [
-  { id: "DOCS", label: "Documentation" },
-  { id: "ARTICLE", label: "Article / Post" },
-  { id: "TOOL", label: "Developer Tool" },
-  { id: "LIBRARY", label: "Library / SDK" },
-  { id: "VIDEO", label: "Video" },
-  { id: "TUTORIAL", label: "Tutorial" },
-];
-
 export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
   const updateBookmark = useUpdateBookmark();
   const { data: projects } = useProjects();
@@ -30,7 +25,9 @@ export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
   const [isClosing, setIsClosing] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
-  const [category, setCategory] = useState<BookmarkCategory>("DOCS");
+  const [category, setCategory] = useState<BookmarkCategory>("tools");
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
   const [notes, setNotes] = useState("");
   const [projectId, setProjectId] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
@@ -41,7 +38,17 @@ export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
     if (bookmark && isOpen) {
       setTitle(bookmark.title);
       setUrl(bookmark.url);
-      setCategory(bookmark.category);
+      const cat = (bookmark.category || "tools").toLowerCase();
+      const isPreset = PRESET_BOOKMARK_CATEGORIES.some((p) => p.id === cat);
+      if (isPreset) {
+        setCategory(cat);
+        setIsCustomCategory(false);
+        setCustomCategoryInput("");
+      } else {
+        setCategory(cat);
+        setIsCustomCategory(true);
+        setCustomCategoryInput(cat);
+      }
       setNotes(bookmark.notes || "");
       setProjectId(bookmark.projectId || "");
       setTags(bookmark.tags || []);
@@ -97,13 +104,17 @@ export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
       return;
     }
 
+    const finalCategory = (
+      isCustomCategory ? customCategoryInput.trim() : category
+    ).toLowerCase() || "tools";
+
     try {
       await updateBookmark.mutateAsync({
         id: bookmark.id,
         payload: {
           title: title.trim(),
           url: url.trim(),
-          category,
+          category: finalCategory,
           notes: notes.trim() || null,
           projectId: projectId || null,
           tags,
@@ -193,20 +204,68 @@ export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-ink-muted mb-1.5">
-                Category
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as BookmarkCategory)}
-                className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink transition-colors"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-medium text-ink-muted">
+                  Category
+                </label>
+                {!isCustomCategory ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomCategory(true);
+                      setCustomCategoryInput(category);
+                    }}
+                    className="text-[10px] font-mono text-primary hover:underline cursor-pointer"
+                  >
+                    + Custom
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomCategory(false);
+                      setCategory("tools");
+                    }}
+                    className="text-[10px] font-mono text-ink-muted hover:text-ink cursor-pointer"
+                  >
+                    Presets
+                  </button>
+                )}
+              </div>
+
+              {isCustomCategory ? (
+                <input
+                  type="text"
+                  placeholder="e.g. repo, prompts, ai..."
+                  value={customCategoryInput}
+                  onChange={(e) => {
+                    const clean = e.target.value.toLowerCase().replace(/\s+/g, "-");
+                    setCustomCategoryInput(clean);
+                  }}
+                  className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink placeholder:text-ink-tertiary transition-colors font-mono"
+                  autoFocus
+                />
+              ) : (
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    if (e.target.value === "__custom__") {
+                      setIsCustomCategory(true);
+                      setCustomCategoryInput("");
+                    } else {
+                      setCategory(e.target.value);
+                    }
+                  }}
+                  className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink transition-colors capitalize"
+                >
+                  {PRESET_BOOKMARK_CATEGORIES.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                  <option value="__custom__">+ Custom Category...</option>
+                </select>
+              )}
             </div>
 
             <div>

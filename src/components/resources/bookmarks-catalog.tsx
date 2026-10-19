@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Plus,
   Search,
@@ -15,7 +15,11 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
-import { Bookmark, BookmarkCategory } from "@/types/bookmark";
+import {
+  Bookmark,
+  BookmarkCategory,
+  PRESET_BOOKMARK_CATEGORIES,
+} from "@/types/bookmark";
 import { useBookmarks, useDeleteBookmark } from "@/hooks/use-bookmarks";
 import { useProjects } from "@/hooks/use-projects";
 import { NewBookmarkModal } from "./new-bookmark-modal";
@@ -23,50 +27,23 @@ import { EditBookmarkModal } from "./edit-bookmark-modal";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
-const CATEGORY_TABS: { id: BookmarkCategory | "ALL"; label: string }[] = [
-  { id: "ALL", label: "All Bookmarks" },
-  { id: "DOCS", label: "Docs" },
-  { id: "ARTICLE", label: "Articles" },
-  { id: "TOOL", label: "Tools" },
-  { id: "LIBRARY", label: "Libraries" },
-  { id: "VIDEO", label: "Videos" },
-  { id: "TUTORIAL", label: "Tutorials" },
-];
-
-const CATEGORY_CONFIG: Record<
-  BookmarkCategory,
-  { label: string; badgeClass: string }
-> = {
-  DOCS: {
-    label: "Docs",
-    badgeClass: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
-  },
-  ARTICLE: {
-    label: "Article",
-    badgeClass: "bg-blue-500/10 text-blue-300 border-blue-500/20",
-  },
-  TOOL: {
-    label: "Tool",
-    badgeClass: "bg-amber-500/10 text-amber-300 border-amber-500/20",
-  },
-  LIBRARY: {
-    label: "Library",
-    badgeClass: "bg-purple-500/10 text-purple-300 border-purple-500/20",
-  },
-  VIDEO: {
-    label: "Video",
-    badgeClass: "bg-rose-500/10 text-rose-300 border-rose-500/20",
-  },
-  TUTORIAL: {
-    label: "Tutorial",
-    badgeClass: "bg-cyan-500/10 text-cyan-300 border-cyan-500/20",
-  },
+const getCategoryBadge = (cat: string) => {
+  const normalized = (cat || "tools").toLowerCase();
+  const preset = PRESET_BOOKMARK_CATEGORIES.find((p) => p.id === normalized);
+  if (preset) {
+    return {
+      label: preset.label,
+      badgeClass: preset.badgeClass,
+    };
+  }
+  return {
+    label: cat.charAt(0).toUpperCase() + cat.slice(1),
+    badgeClass: "bg-surface-3 text-ink-muted border-hairline",
+  };
 };
 
 export function BookmarksCatalog() {
-  const [selectedCategory, setSelectedCategory] = useState<
-    BookmarkCategory | "ALL"
-  >("ALL");
+  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -89,6 +66,26 @@ export function BookmarksCatalog() {
     search: searchQuery,
   });
 
+  // Dynamic tabs: ALL + Presets + Any custom categories found in user bookmarks
+  const categoryTabs = useMemo(() => {
+    const customCategories = new Set<string>();
+    bookmarks?.forEach((bm) => {
+      const cat = (bm.category || "tools").toLowerCase();
+      if (!PRESET_BOOKMARK_CATEGORIES.some((p) => p.id === cat)) {
+        customCategories.add(cat);
+      }
+    });
+
+    return [
+      { id: "ALL", label: "All Bookmarks" },
+      ...PRESET_BOOKMARK_CATEGORIES.map((p) => ({ id: p.id, label: p.label })),
+      ...Array.from(customCategories).map((c) => ({
+        id: c,
+        label: c.charAt(0).toUpperCase() + c.slice(1),
+      })),
+    ];
+  }, [bookmarks]);
+
   const handleDelete = (e: React.MouseEvent, bm: Bookmark) => {
     e.stopPropagation();
     setMenuOpenId(null);
@@ -108,7 +105,7 @@ export function BookmarksCatalog() {
   return (
     <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
       {/* Top Filter & Search Toolbar */}
-      <div className="px-8 py-3.5 border-b border-hairline bg-surface-1/40 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <div className="px-8 py-3.5 border-b border-hairline bg-surface-1/40 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shrink-0">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
@@ -153,8 +150,8 @@ export function BookmarksCatalog() {
       </div>
 
       {/* Category Pills Bar */}
-      <div className="px-8 py-2.5 border-b border-hairline bg-surface-1/20 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        {CATEGORY_TABS.map((tab) => {
+      <div className="px-8 py-2.5 border-b border-hairline bg-surface-1/20 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+        {categoryTabs.map((tab) => {
           const isActive = selectedCategory === tab.id;
           return (
             <button
@@ -177,7 +174,7 @@ export function BookmarksCatalog() {
       </div>
 
       {/* Bookmarks Grid Area */}
-      <div className="flex-1 p-8 overflow-y-auto">
+      <div className="flex-1 min-h-0 p-8 overflow-y-auto">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -211,8 +208,7 @@ export function BookmarksCatalog() {
         ) : bookmarks && bookmarks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
             {bookmarks.map((bm) => {
-              const categoryConfig =
-                CATEGORY_CONFIG[bm.category] || CATEGORY_CONFIG.DOCS;
+              const categoryConfig = getCategoryBadge(bm.category);
               const isMenuOpen = menuOpenId === bm.id;
 
               return (
@@ -223,7 +219,16 @@ export function BookmarksCatalog() {
                   {/* Card Header */}
                   <div className="p-4 border-b border-hairline/80 flex items-start justify-between gap-3 bg-surface-1/60">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        {/* Favicon */}
+                        <img
+                          src={`https://www.google.com/s2/favicons?domain=${getHostname(bm.url)}&sz=64`}
+                          alt=""
+                          className="w-4 h-4 rounded-xs shrink-0 object-contain bg-surface-2 p-0.5"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = "none";
+                          }}
+                        />
                         <span
                           className={cn(
                             "text-[10px] font-mono px-2 py-0.5 rounded-full border font-medium",

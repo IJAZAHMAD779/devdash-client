@@ -52,7 +52,7 @@ export function useCreateBookmark() {
         projectId: newBm.projectId ?? null,
         title: newBm.title,
         url: newBm.url,
-        category: newBm.category ?? "DOCS",
+        category: newBm.category ?? "tools",
         tags: newBm.tags ?? [],
         notes: newBm.notes ?? null,
         createdAt: new Date().toISOString(),

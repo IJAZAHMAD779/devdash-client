@@ -32,10 +32,18 @@ export default function ResourcesPage() {
     search: notesSearchQuery,
   });
 
-  // Auto-select first note if none selected and not creating new
+  // Auto-select first note if none selected or if selected note is missing
   useEffect(() => {
-    if (!selectedNoteId && !isCreatingNewNote && notes && notes.length > 0) {
-      setSelectedNoteId(notes[0].id);
+    if (!isCreatingNewNote && notes && notes.length > 0) {
+      if (!selectedNoteId || !notes.some((n) => n.id === selectedNoteId)) {
+        const sorted = [...notes].sort((a, b) => {
+          if (a.favorite === b.favorite) {
+            return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+          }
+          return a.favorite ? -1 : 1;
+        });
+        setSelectedNoteId(sorted[0].id);
+      }
     }
   }, [notes, selectedNoteId, isCreatingNewNote]);
 
@@ -62,9 +70,9 @@ export default function ResourcesPage() {
   };
 
   return (
-    <div className="flex-1 min-h-screen bg-canvas text-ink flex flex-col">
+    <div className="flex-1 h-screen max-h-screen bg-canvas text-ink flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-8 pt-6 pb-4 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-1/40">
+      <div className="px-8 pt-6 pb-4 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-1/40 shrink-0">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-semibold tracking-[-0.6px] text-ink">
@@ -92,7 +100,7 @@ export default function ResourcesPage() {
       </div>
 
       {/* Sliding Pill Tabs Bar */}
-      <div className="px-8 py-3 border-b border-hairline bg-surface-1/20 flex items-center gap-2">
+      <div className="px-8 py-3 border-b border-hairline bg-surface-1/20 flex items-center gap-2 shrink-0">
         <button
           onClick={() => {
             sound.playClick(850);
@@ -132,9 +140,9 @@ export default function ResourcesPage() {
       </div>
 
       {/* Main Workspace Body */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         {activeTab === "notes" ? (
-          <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col md:flex-row h-full overflow-hidden">
             <NotesList
               notes={notes || []}
               selectedNoteId={selectedNoteId}
@@ -151,7 +159,9 @@ export default function ResourcesPage() {
             />
           </div>
         ) : (
-          <BookmarksCatalog />
+          <div className="flex-1 min-h-0 flex flex-col h-full overflow-hidden">
+            <BookmarksCatalog />
+          </div>
         )}
       </div>
 

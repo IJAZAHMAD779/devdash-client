@@ -52,8 +52,9 @@ export function TaskListRow({ task, onEdit }: Props) {
   return (
     <div
       className={cn(
-        "group flex items-center justify-between px-4 py-2.5 bg-surface-1 border-b border-hairline hover:bg-surface-2 transition-colors duration-150 text-xs",
-        isDone && "opacity-75"
+        "group flex items-center justify-between px-4 py-2.5 bg-surface-1 border-b border-hairline hover:bg-surface-2 transition-colors duration-150 text-xs first:rounded-t-lg last:rounded-b-lg last:border-b-0",
+        isDone && "opacity-75",
+        menuOpen ? "relative z-30" : "relative z-0"
       )}
     >
       {/* Left: Checkbox, Title, Project */}
@@ -124,23 +125,23 @@ export function TaskListRow({ task, onEdit }: Props) {
           {menuOpen && (
             <>
               <div
-                className="fixed inset-0 z-20"
+                className="fixed inset-0 z-40"
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute right-0 top-full mt-1 w-32 rounded-md bg-surface-2 border border-hairline-strong shadow-xl z-30 py-1 text-xs">
+              <div className="absolute right-0 top-full mt-1.5 w-32 rounded-lg bg-surface-2 border border-hairline-strong shadow-2xl z-50 py-1 text-xs">
                 <button
                   onClick={() => {
                     setMenuOpen(false);
                     onEdit(task);
                   }}
-                  className="w-full px-3 py-1.5 text-left text-ink hover:bg-surface-3 flex items-center gap-2"
+                  className="w-full px-3 py-1.5 text-left text-ink hover:bg-surface-3 flex items-center gap-2 cursor-pointer transition-colors"
                 >
                   <Edit2 className="w-3 h-3 text-ink-subtle" />
                   Edit
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="w-full px-3 py-1.5 text-left text-rose-400 hover:bg-surface-3 flex items-center gap-2"
+                  className="w-full px-3 py-1.5 text-left text-rose-400 hover:bg-surface-3 flex items-center gap-2 cursor-pointer transition-colors"
                 >
                   <Trash2 className="w-3 h-3" />
                   Delete

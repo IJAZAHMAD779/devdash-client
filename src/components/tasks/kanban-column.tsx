@@ -55,7 +55,7 @@ export function KanbanColumn({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "flex flex-col rounded-xl bg-surface-1/60 border border-hairline p-3 flex-1 min-w-[280px] max-w-sm transition-colors duration-150 select-none",
+        "flex flex-col rounded-xl bg-surface-1/60 border border-hairline p-3 w-full min-w-0 transition-colors duration-150 select-none",
         isDragOver && "border-primary/80 bg-primary/5 ring-1 ring-primary/40"
       )}
     >

@@ -17,7 +17,7 @@ import { Project } from "@/types/project";
 import { ProjectStatusBadge } from "./project-status-badge";
 import { useToggleFavorite, useDeleteProject } from "@/hooks/use-projects";
 import { sound } from "@/lib/audio";
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 
 interface Props {
   project: Project;
@@ -46,7 +46,12 @@ export function ProjectListRow({ project, onEdit }: Props) {
   };
 
   return (
-    <div className="group flex items-center justify-between px-4 py-3 bg-surface-1 border-b border-hairline hover:bg-surface-2 transition-colors duration-150">
+    <div
+      className={cn(
+        "group flex items-center justify-between px-4 py-3 bg-surface-1 border-b border-hairline hover:bg-surface-2 transition-colors duration-150 first:rounded-t-lg last:rounded-b-lg last:border-b-0",
+        menuOpen ? "relative z-30" : "relative z-0"
+      )}
+    >
       {/* Left: Star, Title, Status, Description */}
       <div className="flex items-center gap-3.5 min-w-0 flex-1 mr-4">
         {/* Favorite Icon Swap */}
@@ -173,23 +178,23 @@ export function ProjectListRow({ project, onEdit }: Props) {
           {menuOpen && (
             <>
               <div
-                className="fixed inset-0 z-20"
+                className="fixed inset-0 z-40"
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute right-0 top-full mt-1 w-32 rounded-md bg-surface-2 border border-hairline-strong shadow-xl z-30 py-1 text-xs">
+              <div className="absolute right-0 top-full mt-1.5 w-32 rounded-lg bg-surface-2 border border-hairline-strong shadow-2xl z-50 py-1 text-xs">
                 <button
                   onClick={() => {
                     setMenuOpen(false);
                     onEdit(project);
                   }}
-                  className="w-full px-3 py-1.5 text-left text-ink hover:bg-surface-3 flex items-center gap-2"
+                  className="w-full px-3 py-1.5 text-left text-ink hover:bg-surface-3 flex items-center gap-2 cursor-pointer transition-colors"
                 >
                   <Edit2 className="w-3.5 h-3.5 text-ink-subtle" />
                   Edit
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="w-full px-3 py-1.5 text-left text-rose-400 hover:bg-surface-3 flex items-center gap-2"
+                  className="w-full px-3 py-1.5 text-left text-rose-400 hover:bg-surface-3 flex items-center gap-2 cursor-pointer transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Delete

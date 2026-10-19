@@ -265,7 +265,7 @@ export default function ProjectsPage() {
 
             {/* List View */}
             {projects && projects.length > 0 && viewMode === "list" && (
-              <div className="rounded-lg border border-hairline overflow-hidden divide-y divide-hairline">
+              <div className="rounded-lg border border-hairline divide-y divide-hairline bg-surface-1">
                 {projects.map((project) => (
                   <ProjectListRow
                     key={project.id}

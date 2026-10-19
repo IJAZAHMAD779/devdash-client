@@ -180,14 +180,14 @@ export default function TasksPage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-8 overflow-x-auto">
+      <div className="flex-1 p-6 lg:p-8 overflow-y-auto">
         {/* Loading Skeletons */}
         {isLoading && (
-          <div className="flex gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
             {[1, 2, 3, 4].map((col) => (
               <div
                 key={col}
-                className="flex-1 min-w-[280px] rounded-xl bg-surface-1 border border-hairline p-4 space-y-3 animate-pulse"
+                className="w-full min-w-0 rounded-xl bg-surface-1 border border-hairline p-4 space-y-3 animate-pulse"
               >
                 <div className="h-4 w-28 rounded bg-surface-3 mb-4" />
                 <div className="h-24 rounded bg-surface-2" />
@@ -244,9 +244,9 @@ export default function TasksPage() {
               </div>
             )}
 
-            {/* Kanban Board View */}
+            {/* Kanban Board View - 4-column balanced grid with zero horizontal scroll */}
             {tasks && tasks.length > 0 && viewMode === "kanban" && (
-              <div className="flex gap-4 items-start min-w-[1150px] pb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full items-start pb-6">
                 {KANBAN_COLUMNS.map((column) => (
                   <KanbanColumn
                     key={column.id}
@@ -261,9 +261,9 @@ export default function TasksPage() {
               </div>
             )}
 
-            {/* List View */}
+            {/* List View - remove overflow-hidden so dropdown menus are never clipped */}
             {tasks && tasks.length > 0 && viewMode === "list" && (
-              <div className="rounded-lg border border-hairline overflow-hidden divide-y divide-hairline max-w-5xl">
+              <div className="rounded-lg border border-hairline divide-y divide-hairline max-w-5xl bg-surface-1">
                 {tasks.map((task) => (
                   <TaskListRow
                     key={task.id}

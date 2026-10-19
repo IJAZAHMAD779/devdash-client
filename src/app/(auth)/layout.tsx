@@ -1,6 +1,6 @@
 import React from "react";
-import { Layers } from "lucide-react";
 import { IsometricWorkspace } from "@/components/auth/isometric-workspace";
+import { DevDashLogo } from "@/components/ui/devdash-logo";
 
 export default function AuthLayout({
   children,
@@ -24,14 +24,9 @@ export default function AuthLayout({
         {/* Ambient top-left highlight */}
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
 
-        {/* 1. Top: Minimal Brand Mark */}
-        <div className="relative z-10 flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-surface-1 border border-hairline flex items-center justify-center text-ink shadow-sm">
-            <Layers className="w-4 h-4 text-ink-muted" />
-          </div>
-          <span className="text-sm font-semibold tracking-[-0.3px] text-ink">
-            DevDash
-          </span>
+        {/* 1. Top: Minimal Icon Logo (linked, no background, no text) */}
+        <div className="relative z-10 flex items-center">
+          <DevDashLogo size={32} href="/projects" />
         </div>
 
         {/* 2. Center: Autonomous & Interactive Animated Isometric Slabs */}

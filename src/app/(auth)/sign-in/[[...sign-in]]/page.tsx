@@ -1,18 +1,14 @@
 import { SignIn } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
-import { Layers } from "lucide-react";
 import Link from "next/link";
+import { DevDashLogo } from "@/components/ui/devdash-logo";
 
 export default function SignInPage() {
   return (
     <div className="w-full flex flex-col items-center">
       {/* Mobile-only brand header (visible on < lg) */}
       <div className="flex lg:hidden flex-col items-center mb-4 text-center">
-        <div className="w-9 h-9 rounded-xl bg-surface-2 border border-hairline flex items-center justify-center text-primary shadow-md shadow-primary/10 mb-2">
-          <Layers className="w-5 h-5 text-primary" />
-        </div>
-        <h1 className="text-lg font-bold tracking-[-0.6px] text-ink">DevDash</h1>
-        <p className="text-[11px] text-ink-muted">Personal Developer Workspace</p>
+        <DevDashLogo size={36} href="/projects" />
       </div>
 
       {/* Bespoke Styled Clerk Sign In (Optimized for zero-scroll) */}

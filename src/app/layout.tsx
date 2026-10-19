@@ -6,9 +6,20 @@ import { AppLayout } from "@/components/app-layout";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "DevDash — Personal Developer Workspace",
+  title: {
+    default: "DevDash . Dashboard",
+    template: "DevDash . %s",
+  },
   description:
     "Decoupled developer productivity hub for managing projects, tasks, syntax-highlighted snippets, and UI components.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

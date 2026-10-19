@@ -9,12 +9,12 @@ import {
   Component,
   BookOpen,
   Search,
-  Layers,
   Sparkles,
   LogIn,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserButton, useUser } from "@clerk/nextjs";
+import { DevDashLogo } from "@/components/ui/devdash-logo";
 
 interface NavItem {
   name: string;
@@ -43,19 +43,9 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 flex-shrink-0 bg-surface-1 border-r border-hairline flex flex-col h-screen sticky top-0 select-none">
-      {/* Brand Header */}
+      {/* Brand Header: Just icon logo, no text, no background, linked to site */}
       <div className="h-14 px-4 flex items-center border-b border-hairline">
-        <Link
-          href="/projects"
-          className="flex items-center gap-2.5 group"
-        >
-          <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center text-white shadow-sm shadow-primary/20 group-hover:scale-105 transition-transform duration-150">
-            <Layers className="w-4 h-4" />
-          </div>
-          <span className="text-sm font-semibold tracking-[-0.6px] text-ink leading-tight">
-            DevDash
-          </span>
-        </Link>
+        <DevDashLogo size={28} href="/projects" />
       </div>
 
       {/* Navigation Links */}

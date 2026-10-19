@@ -81,6 +81,26 @@ export async function apiRequest<T = any>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
+  if (typeof window !== "undefined") {
+    try {
+      const clerk = (window as any).Clerk;
+      const userEmail =
+        clerk?.user?.primaryEmailAddress?.emailAddress ||
+        clerk?.user?.emailAddresses?.[0]?.emailAddress;
+      if (userEmail) {
+        headers["X-User-Email"] = userEmail;
+      }
+      const userName = [clerk?.user?.firstName, clerk?.user?.lastName]
+        .filter(Boolean)
+        .join(" ");
+      if (userName) {
+        headers["X-User-Name"] = userName;
+      }
+    } catch {
+      // Ignore header injection errors
+    }
+  }
+
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 

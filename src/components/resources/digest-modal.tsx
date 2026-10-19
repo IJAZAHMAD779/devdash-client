@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Mail,
   Send,
   Loader2,
   CheckCircle2,
+  AlertCircle,
   Sparkles,
   ExternalLink,
 } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 import { useDigestPreview, useSendDigest } from "@/hooks/use-digest";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
@@ -20,21 +22,42 @@ interface Props {
 }
 
 export function DigestModal({ isOpen, onClose }: Props) {
+  const { user } = useUser();
   const { data: digestData, isLoading, refetch } = useDigestPreview(isOpen);
   const sendDigest = useSendDigest();
-  const [sentSuccessMessage, setSentSuccessMessage] = useState<string | null>(
-    null
-  );
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [sentSuccessMessage, setSentSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      const email =
+        user.primaryEmailAddress?.emailAddress ||
+        user.emailAddresses?.[0]?.emailAddress ||
+        "";
+      setRecipientEmail(email);
+    }
+  }, [user]);
 
   if (!isOpen) return null;
 
   const handleSendEmail = async () => {
     sound.playClick(900);
+    setSentSuccessMessage(null);
+    setErrorMessage(null);
     try {
-      const res = await sendDigest.mutateAsync();
-      setSentSuccessMessage(`Digest sent to ${res.recipient}`);
-    } catch {
-      // Error handled by hook
+      const res = await sendDigest.mutateAsync({
+        recipientEmail: recipientEmail.trim() || undefined,
+      });
+      setSentSuccessMessage(
+        `Digest successfully dispatched to ${res.recipient} (${
+          res.mode === "live"
+            ? "Live via Resend"
+            : "Simulated - configure RESEND_API_KEY in server env"
+        })`
+      );
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Failed to dispatch email via Resend");
     }
   };
 
@@ -49,9 +72,9 @@ export function DigestModal({ isOpen, onClose }: Props) {
       {/* Modal Dialog */}
       <div className="relative w-full max-w-3xl bg-surface-1 border border-hairline rounded-xl shadow-2xl overflow-hidden flex flex-col h-[85vh] animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-hairline flex items-center justify-between bg-surface-1/90">
+        <div className="px-6 py-4 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-1/90">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
               <Mail className="w-4 h-4" />
             </div>
             <div>
@@ -65,10 +88,18 @@ export function DigestModal({ isOpen, onClose }: Props) {
           </div>
 
           <div className="flex items-center gap-2">
+            <input
+              type="email"
+              value={recipientEmail}
+              onChange={(e) => setRecipientEmail(e.target.value)}
+              placeholder="developer@example.com"
+              title="Recipient email address"
+              className="px-2.5 py-1 text-xs rounded-md bg-surface-2 border border-hairline text-ink focus:outline-none focus:border-primary w-48 sm:w-56 font-mono"
+            />
             <button
               onClick={handleSendEmail}
               disabled={sendDigest.isPending}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight shadow-sm shadow-primary/25 disabled:opacity-50 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight shadow-sm shadow-primary/25 disabled:opacity-50 transition-all cursor-pointer whitespace-nowrap"
             >
               {sendDigest.isPending ? (
                 <>
@@ -78,7 +109,7 @@ export function DigestModal({ isOpen, onClose }: Props) {
               ) : (
                 <>
                   <Send className="w-3.5 h-3.5" />
-                  <span>Send to My Email</span>
+                  <span>Send</span>
                 </>
               )}
             </button>
@@ -96,6 +127,14 @@ export function DigestModal({ isOpen, onClose }: Props) {
           <div className="px-6 py-2.5 bg-semantic-success/10 border-b border-semantic-success/20 flex items-center gap-2 text-xs text-semantic-success animate-in fade-in duration-150">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{sentSuccessMessage}</span>
+          </div>
+        )}
+
+        {/* Error Banner */}
+        {errorMessage && (
+          <div className="px-6 py-2.5 bg-rose-500/10 border-b border-rose-500/20 flex items-center gap-2 text-xs text-rose-400 animate-in fade-in duration-150">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMessage}</span>
           </div>
         )}
 

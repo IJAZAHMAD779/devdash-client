@@ -36,8 +36,8 @@ export function useDigestPreview(enabled = false) {
 
 export function useSendDigest() {
   return useMutation({
-    mutationFn: async () => {
-      return apiClient.post<DigestSendResponse>("/digest/send", {});
+    mutationFn: async (payload?: { recipientEmail?: string }) => {
+      return apiClient.post<DigestSendResponse>("/digest/send", payload || {});
     },
     onSuccess: () => {
       sound.playSuccess();

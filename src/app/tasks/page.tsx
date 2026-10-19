@@ -11,14 +11,17 @@ import {
   Filter,
   AlertCircle,
   RefreshCw,
+  Bell,
 } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
 import { useProjects } from "@/hooks/use-projects";
+import { useReminders } from "@/hooks/use-reminders";
 import { Task, TaskStatus, Priority } from "@/types/task";
 import { KanbanColumn } from "@/components/tasks/kanban-column";
 import { TaskListRow } from "@/components/tasks/task-list-row";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { EditTaskModal } from "@/components/tasks/edit-task-modal";
+import { RemindersModal } from "@/components/reminders/reminders-modal";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
@@ -38,8 +41,10 @@ export default function TasksPage() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [modalInitialStatus, setModalInitialStatus] = useState<TaskStatus>("TODO");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isRemindersOpen, setIsRemindersOpen] = useState(false);
 
   const { data: projects } = useProjects();
+  const { data: reminders } = useReminders();
   const {
     data: tasks,
     isLoading,
@@ -54,6 +59,7 @@ export default function TasksPage() {
 
   const completedCount = tasks?.filter((t) => t.status === "DONE").length ?? 0;
   const totalCount = tasks?.length ?? 0;
+  const pendingRemindersCount = reminders?.filter((r) => !r.isSent).length ?? 0;
 
   const handleOpenNewModal = (initialStatus: TaskStatus = "TODO") => {
     sound.playClick(900);
@@ -79,13 +85,32 @@ export default function TasksPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => handleOpenNewModal("TODO")}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Task</span>
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <button
+            onClick={() => {
+              sound.playClick(800);
+              setIsRemindersOpen(true);
+            }}
+            title="Scheduled Email Reminders"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
+          >
+            <Bell className="w-3.5 h-3.5 text-primary" />
+            <span>Reminders</span>
+            {pendingRemindersCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-primary/20 text-primary border border-primary/30 font-mono text-[10px]">
+                {pendingRemindersCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => handleOpenNewModal("TODO")}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Task</span>
+          </button>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -290,6 +315,12 @@ export default function TasksPage() {
         task={editingTask}
         isOpen={Boolean(editingTask)}
         onClose={() => setEditingTask(null)}
+      />
+
+      {/* Reminders Modal */}
+      <RemindersModal
+        isOpen={isRemindersOpen}
+        onClose={() => setIsRemindersOpen(false)}
       />
     </div>
   );

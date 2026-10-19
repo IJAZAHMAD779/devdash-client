@@ -67,26 +67,42 @@ export function Sidebar() {
         isCollapsed ? "w-[68px]" : "w-64"
       )}
     >
-      {/* Brand Header: Just icon logo (no text, no background, linked) + Collapse Toggle */}
+      {/* Brand Header: Just icon logo (no text, no background). When collapsed: shows ONLY logo, and on hover swaps with sidebar expand icon */}
       <div
         className={cn(
           "h-14 flex items-center border-b border-hairline transition-all duration-200",
-          isCollapsed ? "px-2.5 justify-between" : "px-4 justify-between"
+          isCollapsed ? "justify-center px-0" : "px-4 justify-between"
         )}
       >
-        <DevDashLogo size={isCollapsed ? 26 : 28} href="/projects" />
-        <button
-          onClick={toggleCollapsed}
-          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="p-1.5 rounded-md text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {isCollapsed ? (
-            <PanelLeftOpen className="w-4 h-4 text-ink-muted hover:text-ink" />
-          ) : (
-            <PanelLeftClose className="w-4 h-4 text-ink-muted hover:text-ink" />
-          )}
-        </button>
+        {isCollapsed ? (
+          <button
+            onClick={toggleCollapsed}
+            title="Expand sidebar"
+            className="group relative w-10 h-10 rounded-lg flex items-center justify-center hover:bg-surface-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Expand sidebar"
+          >
+            {/* Default state: Logo only */}
+            <div className="transition-all duration-200 group-hover:opacity-0 group-hover:scale-75 flex items-center justify-center">
+              <DevDashLogo size={26} href="" />
+            </div>
+            {/* Hover state: Sidebar icon */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-200">
+              <PanelLeftOpen className="w-4 h-4 text-primary" />
+            </div>
+          </button>
+        ) : (
+          <>
+            <DevDashLogo size={28} href="/projects" />
+            <button
+              onClick={toggleCollapsed}
+              title="Collapse sidebar"
+              className="p-1.5 rounded-md text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="Collapse sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4 text-ink-muted hover:text-ink" />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Navigation Links */}

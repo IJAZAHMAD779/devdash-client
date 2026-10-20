@@ -197,7 +197,7 @@ export function ProjectOpenGraphCard({
         ) : (
           // Fallback tech canvas when image is missing or blocked
           <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-surface-2 to-surface-1 text-center">
-            <ProjectFavicon liveUrl={url} size={40} className="mb-2 shadow-md" />
+            <ProjectFavicon src={preview.favicon} liveUrl={url} size={40} className="mb-2 shadow-md" />
             <span className="text-xs font-mono font-medium text-ink-muted">
               {preview.domain}
             </span>
@@ -210,7 +210,7 @@ export function ProjectOpenGraphCard({
         {/* Top Control Bar: Domain Badge & Refresh */}
         <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-canvas/80 backdrop-blur-md border border-hairline text-[11px] font-mono text-ink shadow-xs">
-            <ProjectFavicon liveUrl={url} size={14} />
+            <ProjectFavicon src={preview.favicon} liveUrl={url} size={14} />
             <span className="max-w-[140px] truncate">{preview.domain}</span>
           </div>
 

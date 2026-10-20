@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Terminal, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProjectFaviconProps {
+  src?: string | null;
   liveUrl?: string | null;
   repositoryUrl?: string | null;
   domain?: string | null;
@@ -14,6 +15,7 @@ interface ProjectFaviconProps {
 }
 
 export function ProjectFavicon({
+  src,
   liveUrl,
   repositoryUrl,
   domain: directDomain,
@@ -21,29 +23,81 @@ export function ProjectFavicon({
   size = 20,
   className,
 }: ProjectFaviconProps) {
-  const [hasError, setHasError] = useState(false);
+  const [candidateIndex, setCandidateIndex] = useState(0);
 
-  // Safely extract domain from URLs
-  const resolvedDomain = useMemo(() => {
-    if (directDomain && directDomain.trim()) return directDomain.trim();
+  // Safely extract origin and domain from URLs
+  const { resolvedOrigin, resolvedDomain } = useMemo(() => {
+    let domain = directDomain?.trim() || null;
+    let origin: string | null = null;
 
     const targetUrl = liveUrl || repositoryUrl;
-    if (!targetUrl) return null;
-
-    try {
-      const parsed = new URL(
-        targetUrl.startsWith("http://") || targetUrl.startsWith("https://")
-          ? targetUrl
-          : `https://${targetUrl}`
-      );
-      return parsed.hostname;
-    } catch {
-      return null;
+    if (targetUrl) {
+      try {
+        const formatted =
+          targetUrl.startsWith("http://") || targetUrl.startsWith("https://")
+            ? targetUrl
+            : `https://${targetUrl}`;
+        const parsed = new URL(formatted);
+        origin = parsed.origin;
+        if (!domain) {
+          domain = parsed.hostname;
+        }
+      } catch {
+        // fallback
+      }
     }
+
+    return { resolvedOrigin: origin, resolvedDomain: domain };
   }, [liveUrl, repositoryUrl, directDomain]);
 
-  // If error occurred or no domain could be resolved, render fallback icon
-  if (hasError || !resolvedDomain) {
+  // Build an ordered multi-tier candidate list:
+  // 1. Direct src (from backend preview/scrape)
+  // 2. Direct origin Next.js vector icon (/icon.svg)
+  // 3. Direct origin standard favicon (/favicon.ico, /favicon.svg)
+  // 4. DuckDuckGo icon service (returns high quality 32x32 favicons)
+  // 5. Google S2 Favicon API
+  const candidates = useMemo(() => {
+    const list: string[] = [];
+
+    if (src && src.trim()) {
+      list.push(src.trim());
+    }
+
+    if (resolvedOrigin) {
+      list.push(`${resolvedOrigin}/icon.svg`);
+      list.push(`${resolvedOrigin}/favicon.svg`);
+      list.push(`${resolvedOrigin}/favicon.ico`);
+    }
+
+    if (resolvedDomain) {
+      // DuckDuckGo high-resolution icon
+      list.push(`https://icons.duckduckgo.com/ip3/${resolvedDomain}.ico`);
+      // Google S2 API
+      const s2Size = size >= 32 ? 64 : 32;
+      list.push(
+        `https://www.google.com/s2/favicons?domain=${encodeURIComponent(
+          resolvedDomain
+        )}&sz=${s2Size}`
+      );
+    }
+
+    // Deduplicate
+    return Array.from(new Set(list));
+  }, [src, resolvedOrigin, resolvedDomain, size]);
+
+  // Reset candidate index when inputs change
+  useEffect(() => {
+    setCandidateIndex(0);
+  }, [src, liveUrl, repositoryUrl, directDomain]);
+
+  const handleImageError = () => {
+    setCandidateIndex((prev) => prev + 1);
+  };
+
+  const isExhausted = candidateIndex >= candidates.length;
+
+  // Fallback SVG icon when all candidates fail or no domain exists
+  if (isExhausted || !resolvedDomain) {
     return (
       <div
         className={cn(
@@ -54,17 +108,25 @@ export function ProjectFavicon({
         title={title || resolvedDomain || "Project"}
       >
         {repositoryUrl && !liveUrl ? (
-          <Terminal style={{ width: Math.max(10, size * 0.55), height: Math.max(10, size * 0.55) }} />
+          <Terminal
+            style={{
+              width: Math.max(10, size * 0.55),
+              height: Math.max(10, size * 0.55),
+            }}
+          />
         ) : (
-          <Globe style={{ width: Math.max(10, size * 0.55), height: Math.max(10, size * 0.55) }} />
+          <Globe
+            style={{
+              width: Math.max(10, size * 0.55),
+              height: Math.max(10, size * 0.55),
+            }}
+          />
         )}
       </div>
     );
   }
 
-  // Google S2 Favicon API endpoint
-  const s2Size = size >= 32 ? 64 : 32;
-  const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(resolvedDomain)}&sz=${s2Size}`;
+  const currentSrc = candidates[candidateIndex];
 
   return (
     <div
@@ -73,15 +135,16 @@ export function ProjectFavicon({
         className
       )}
       style={{ width: size, height: size }}
-      title={resolvedDomain}
+      title={title || resolvedDomain}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={faviconUrl}
+        key={currentSrc}
+        src={currentSrc}
         alt={`${resolvedDomain} favicon`}
         width={size}
         height={size}
-        onError={() => setHasError(true)}
+        onError={handleImageError}
         className="object-contain w-full h-full p-0.5 select-none"
         loading="lazy"
         referrerPolicy="no-referrer"

@@ -21,6 +21,30 @@ export const metadata: Metadata = {
     shortcut: "/icon.svg",
     apple: "/icon.svg",
   },
+  openGraph: {
+    title: "DevDash — Personal Developer Workspace",
+    description:
+      "Decoupled developer productivity hub for managing projects, telemetry, Kanban tasks, syntax-highlighted snippets, and UI components.",
+    url: "https://devdash.vercel.app",
+    siteName: "DevDash",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 675,
+        alt: "DevDash — Personal Developer Workspace",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DevDash — Personal Developer Workspace",
+    description:
+      "Decoupled developer productivity hub for managing projects, telemetry, Kanban tasks, syntax-highlighted snippets, and UI components.",
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({

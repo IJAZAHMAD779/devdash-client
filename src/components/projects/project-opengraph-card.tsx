@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ExternalLink, Globe, Layers, AlertCircle } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { ExternalLink, Globe, Layers, RefreshCw } from "lucide-react";
 import { useProjectPreview } from "@/hooks/use-projects";
 import { ProjectFavicon } from "./project-favicon";
+import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
 interface ProjectOpenGraphCardProps {
@@ -20,12 +21,46 @@ export function ProjectOpenGraphCard({
   className,
 }: ProjectOpenGraphCardProps) {
   const [imageError, setImageError] = useState(false);
+  const [attemptedDirectPath, setAttemptedDirectPath] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Safely resolve origin from URL
+  const resolvedOrigin = useMemo(() => {
+    if (!url) return null;
+    try {
+      const u = url.startsWith("http://") || url.startsWith("https://")
+        ? url
+        : `https://${url}`;
+      return new URL(u).origin;
+    } catch {
+      return null;
+    }
+  }, [url]);
 
   const {
     data: preview,
     isLoading,
     isError,
+    refetch,
   } = useProjectPreview(url);
+
+  // Reset errors when URL changes
+  useEffect(() => {
+    setImageError(false);
+    setAttemptedDirectPath(false);
+  }, [url]);
+
+  const handleRefresh = async () => {
+    sound.playClick(800);
+    setIsRefreshing(true);
+    setImageError(false);
+    setAttemptedDirectPath(false);
+    try {
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // If no URL configured for the project
   if (!url) {
@@ -46,7 +81,7 @@ export function ProjectOpenGraphCard({
   }
 
   // Loading Skeleton State
-  if (isLoading) {
+  if (isLoading || isRefreshing) {
     return (
       <div
         className={cn(
@@ -94,23 +129,51 @@ export function ProjectOpenGraphCard({
           <span className="text-[11px] font-mono text-ink-tertiary truncate">
             {url}
           </span>
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary-hover font-medium ml-2 shrink-0"
-          >
-            <span>Visit</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleRefresh}
+              title="Retry preview fetch"
+              className="p-1 rounded hover:bg-surface-2 text-ink-tertiary hover:text-ink transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary-hover font-medium ml-1"
+            >
+              <span>Visit</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
         </div>
       </div>
     );
   }
 
-  const hasValidImage = Boolean(preview.image && !imageError);
+  // Determine active candidate image:
+  // 1. Server scraped image
+  // 2. Direct /opengraph-image.png probe
+  // 3. Fallback tech canvas
+  const candidateImage =
+    preview.image ||
+    (!attemptedDirectPath && resolvedOrigin
+      ? `${resolvedOrigin}/opengraph-image.png`
+      : null);
+
+  const hasValidImage = Boolean(candidateImage && !imageError);
   const displayTitle = preview.title || fallbackTitle || preview.domain;
   const displayDesc = preview.description || fallbackDescription;
+
+  const handleImageError = () => {
+    // If the server-provided image failed, try direct Next.js static path once
+    if (!attemptedDirectPath && resolvedOrigin && candidateImage !== `${resolvedOrigin}/opengraph-image.png`) {
+      setAttemptedDirectPath(true);
+    } else {
+      setImageError(true);
+    }
+  };
 
   return (
     <div
@@ -124,9 +187,9 @@ export function ProjectOpenGraphCard({
         {hasValidImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={preview.image!}
+            src={candidateImage!}
             alt={displayTitle}
-            onError={() => setImageError(true)}
+            onError={handleImageError}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             loading="lazy"
             referrerPolicy="no-referrer"
@@ -144,10 +207,20 @@ export function ProjectOpenGraphCard({
           </div>
         )}
 
-        {/* Domain Badge Floating on Top Right */}
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-canvas/80 backdrop-blur-md border border-hairline text-[11px] font-mono text-ink">
-          <ProjectFavicon liveUrl={url} size={14} />
-          <span className="max-w-[140px] truncate">{preview.domain}</span>
+        {/* Top Control Bar: Domain Badge & Refresh */}
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-canvas/80 backdrop-blur-md border border-hairline text-[11px] font-mono text-ink shadow-xs">
+            <ProjectFavicon liveUrl={url} size={14} />
+            <span className="max-w-[140px] truncate">{preview.domain}</span>
+          </div>
+
+          <button
+            onClick={handleRefresh}
+            title="Refresh OpenGraph preview"
+            className="p-1.5 rounded-md bg-canvas/80 backdrop-blur-md border border-hairline text-ink-tertiary hover:text-ink transition-colors cursor-pointer shadow-xs"
+          >
+            <RefreshCw className={cn("w-3 h-3", isRefreshing && "animate-spin")} />
+          </button>
         </div>
       </div>
 

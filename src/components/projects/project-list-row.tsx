@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 import { Project } from "@/types/project";
 import { ProjectStatusBadge } from "./project-status-badge";
+import { ProjectFavicon } from "./project-favicon";
 import { useToggleFavorite, useDeleteProject } from "@/hooks/use-projects";
 import { sound } from "@/lib/audio";
 import { formatDate, cn } from "@/lib/utils";
@@ -87,6 +88,12 @@ export function ProjectListRow({ project, onEdit }: Props) {
 
         <div className="flex flex-col min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
+            <ProjectFavicon
+              liveUrl={project.liveUrl}
+              repositoryUrl={project.repositoryUrl}
+              title={project.title}
+              size={18}
+            />
             <span className="text-sm font-medium tracking-[-0.2px] text-ink truncate group-hover:text-white">
               {project.title}
             </span>

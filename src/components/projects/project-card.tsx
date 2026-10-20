@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 import { Project } from "@/types/project";
 import { ProjectStatusBadge } from "./project-status-badge";
+import { ProjectFavicon } from "./project-favicon";
 import { useToggleFavorite, useDeleteProject } from "@/hooks/use-projects";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
@@ -62,7 +63,13 @@ export function ProjectCard({ project, onEdit }: Props) {
       {/* Top Header: Title, Status, Favorite */}
       <div>
         <div className="flex items-start justify-between gap-3 mb-2.5">
-          <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <ProjectFavicon
+              liveUrl={project.liveUrl}
+              repositoryUrl={project.repositoryUrl}
+              title={project.title}
+              size={20}
+            />
             <h3 className="text-base font-medium tracking-[-0.4px] text-ink truncate group-hover:text-white transition-colors">
               {project.title}
             </h3>

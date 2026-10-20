@@ -8,6 +8,8 @@ import {
   CreateProjectPayload,
   UpdateProjectPayload,
   ProjectStatus,
+  ProjectPreviewData,
+  GitHubRepoStats,
 } from "@/types/project";
 
 export function useProjects(status?: ProjectStatus | "ALL", search?: string) {
@@ -196,5 +198,47 @@ export function useToggleFavorite() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
+  });
+}
+
+export function useProject(id: string | null | undefined) {
+  return useQuery<Project>({
+    queryKey: ["project", id],
+    queryFn: async () => {
+      if (!id) throw new Error("Project ID is required");
+      return apiClient.get<Project>(`/projects/${id}`);
+    },
+    enabled: Boolean(id && !id.startsWith("optimistic-")),
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
+  });
+}
+
+export function useProjectPreview(url: string | null | undefined) {
+  return useQuery<ProjectPreviewData>({
+    queryKey: ["project-preview", url],
+    queryFn: async () => {
+      if (!url) throw new Error("URL is required");
+      return apiClient.get<ProjectPreviewData>(
+        `/projects/preview?url=${encodeURIComponent(url)}`
+      );
+    },
+    enabled: Boolean(url && url.trim().length > 3),
+    staleTime: 1000 * 60 * 30, // 30 minutes cache (server has 6h cache)
+    retry: 1,
+  });
+}
+
+export function useGitHubTelemetry(repoUrl: string | null | undefined) {
+  return useQuery<GitHubRepoStats>({
+    queryKey: ["github-telemetry", repoUrl],
+    queryFn: async () => {
+      if (!repoUrl) throw new Error("Repo URL is required");
+      return apiClient.get<GitHubRepoStats>(
+        `/projects/github-stats?repoUrl=${encodeURIComponent(repoUrl)}`
+      );
+    },
+    enabled: Boolean(repoUrl && repoUrl.includes("github.com/")),
+    staleTime: 1000 * 60 * 15, // 15 minutes cache (server has 1h cache)
+    retry: 1,
   });
 }

@@ -1,25 +1,35 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Plus,
   Search,
   LayoutGrid,
-  List,
+  Columns,
+  Table as TableIcon,
   FolderKanban,
-  Sparkles,
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
-import { useProjects } from "@/hooks/use-projects";
+import {
+  useProjects,
+  useDeleteProject,
+  useToggleFavorite,
+} from "@/hooks/use-projects";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Project, ProjectStatus } from "@/types/project";
 import { ProjectCard } from "@/components/projects/project-card";
-import { ProjectListRow } from "@/components/projects/project-list-row";
+import { ProjectExplorer } from "@/components/projects/project-explorer";
+import { ProjectWorkbench } from "@/components/projects/project-workbench";
+import { ProjectDataGrid } from "@/components/projects/project-data-grid";
 import { NewProjectModal } from "@/components/projects/new-project-modal";
 import { EditProjectModal } from "@/components/projects/edit-project-modal";
 import { sound } from "@/lib/audio";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+
+type ViewMode = "workbench" | "grid" | "table";
 
 const STATUS_TABS: { id: ProjectStatus | "ALL"; label: string }[] = [
   { id: "ALL", label: "All" },
@@ -30,11 +40,19 @@ const STATUS_TABS: { id: ProjectStatus | "ALL"; label: string }[] = [
   { id: "ARCHIVED", label: "Archived" },
 ];
 
-export default function ProjectsPage() {
+function ProjectsPageInner() {
+  const searchParams = useSearchParams();
+  const initialView = (searchParams.get("view") as ViewMode) || "workbench";
+  const initialId = searchParams.get("id");
+
+  const [viewMode, setViewMode] = useState<ViewMode>(initialView);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    initialId
+  );
+  const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<ProjectStatus | "ALL">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
@@ -51,7 +69,47 @@ export default function ProjectsPage() {
     isError,
     error,
     refetch,
-  } = useProjects(selectedStatus, debouncedSearch);
+  } = useProjects(
+    viewMode === "workbench" ? undefined : selectedStatus,
+    viewMode === "workbench" ? undefined : debouncedSearch
+  );
+
+  const deleteProjectMutation = useDeleteProject();
+  const toggleFavoriteMutation = useToggleFavorite();
+
+  // Auto-select first project if none is selected
+  useEffect(() => {
+    if (projects && projects.length > 0) {
+      if (!selectedProjectId || !projects.some((p) => p.id === selectedProjectId)) {
+        const favoriteProject = projects.find((p) => p.favorite);
+        setSelectedProjectId(favoriteProject ? favoriteProject.id : projects[0].id);
+      }
+    }
+  }, [projects, selectedProjectId]);
+
+  // Sync state with URL without full page reload
+  const updateUrlState = (id: string | null, view: ViewMode) => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (id) {
+      url.searchParams.set("id", id);
+    } else {
+      url.searchParams.delete("id");
+    }
+    url.searchParams.set("view", view);
+    window.history.replaceState({}, "", url.toString());
+  };
+
+  const handleSelectProject = (id: string) => {
+    setSelectedProjectId(id);
+    updateUrlState(id, viewMode);
+  };
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    sound.playClick(700);
+    setViewMode(mode);
+    updateUrlState(selectedProjectId, mode);
+  };
 
   // Update sliding pill position
   useEffect(() => {
@@ -62,7 +120,7 @@ export default function ProjectsPage() {
         width: `${activeTabEl.offsetWidth}px`,
       });
     }
-  }, [selectedStatus]);
+  }, [selectedStatus, viewMode]);
 
   const handleTabChange = (statusId: ProjectStatus | "ALL") => {
     sound.playClick(800);
@@ -74,13 +132,37 @@ export default function ProjectsPage() {
     setIsNewModalOpen(true);
   };
 
+  const handleDeleteProject = async (id: string) => {
+    try {
+      await deleteProjectMutation.mutateAsync(id);
+      toast.success("Project deleted", {
+        description: "The project has been removed from workspace.",
+      });
+      if (selectedProjectId === id) {
+        setSelectedProjectId(null);
+      }
+    } catch {
+      toast.error("Failed to delete project");
+    }
+  };
+
+  const handleToggleFavorite = (id: string, favorite: boolean) => {
+    toggleFavoriteMutation.mutate({ id, favorite });
+  };
+
+  // Active project for workbench
+  const activeProject = useMemo(() => {
+    if (!projects || !selectedProjectId) return null;
+    return projects.find((p) => p.id === selectedProjectId) || null;
+  }, [projects, selectedProjectId]);
+
   return (
     <div className="flex-1 min-h-screen bg-canvas text-ink flex flex-col">
-      {/* Page Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Top Header */}
+      <div className="px-6 lg:px-8 pt-6 pb-4 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-1/40">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-semibold tracking-[-0.6px] text-ink">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.6px] text-ink">
               Projects Hub
             </h1>
             <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-surface-2 border border-hairline text-ink-subtle">
@@ -88,36 +170,83 @@ export default function ProjectsPage() {
             </span>
           </div>
           <p className="text-xs text-ink-muted">
-            Anchor for repositories, kanban tasks, code snippets, and architecture notes.
+            Developer workspace anchor for repositories, telemetry, Kanban tasks, and code components.
           </p>
         </div>
 
-        <button
-          onClick={handleOpenNewModal}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Project</span>
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          {/* View Mode Switcher */}
+          <div className="flex items-center p-0.5 rounded-md bg-surface-2 border border-hairline">
+            <button
+              onClick={() => handleViewModeChange("workbench")}
+              title="Workbench View (Dual-Pane Explorer)"
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors cursor-pointer",
+                viewMode === "workbench"
+                  ? "bg-surface-4 text-ink shadow-sm font-medium"
+                  : "text-ink-tertiary hover:text-ink"
+              )}
+            >
+              <Columns className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Workbench</span>
+            </button>
+
+            <button
+              onClick={() => handleViewModeChange("table")}
+              title="Data Grid (Spreadsheet View)"
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors cursor-pointer",
+                viewMode === "table"
+                  ? "bg-surface-4 text-ink shadow-sm font-medium"
+                  : "text-ink-tertiary hover:text-ink"
+              )}
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Data Grid</span>
+            </button>
+
+            <button
+              onClick={() => handleViewModeChange("grid")}
+              title="Card Grid View"
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors cursor-pointer",
+                viewMode === "grid"
+                  ? "bg-surface-4 text-ink shadow-sm font-medium"
+                  : "text-ink-tertiary hover:text-ink"
+              )}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Cards</span>
+            </button>
+          </div>
+
+          {/* New Project CTA */}
+          <button
+            onClick={handleOpenNewModal}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Project</span>
+          </button>
+        </div>
       </div>
 
-      {/* Filter & Controls Toolbar */}
-      <div className="px-8 py-4 border-b border-hairline bg-surface-1/40 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-        {/* Left: Search input */}
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
-          <input
-            type="text"
-            placeholder="Search projects by name or keywords..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 rounded-md bg-surface-2 border border-hairline text-ink text-xs placeholder:text-ink-tertiary focus:outline-none focus:border-hairline-strong transition-all"
-          />
-        </div>
+      {/* Filter Toolbar for Table and Grid Views */}
+      {viewMode !== "workbench" && (
+        <div className="px-6 lg:px-8 py-3.5 border-b border-hairline bg-surface-1/40 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Left: Search input */}
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
+            <input
+              type="text"
+              placeholder="Search projects by name, tags, or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 rounded-md bg-surface-2 border border-hairline text-ink text-xs placeholder:text-ink-tertiary focus:outline-none focus:border-hairline-strong transition-all"
+            />
+          </div>
 
-        {/* Right: Sliding Tabs + View Mode Toggles */}
-        <div className="flex items-center justify-between lg:justify-end gap-3 flex-wrap">
-          {/* Sliding Tabs Segmented Control (16-tabs-sliding.md) */}
+          {/* Right: Sliding Tabs Segmented Control */}
           <div className="t-tabs overflow-x-auto" role="tablist">
             <span
               className="t-tabs-pill"
@@ -135,55 +264,21 @@ export default function ProjectsPage() {
                   role="tab"
                   aria-selected={isSelected}
                   onClick={() => handleTabChange(tab.id)}
-                  className="t-tab whitespace-nowrap"
+                  className="t-tab whitespace-nowrap text-xs"
                 >
                   {tab.label}
                 </button>
               );
             })}
           </div>
-
-          {/* Grid / List Switcher */}
-          <div className="flex items-center p-0.5 rounded-md bg-surface-2 border border-hairline">
-            <button
-              onClick={() => {
-                sound.playClick(700);
-                setViewMode("grid");
-              }}
-              title="Grid view"
-              className={cn(
-                "p-1.5 rounded text-xs transition-colors",
-                viewMode === "grid"
-                  ? "bg-surface-4 text-ink shadow-sm"
-                  : "text-ink-tertiary hover:text-ink"
-              )}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => {
-                sound.playClick(700);
-                setViewMode("list");
-              }}
-              title="List view"
-              className={cn(
-                "p-1.5 rounded text-xs transition-colors",
-                viewMode === "list"
-                  ? "bg-surface-4 text-ink shadow-sm"
-                  : "text-ink-tertiary hover:text-ink"
-              )}
-            >
-              <List className="w-3.5 h-3.5" />
-            </button>
-          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content Area */}
-      <div className="flex-1 p-8">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Loading Skeletons */}
         {isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="p-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div
                 key={i}
@@ -215,83 +310,94 @@ export default function ProjectsPage() {
             </p>
             <button
               onClick={() => refetch()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 border border-hairline text-ink text-xs hover:bg-surface-3 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 border border-hairline text-ink text-xs hover:bg-surface-3 transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3 h-3" />
-              Retry Connection
+              <span>Retry Connection</span>
             </button>
           </div>
         )}
 
-        {/* Loaded State */}
+        {/* Loaded Content */}
         {!isLoading && !isError && (
           <>
-            {/* Empty State */}
+            {/* Empty Workspace State */}
             {(!projects || projects.length === 0) && (
-              <div className="text-center py-16 px-4 max-w-sm mx-auto">
+              <div className="text-center py-16 px-4 max-w-sm mx-auto my-auto">
                 <div className="w-12 h-12 rounded-xl bg-surface-2 border border-hairline flex items-center justify-center text-ink-subtle mx-auto mb-4">
                   <FolderKanban className="w-6 h-6 text-primary" />
                 </div>
                 <h3 className="text-sm font-semibold text-ink mb-1 tracking-[-0.2px]">
-                  {searchQuery || selectedStatus !== "ALL"
-                    ? "No matching projects found"
-                    : "No projects in workspace"}
+                  No projects in workspace
                 </h3>
                 <p className="text-xs text-ink-muted leading-relaxed mb-5">
-                  {searchQuery || selectedStatus !== "ALL"
-                    ? "Try adjusting your search terms or status filters."
-                    : "Create your first project container to organize tasks, code snippets, and UI components."}
+                  Create your first project container to organize tasks, code snippets, and UI components.
                 </p>
-                <div className="flex items-center justify-center gap-2">
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
-                    >
-                      Clear Search
-                    </button>
-                  )}
-                  <button
-                    onClick={handleOpenNewModal}
-                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-colors shadow-sm shadow-primary/25 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Create Project</span>
-                  </button>
-                </div>
+                <button
+                  onClick={handleOpenNewModal}
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-colors shadow-sm shadow-primary/25 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create Project</span>
+                </button>
               </div>
             )}
 
-            {/* Grid View */}
+            {/* View 1: Workbench Dual-Pane (Explorer + Command Center) */}
+            {projects && projects.length > 0 && viewMode === "workbench" && (
+              <div className="flex-1 flex overflow-hidden min-h-[calc(100vh-120px)]">
+                <ProjectExplorer
+                  projects={projects}
+                  selectedProjectId={selectedProjectId}
+                  onSelectProject={handleSelectProject}
+                  onNewProject={handleOpenNewModal}
+                  isCollapsed={isExplorerCollapsed}
+                  onToggleCollapse={() => setIsExplorerCollapsed(!isExplorerCollapsed)}
+                />
+                <ProjectWorkbench
+                  project={activeProject}
+                  onEdit={(p) => setEditingProject(p)}
+                  onDelete={handleDeleteProject}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              </div>
+            )}
+
+            {/* View 2: High-Density Data Grid (Spreadsheet) */}
+            {projects && projects.length > 0 && viewMode === "table" && (
+              <div className="p-6 lg:p-8 flex-1 overflow-y-auto">
+                <ProjectDataGrid
+                  projects={projects}
+                  onSelectProject={(id) => {
+                    handleSelectProject(id);
+                    handleViewModeChange("workbench");
+                  }}
+                  onEdit={(p) => setEditingProject(p)}
+                  onDelete={handleDeleteProject}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              </div>
+            )}
+
+            {/* View 3: Classic Card Grid */}
             {projects && projects.length > 0 && viewMode === "grid" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {projects.map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    onEdit={(p) => setEditingProject(p)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* List View */}
-            {projects && projects.length > 0 && viewMode === "list" && (
-              <div className="rounded-lg border border-hairline divide-y divide-hairline bg-surface-1">
-                {projects.map((project) => (
-                  <ProjectListRow
-                    key={project.id}
-                    project={project}
-                    onEdit={(p) => setEditingProject(p)}
-                  />
-                ))}
+              <div className="p-6 lg:p-8 flex-1 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {projects.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      onEdit={(p) => setEditingProject(p)}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* New Project Modal (06-modal.md) */}
+      {/* New Project Modal */}
       <NewProjectModal
         isOpen={isNewModalOpen}
         onClose={() => setIsNewModalOpen(false)}
@@ -304,5 +410,19 @@ export default function ProjectsPage() {
         onClose={() => setEditingProject(null)}
       />
     </div>
+  );
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex-1 min-h-screen bg-canvas p-8 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      }
+    >
+      <ProjectsPageInner />
+    </Suspense>
   );
 }

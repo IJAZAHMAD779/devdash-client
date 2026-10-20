@@ -158,23 +158,18 @@ function ProjectsPageInner() {
 
   return (
     <div className="flex-1 min-h-screen bg-canvas text-ink flex flex-col">
-      {/* Top Header */}
-      <div className="px-6 lg:px-8 pt-6 pb-4 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-1/40">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.6px] text-ink">
-              Projects Hub
-            </h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-surface-2 border border-hairline text-ink-subtle">
-              {projects?.length ?? 0}
-            </span>
-          </div>
-          <p className="text-xs text-ink-muted">
-            Developer workspace anchor for repositories, telemetry, Kanban tasks, and code components.
-          </p>
+      {/* Top Header — unified h-14 height matching sidebar brand header */}
+      <div className="h-14 px-4 sm:px-6 border-b border-hairline flex items-center justify-between gap-4 bg-surface-1/40 flex-shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <h1 className="text-sm sm:text-base font-semibold tracking-[-0.3px] text-ink truncate">
+            Projects Hub
+          </h1>
+          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-surface-2 border border-hairline text-ink-subtle">
+            {projects?.length ?? 0}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+        <div className="flex items-center gap-2.5 flex-shrink-0">
           {/* View Mode Switcher */}
           <div className="flex items-center p-0.5 rounded-md bg-surface-2 border border-hairline">
             <button
@@ -223,10 +218,10 @@ function ProjectsPageInner() {
           {/* New Project CTA */}
           <button
             onClick={handleOpenNewModal}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>New Project</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">New Project</span>
           </button>
         </div>
       </div>
@@ -345,7 +340,7 @@ function ProjectsPageInner() {
 
             {/* View 1: Workbench Dual-Pane (Explorer + Command Center) */}
             {projects && projects.length > 0 && viewMode === "workbench" && (
-              <div className="flex-1 flex overflow-hidden min-h-[calc(100vh-120px)]">
+              <div className="flex-1 flex overflow-hidden h-[calc(100vh-3.5rem)] min-h-0">
                 <ProjectExplorer
                   projects={projects}
                   selectedProjectId={selectedProjectId}

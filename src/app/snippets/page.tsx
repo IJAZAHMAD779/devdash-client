@@ -20,6 +20,8 @@ import { NewSnippetModal } from "@/components/snippets/new-snippet-modal";
 import { EditSnippetModal } from "@/components/snippets/edit-snippet-modal";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/use-debounce";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const POPULAR_LANGUAGES = [
   { id: "ALL", label: "All" },
@@ -41,6 +43,8 @@ export default function SnippetsPage() {
   const [onlyFavorites, setOnlyFavorites] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [editingSnippet, setEditingSnippet] = useState<Snippet | null>(null);
 
@@ -55,7 +59,7 @@ export default function SnippetsPage() {
     projectId: selectedProjectId || undefined,
     language: selectedLanguage !== "ALL" ? selectedLanguage : undefined,
     favorite: onlyFavorites ? true : undefined,
-    search: searchQuery,
+    search: debouncedSearch,
   });
 
   const totalCount = snippets?.length ?? 0;
@@ -193,17 +197,17 @@ export default function SnippetsPage() {
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div
                 key={i}
-                className="rounded-xl bg-surface-1 border border-hairline p-5 space-y-3 animate-pulse"
+                className="rounded-xl bg-surface-1 border border-hairline p-5 space-y-3.5 shadow-xs"
               >
                 <div className="flex items-center justify-between">
-                  <div className="h-4 bg-surface-2 rounded w-1/3" />
-                  <div className="h-4 bg-surface-2 rounded w-12" />
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-4 w-14 rounded-full" />
                 </div>
-                <div className="h-3 bg-surface-2 rounded w-2/3" />
-                <div className="h-32 bg-surface-2 rounded-lg" />
-                <div className="flex gap-2">
-                  <div className="h-4 bg-surface-2 rounded w-16" />
-                  <div className="h-4 bg-surface-2 rounded w-12" />
+                <Skeleton className="h-3 w-2/3" />
+                <Skeleton className="h-32 w-full rounded-lg" />
+                <div className="flex gap-2 pt-1">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-12" />
                 </div>
               </div>
             ))}
@@ -219,7 +223,7 @@ export default function SnippetsPage() {
             </p>
             <button
               onClick={() => refetch()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Retry</span>
@@ -248,13 +252,29 @@ export default function SnippetsPage() {
                 ? "Try clearing your filters or search keywords to see your snippets."
                 : "Your code vault is empty. Save boilerplate, regexes, algorithms, and shell commands here for instant access."}
             </p>
-            <button
-              onClick={handleOpenNewModal}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight shadow-sm shadow-primary/25 transition-all duration-150 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create your first snippet</span>
-            </button>
+            <div className="flex items-center justify-center gap-2.5">
+              {(searchQuery || selectedProjectId || selectedLanguage !== "ALL" || onlyFavorites) && (
+                <button
+                  onClick={() => {
+                    sound.playClick(600);
+                    setSearchQuery("");
+                    setSelectedProjectId("");
+                    setSelectedLanguage("ALL");
+                    setOnlyFavorites(false);
+                  }}
+                  className="px-3.5 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
+                >
+                  Clear Filters
+                </button>
+              )}
+              <button
+                onClick={handleOpenNewModal}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight shadow-sm shadow-primary/25 transition-all duration-150 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Snippet</span>
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -26,6 +26,9 @@ import { NewBookmarkModal } from "./new-bookmark-modal";
 import { EditBookmarkModal } from "./edit-bookmark-modal";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/use-debounce";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { toast } from "@/lib/toast";
 
 const getCategoryBadge = (cat: string) => {
   const normalized = (cat || "tools").toLowerCase();
@@ -46,6 +49,9 @@ export function BookmarksCatalog() {
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [deletingBookmark, setDeletingBookmark] = useState<Bookmark | null>(null);
+
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
@@ -63,7 +69,7 @@ export function BookmarksCatalog() {
   } = useBookmarks({
     category: selectedCategory !== "ALL" ? selectedCategory : undefined,
     projectId: selectedProjectId || undefined,
-    search: searchQuery,
+    search: debouncedSearch,
   });
 
   // Dynamic tabs: ALL + Presets + Any custom categories found in user bookmarks
@@ -89,8 +95,19 @@ export function BookmarksCatalog() {
   const handleDelete = (e: React.MouseEvent, bm: Bookmark) => {
     e.stopPropagation();
     setMenuOpenId(null);
-    if (confirm(`Delete bookmark "${bm.title}"?`)) {
-      deleteBookmark.mutate(bm.id);
+    setDeletingBookmark(bm);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingBookmark) return;
+    try {
+      await deleteBookmark.mutateAsync(deletingBookmark.id);
+      toast.success("Bookmark deleted", {
+        description: `"${deletingBookmark.title}" removed from bookmarks.`,
+      });
+      setDeletingBookmark(null);
+    } catch {
+      toast.error("Failed to delete bookmark");
     }
   };
 
@@ -353,16 +370,31 @@ export function BookmarksCatalog() {
                 ? "Try clearing your search query or category filters."
                 : "Save high-value API docs, articles, tools, libraries, and tutorial links for 1-click access."}
             </p>
-            <button
-              onClick={() => {
-                sound.playClick(900);
-                setIsNewModalOpen(true);
-              }}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight shadow-sm shadow-primary/25 transition-all duration-150 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add your first bookmark</span>
-            </button>
+            <div className="flex items-center justify-center gap-2.5">
+              {(searchQuery || selectedCategory !== "ALL" || selectedProjectId) && (
+                <button
+                  onClick={() => {
+                    sound.playClick(600);
+                    setSearchQuery("");
+                    setSelectedCategory("ALL");
+                    setSelectedProjectId("");
+                  }}
+                  className="px-3.5 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
+                >
+                  Clear Filters
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  sound.playClick(900);
+                  setIsNewModalOpen(true);
+                }}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight shadow-sm shadow-primary/25 transition-all duration-150 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Bookmark</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -377,6 +409,17 @@ export function BookmarksCatalog() {
         bookmark={editingBookmark}
         isOpen={!!editingBookmark}
         onClose={() => setEditingBookmark(null)}
+      />
+
+      <ConfirmModal
+        isOpen={!!deletingBookmark}
+        onClose={() => setDeletingBookmark(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Bookmark"
+        description={`Are you sure you want to delete "${deletingBookmark?.title}"?`}
+        confirmText="Delete Bookmark"
+        variant="danger"
+        isLoading={deleteBookmark.isPending}
       />
     </div>
   );

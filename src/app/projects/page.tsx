@@ -12,6 +12,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useProjects } from "@/hooks/use-projects";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Project, ProjectStatus } from "@/types/project";
 import { ProjectCard } from "@/components/projects/project-card";
 import { ProjectListRow } from "@/components/projects/project-list-row";
@@ -32,6 +33,7 @@ const STATUS_TABS: { id: ProjectStatus | "ALL"; label: string }[] = [
 export default function ProjectsPage() {
   const [selectedStatus, setSelectedStatus] = useState<ProjectStatus | "ALL">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -49,7 +51,7 @@ export default function ProjectsPage() {
     isError,
     error,
     refetch,
-  } = useProjects(selectedStatus, searchQuery);
+  } = useProjects(selectedStatus, debouncedSearch);
 
   // Update sliding pill position
   useEffect(() => {
@@ -240,13 +242,23 @@ export default function ProjectsPage() {
                     ? "Try adjusting your search terms or status filters."
                     : "Create your first project container to organize tasks, code snippets, and UI components."}
                 </p>
-                <button
-                  onClick={handleOpenNewModal}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-colors shadow-sm shadow-primary/25"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Create Project
-                </button>
+                <div className="flex items-center justify-center gap-2">
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
+                    >
+                      Clear Search
+                    </button>
+                  )}
+                  <button
+                    onClick={handleOpenNewModal}
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-colors shadow-sm shadow-primary/25 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create Project</span>
+                  </button>
+                </div>
               </div>
             )}
 

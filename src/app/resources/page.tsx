@@ -16,6 +16,7 @@ import { BookmarksCatalog } from "@/components/resources/bookmarks-catalog";
 import { DigestModal } from "@/components/resources/digest-modal";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/use-debounce";
 
 export default function ResourcesPage() {
   const searchParams = useSearchParams();
@@ -28,8 +29,10 @@ export default function ResourcesPage() {
   const [notesSearchQuery, setNotesSearchQuery] = useState("");
   const [isDigestModalOpen, setIsDigestModalOpen] = useState(false);
 
+  const debouncedNotesSearch = useDebounce(notesSearchQuery, 300);
+
   const { data: notes } = useNotes({
-    search: notesSearchQuery,
+    search: debouncedNotesSearch,
   });
 
   // Auto-select first note if none selected or if selected note is missing

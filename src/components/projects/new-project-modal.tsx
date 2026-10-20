@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Plus, Star, Sparkles, Loader2 } from "lucide-react";
 import { useCreateProject } from "@/hooks/use-projects";
 import { ProjectStatus } from "@/types/project";
+import { toast } from "@/lib/toast";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
@@ -89,7 +90,7 @@ export function NewProjectModal({ isOpen, onClose }: Props) {
 
     try {
       setError(null);
-      await createProject.mutateAsync({
+      const created = await createProject.mutateAsync({
         title: title.trim(),
         description: description.trim() || undefined,
         status,
@@ -99,9 +100,14 @@ export function NewProjectModal({ isOpen, onClose }: Props) {
         favorite,
       });
 
+      toast.success("Project created", {
+        description: `"${created.title}" added to your workspace.`,
+      });
       handleClose();
     } catch (err: any) {
-      setError(err.message || "Failed to create project");
+      const msg = err.message || "Failed to create project";
+      setError(msg);
+      toast.error("Failed to create project", { description: msg });
     }
   };
 

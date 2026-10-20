@@ -11,6 +11,7 @@ import {
 } from "@/types/component";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface Props {
   component: UIComponentItem | null;
@@ -131,10 +132,15 @@ export function EditComponentModal({ component, isOpen, onClose }: Props) {
       });
 
       sound.playSuccess();
+      toast.success("Component updated", {
+        description: `Changes saved for "${name.trim()}".`,
+      });
       handleClose();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } };
-      setError(e?.response?.data?.error?.message || "Failed to update component");
+      const msg = e?.response?.data?.error?.message || "Failed to update component";
+      setError(msg);
+      toast.error("Failed to update component", { description: msg });
     }
   };
 

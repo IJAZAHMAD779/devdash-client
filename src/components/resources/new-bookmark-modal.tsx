@@ -19,6 +19,7 @@ import {
 import { apiClient } from "@/lib/api-client";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface Props {
   isOpen: boolean;
@@ -173,10 +174,15 @@ export function NewBookmarkModal({ isOpen, onClose }: Props) {
       });
 
       sound.playSuccess();
+      toast.success("Bookmark added", {
+        description: `"${title.trim()}" saved to ${finalCategory}.`,
+      });
       handleClose();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } };
-      setError(e?.response?.data?.error?.message || "Failed to create bookmark");
+      const msg = e?.response?.data?.error?.message || "Failed to create bookmark";
+      setError(msg);
+      toast.error("Failed to create bookmark", { description: msg });
     }
   };
 

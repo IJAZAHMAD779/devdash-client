@@ -6,6 +6,7 @@ import { useCreateSnippet } from "@/hooks/use-snippets";
 import { useProjects } from "@/hooks/use-projects";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface Props {
   isOpen: boolean;
@@ -102,9 +103,14 @@ export function NewSnippetModal({ isOpen, onClose }: Props) {
         favorite,
       });
 
+      toast.success("Snippet created", {
+        description: `"${title.trim()}" added to your code vault.`,
+      });
       handleClose();
     } catch (err: any) {
-      setError(err.message || "Failed to create snippet");
+      const msg = err.message || "Failed to create snippet";
+      setError(msg);
+      toast.error("Failed to create snippet", { description: msg });
     }
   };
 

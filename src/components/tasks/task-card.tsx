@@ -15,6 +15,8 @@ import { TaskCheckbox } from "./task-checkbox";
 import { usePatchTaskStatus, useDeleteTask } from "@/hooks/use-tasks";
 import { sound } from "@/lib/audio";
 import { formatDate, cn } from "@/lib/utils";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { toast } from "@/lib/toast";
 
 interface Props {
   task: Task;
@@ -32,14 +34,26 @@ export function TaskCard({ task, onEdit }: Props) {
   const patchStatus = usePatchTaskStatus();
   const deleteTask = useDeleteTask();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const isDone = task.status === "DONE";
 
   const handleCheckboxToggle = (newChecked: boolean) => {
-    patchStatus.mutate({
-      id: task.id,
-      status: newChecked ? "DONE" : "TODO",
-    });
+    patchStatus.mutate(
+      {
+        id: task.id,
+        status: newChecked ? "DONE" : "TODO",
+      },
+      {
+        onSuccess: () => {
+          if (newChecked) {
+            toast.success("Task completed!", {
+              description: `"${task.title}" marked as done.`,
+            });
+          }
+        },
+      }
+    );
   };
 
   const handleStatusChange = (newStatus: TaskStatus) => {
@@ -53,8 +67,17 @@ export function TaskCard({ task, onEdit }: Props) {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setMenuOpen(false);
-    if (confirm(`Delete task "${task.title}"?`)) {
-      deleteTask.mutate(task.id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteTask.mutateAsync(task.id);
+      toast.success("Task deleted", {
+        description: `"${task.title}" has been removed.`,
+      });
+    } catch {
+      toast.error("Failed to delete task");
     }
   };
 
@@ -181,6 +204,17 @@ export function TaskCard({ task, onEdit }: Props) {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Task"
+        description={`Are you sure you want to delete task "${task.title}"? This action cannot be undone.`}
+        confirmText="Delete Task"
+        variant="danger"
+        isLoading={deleteTask.isPending}
+      />
     </div>
   );
 }

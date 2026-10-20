@@ -14,6 +14,8 @@ import { CodeBlock } from "@/components/ui/code-block";
 import { useToggleSnippetFavorite, useDeleteSnippet } from "@/hooks/use-snippets";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { toast } from "@/lib/toast";
 
 interface Props {
   snippet: Snippet;
@@ -24,6 +26,7 @@ export function SnippetCard({ snippet, onEdit }: Props) {
   const toggleFavorite = useToggleSnippetFavorite();
   const deleteSnippet = useDeleteSnippet();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -36,8 +39,17 @@ export function SnippetCard({ snippet, onEdit }: Props) {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setMenuOpen(false);
-    if (confirm(`Delete snippet "${snippet.title}"?`)) {
-      deleteSnippet.mutate(snippet.id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteSnippet.mutateAsync(snippet.id);
+      toast.success("Snippet deleted", {
+        description: `"${snippet.title}" has been removed from your vault.`,
+      });
+    } catch {
+      toast.error("Failed to delete snippet");
     }
   };
 
@@ -161,6 +173,17 @@ export function SnippetCard({ snippet, onEdit }: Props) {
           }`}
         />
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Snippet"
+        description={`Are you sure you want to delete snippet "${snippet.title}"? This cannot be undone.`}
+        confirmText="Delete Snippet"
+        variant="danger"
+        isLoading={deleteSnippet.isPending}
+      />
     </div>
   );
 }

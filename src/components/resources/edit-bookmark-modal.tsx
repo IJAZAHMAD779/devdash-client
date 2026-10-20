@@ -11,6 +11,7 @@ import {
 } from "@/types/bookmark";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface Props {
   bookmark: Bookmark | null;
@@ -122,10 +123,15 @@ export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
       });
 
       sound.playSuccess();
+      toast.success("Bookmark updated", {
+        description: `Changes saved for "${title.trim()}".`,
+      });
       handleClose();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } };
-      setError(e?.response?.data?.error?.message || "Failed to update bookmark");
+      const msg = e?.response?.data?.error?.message || "Failed to update bookmark";
+      setError(msg);
+      toast.error("Failed to update bookmark", { description: msg });
     }
   };
 

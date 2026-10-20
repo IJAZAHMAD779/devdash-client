@@ -18,6 +18,8 @@ import { ProjectStatusBadge } from "./project-status-badge";
 import { useToggleFavorite, useDeleteProject } from "@/hooks/use-projects";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { toast } from "@/lib/toast";
 
 interface Props {
   project: Project;
@@ -28,6 +30,7 @@ export function ProjectCard({ project, onEdit }: Props) {
   const toggleFavorite = useToggleFavorite();
   const deleteProject = useDeleteProject();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -40,8 +43,17 @@ export function ProjectCard({ project, onEdit }: Props) {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setMenuOpen(false);
-    if (confirm(`Are you sure you want to delete "${project.title}"?`)) {
-      deleteProject.mutate(project.id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteProject.mutateAsync(project.id);
+      toast.success("Project deleted", {
+        description: `"${project.title}" has been removed.`,
+      });
+    } catch {
+      toast.error("Failed to delete project");
     }
   };
 
@@ -210,6 +222,17 @@ export function ProjectCard({ project, onEdit }: Props) {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Project"
+        description={`Are you sure you want to delete "${project.title}"? All associated tasks, snippets, components, and notes will be affected.`}
+        confirmText="Delete Project"
+        variant="danger"
+        isLoading={deleteProject.isPending}
+      />
     </div>
   );
 }

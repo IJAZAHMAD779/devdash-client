@@ -24,6 +24,8 @@ import { EditTaskModal } from "@/components/tasks/edit-task-modal";
 import { RemindersModal } from "@/components/reminders/reminders-modal";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/use-debounce";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const KANBAN_COLUMNS: { id: TaskStatus; title: string; dotColor: string }[] = [
   { id: "TODO", title: "To Do", dotColor: "bg-blue-400" },
@@ -43,6 +45,8 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isRemindersOpen, setIsRemindersOpen] = useState(false);
 
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
   const { data: projects } = useProjects();
   const { data: reminders } = useReminders();
   const {
@@ -54,7 +58,7 @@ export default function TasksPage() {
   } = useTasks({
     projectId: selectedProjectId || undefined,
     priority: selectedPriority !== "ALL" ? selectedPriority : undefined,
-    search: searchQuery,
+    search: debouncedSearch,
   });
 
   const completedCount = tasks?.filter((t) => t.status === "DONE").length ?? 0;
@@ -212,11 +216,30 @@ export default function TasksPage() {
             {[1, 2, 3, 4].map((col) => (
               <div
                 key={col}
-                className="w-full min-w-0 rounded-xl bg-surface-1 border border-hairline p-4 space-y-3 animate-pulse"
+                className="w-full min-w-0 rounded-xl bg-surface-1 border border-hairline p-4 space-y-3.5 shadow-xs"
               >
-                <div className="h-4 w-28 rounded bg-surface-3 mb-4" />
-                <div className="h-24 rounded bg-surface-2" />
-                <div className="h-24 rounded bg-surface-2" />
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-6 rounded-full" />
+                </div>
+                <div className="space-y-2.5">
+                  <div className="p-3 rounded-lg bg-surface-2/40 border border-hairline/40 space-y-2">
+                    <Skeleton className="h-3.5 w-4/5" />
+                    <Skeleton className="h-2.5 w-1/2" />
+                    <div className="flex gap-1.5 pt-1">
+                      <Skeleton className="h-3 w-12" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-surface-2/40 border border-hairline/40 space-y-2">
+                    <Skeleton className="h-3.5 w-3/4" />
+                    <Skeleton className="h-2.5 w-2/3" />
+                  </div>
+                  <div className="p-3 rounded-lg bg-surface-2/40 border border-hairline/40 space-y-2">
+                    <Skeleton className="h-3.5 w-5/6" />
+                    <Skeleton className="h-2.5 w-1/3" />
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -234,7 +257,7 @@ export default function TasksPage() {
             </p>
             <button
               onClick={() => refetch()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 border border-hairline text-ink text-xs hover:bg-surface-3 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 border border-hairline text-ink text-xs hover:bg-surface-3 transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3 h-3" />
               Retry Connection
@@ -259,13 +282,28 @@ export default function TasksPage() {
                     ? "Try adjusting your filters or search terms."
                     : "Create your first task to start planning your sprint."}
                 </p>
-                <button
-                  onClick={() => handleOpenNewModal("TODO")}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-colors shadow-sm shadow-primary/25"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Create Task
-                </button>
+                <div className="flex items-center justify-center gap-2.5">
+                  {(searchQuery || selectedProjectId || selectedPriority !== "ALL") && (
+                    <button
+                      onClick={() => {
+                        sound.playClick(600);
+                        setSearchQuery("");
+                        setSelectedProjectId("");
+                        setSelectedPriority("ALL");
+                      }}
+                      className="px-3.5 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleOpenNewModal("TODO")}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-colors shadow-sm shadow-primary/25 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Create Task
+                  </button>
+                </div>
               </div>
             )}
 

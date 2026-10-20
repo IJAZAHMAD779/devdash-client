@@ -21,6 +21,8 @@ import {
 } from "@/hooks/use-components";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { toast } from "@/lib/toast";
 
 interface Props {
   component: UIComponentItem;
@@ -80,6 +82,7 @@ export function ComponentCard({ component, onEdit }: Props) {
   const deleteComponent = useDeleteComponent();
   const [activeTab, setActiveTab] = useState<"code" | "preview">("code");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const fwConfig =
     FRAMEWORK_CONFIG[component.framework] || FRAMEWORK_CONFIG.REACT;
@@ -97,8 +100,17 @@ export function ComponentCard({ component, onEdit }: Props) {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setMenuOpen(false);
-    if (confirm(`Delete component "${component.name}"?`)) {
-      deleteComponent.mutate(component.id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteComponent.mutateAsync(component.id);
+      toast.success("Component deleted", {
+        description: `"${component.name}" has been removed from catalog.`,
+      });
+    } catch {
+      toast.error("Failed to delete component");
     }
   };
 
@@ -278,6 +290,17 @@ export function ComponentCard({ component, onEdit }: Props) {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Component"
+        description={`Are you sure you want to delete component "${component.name}"? This action cannot be undone.`}
+        confirmText="Delete Component"
+        variant="danger"
+        isLoading={deleteComponent.isPending}
+      />
     </div>
   );
 }

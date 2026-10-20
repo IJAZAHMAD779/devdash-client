@@ -151,7 +151,9 @@ export function Toaster() {
 
   return (
     <div
+      role="region"
       aria-label="Notifications"
+      aria-atomic="true"
       className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[99999] flex flex-col gap-2.5 pointer-events-none max-w-full"
     >
       {toasts.map((t) => (

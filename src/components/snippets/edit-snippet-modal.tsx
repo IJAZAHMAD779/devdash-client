@@ -7,6 +7,7 @@ import { useProjects } from "@/hooks/use-projects";
 import { Snippet } from "@/types/snippet";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface Props {
   snippet: Snippet | null;
@@ -104,9 +105,14 @@ export function EditSnippetModal({ snippet, isOpen, onClose }: Props) {
         },
       });
 
+      toast.success("Snippet updated", {
+        description: `Changes saved for "${title.trim()}".`,
+      });
       handleClose();
     } catch (err: any) {
-      setError(err.message || "Failed to update snippet");
+      const msg = err.message || "Failed to update snippet";
+      setError(msg);
+      toast.error("Failed to update snippet", { description: msg });
     }
   };
 

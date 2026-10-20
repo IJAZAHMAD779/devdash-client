@@ -13,6 +13,7 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Note } from "@/types/note";
 import {
   useCreateNote,
@@ -20,9 +21,20 @@ import {
   useDeleteNote,
 } from "@/hooks/use-notes";
 import { useProjects } from "@/hooks/use-projects";
-import { MarkdownPreview } from "./markdown-preview";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { toast } from "@/lib/toast";
+
+const MarkdownPreview = dynamic(
+  () => import("./markdown-preview").then((mod) => mod.MarkdownPreview),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-6 text-xs text-ink-muted">Loading preview...</div>
+    ),
+  }
+);
 
 interface Props {
   activeNote: Note | null;
@@ -36,6 +48,8 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted }: Props) {
   const updateNote = useUpdateNote();
   const deleteNote = useDeleteNote();
   const { data: projects } = useProjects();
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -82,43 +96,61 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted }: Props) {
   };
 
   const handleSave = async () => {
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      toast.warning("Note title required", { description: "Please enter a title for your note." });
+      return;
+    }
 
     sound.playClick(900);
 
-    if (isNew || !activeNote) {
-      const created = await createNote.mutateAsync({
-        title: title.trim(),
-        content,
-        projectId: projectId || null,
-        tags,
-        favorite,
-      });
-      sound.playSuccess();
-      setHasUnsavedChanges(false);
-      onSaved(created);
-    } else {
-      const updated = await updateNote.mutateAsync({
-        id: activeNote.id,
-        payload: {
+    const saveAction = (isNew || !activeNote)
+      ? createNote.mutateAsync({
           title: title.trim(),
           content,
           projectId: projectId || null,
           tags,
           favorite,
-        },
+        })
+      : updateNote.mutateAsync({
+          id: activeNote.id,
+          payload: {
+            title: title.trim(),
+            content,
+            projectId: projectId || null,
+            tags,
+            favorite,
+          },
+        });
+
+    try {
+      const saved = await toast.promise(saveAction, {
+        loading: "Saving note...",
+        success: (res) => `Note "${res.title}" saved.`,
+        error: "Failed to save note",
       });
       sound.playSuccess();
       setHasUnsavedChanges(false);
-      onSaved(updated);
+      onSaved(saved);
+    } catch {
+      // toast.promise displays error
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!activeNote) return;
-    if (confirm(`Delete note "${activeNote.title}"?`)) {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!activeNote) return;
+    try {
       await deleteNote.mutateAsync(activeNote.id);
+      toast.success("Note deleted", {
+        description: `"${activeNote.title}" has been removed.`,
+      });
       onDeleted();
+    } catch {
+      toast.error("Failed to delete note");
     }
   };
 
@@ -330,6 +362,17 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted }: Props) {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Note"
+        description={`Are you sure you want to delete note "${activeNote?.title}"?`}
+        confirmText="Delete Note"
+        variant="danger"
+        isLoading={deleteNote.isPending}
+      />
     </div>
   );
 }

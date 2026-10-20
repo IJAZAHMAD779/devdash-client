@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Save, Star, Loader2 } from "lucide-react";
 import { useUpdateProject } from "@/hooks/use-projects";
 import { Project, ProjectStatus } from "@/types/project";
+import { toast } from "@/lib/toast";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
@@ -91,7 +92,7 @@ export function EditProjectModal({ project, isOpen, onClose }: Props) {
 
     try {
       setError(null);
-      await updateProject.mutateAsync({
+      const updated = await updateProject.mutateAsync({
         id: project.id,
         payload: {
           title: title.trim(),
@@ -104,9 +105,14 @@ export function EditProjectModal({ project, isOpen, onClose }: Props) {
         },
       });
 
+      toast.success("Project updated", {
+        description: `"${updated.title}" changes saved successfully.`,
+      });
       handleClose();
     } catch (err: any) {
-      setError(err.message || "Failed to update project");
+      const msg = err.message || "Failed to update project";
+      setError(msg);
+      toast.error("Failed to update project", { description: msg });
     }
   };
 

@@ -7,6 +7,7 @@ import { useProjects } from "@/hooks/use-projects";
 import { ComponentFramework, ComponentStyling } from "@/types/component";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface Props {
   isOpen: boolean;
@@ -123,10 +124,15 @@ export function NewComponentModal({ isOpen, onClose }: Props) {
       });
 
       sound.playSuccess();
+      toast.success("Component created", {
+        description: `"${name.trim()}" added to your UI library.`,
+      });
       handleClose();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } };
-      setError(e?.response?.data?.error?.message || "Failed to create component");
+      const msg = e?.response?.data?.error?.message || "Failed to create component";
+      setError(msg);
+      toast.error("Failed to create component", { description: msg });
     }
   };
 

@@ -14,6 +14,8 @@ import { Note } from "@/types/note";
 import { useToggleNoteFavorite, useDeleteNote } from "@/hooks/use-notes";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { toast } from "@/lib/toast";
 
 interface Props {
   notes: Note[];
@@ -34,6 +36,7 @@ export function NotesList({
 }: Props) {
   const toggleFavorite = useToggleNoteFavorite();
   const deleteNote = useDeleteNote();
+  const [deletingNote, setDeletingNote] = useState<Note | null>(null);
 
   const handleToggleStar = (e: React.MouseEvent, note: Note) => {
     e.stopPropagation();
@@ -45,8 +48,19 @@ export function NotesList({
 
   const handleDelete = (e: React.MouseEvent, note: Note) => {
     e.stopPropagation();
-    if (confirm(`Delete note "${note.title}"?`)) {
-      deleteNote.mutate(note.id);
+    setDeletingNote(note);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingNote) return;
+    try {
+      await deleteNote.mutateAsync(deletingNote.id);
+      toast.success("Note deleted", {
+        description: `"${deletingNote.title}" removed from notes.`,
+      });
+      setDeletingNote(null);
+    } catch {
+      toast.error("Failed to delete note");
     }
   };
 
@@ -176,6 +190,17 @@ export function NotesList({
           })
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!deletingNote}
+        onClose={() => setDeletingNote(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Note"
+        description={`Are you sure you want to delete note "${deletingNote?.title}"?`}
+        confirmText="Delete Note"
+        variant="danger"
+        isLoading={deleteNote.isPending}
+      />
     </div>
   );
 }

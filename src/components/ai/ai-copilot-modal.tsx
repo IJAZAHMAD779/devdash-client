@@ -148,7 +148,7 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
                 DevDash Copilot
               </span>
               <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-3 text-ink-muted border border-hairline">
-                {status?.model || "Qwen 2.5"}
+                {status?.model ? status.model.replace(/^qwen\//, "") : "qwen3.8-27b"}
               </span>
             </div>
             <span className="text-[10px] text-ink-subtle flex items-center gap-1">
@@ -298,7 +298,7 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
         </div>
 
         <div className="flex items-center justify-between px-1 pt-2 text-[10px] font-mono text-ink-tertiary">
-          <span>Groq • Qwen 2.5 32B</span>
+          <span>Groq • Qwen 3.8 27B</span>
           <span>Shift+Enter for newline</span>
         </div>
       </div>

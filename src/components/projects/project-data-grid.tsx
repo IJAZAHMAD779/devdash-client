@@ -19,6 +19,7 @@ import { ProjectFavicon } from "./project-favicon";
 import { GitHubTelemetryBadge } from "./github-telemetry-badge";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 interface ProjectDataGridProps {
   projects: Project[];
@@ -42,6 +43,7 @@ export function ProjectDataGrid({
 }: ProjectDataGridProps) {
   const [sortField, setSortField] = useState<SortField>("updatedAt");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
 
   const handleSort = (field: SortField) => {
     sound.playClick(700);
@@ -326,13 +328,7 @@ export function ProjectDataGrid({
                       <button
                         onClick={() => {
                           sound.playClick(400);
-                          if (
-                            window.confirm(
-                              `Delete project "${project.title}"?`
-                            )
-                          ) {
-                            onDelete(project.id);
-                          }
+                          setDeleteTarget(project);
                         }}
                         title="Delete Project"
                         className="p-1.5 rounded hover:bg-rose-500/10 text-ink-tertiary hover:text-rose-400 transition-colors cursor-pointer"
@@ -347,6 +343,21 @@ export function ProjectDataGrid({
           </tbody>
         </table>
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            onDelete(deleteTarget.id);
+            setDeleteTarget(null);
+          }
+        }}
+        title="Delete Project"
+        description={`Are you sure you want to delete project "${deleteTarget?.title}"? All associated tasks, snippets, components, and notes will be affected.`}
+        confirmText="Delete Project"
+        variant="danger"
+      />
     </div>
   );
 }

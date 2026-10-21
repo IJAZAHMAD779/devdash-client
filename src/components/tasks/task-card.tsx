@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Calendar,
   FolderKanban,
@@ -34,7 +35,25 @@ export function TaskCard({ task, onEdit }: Props) {
   const patchStatus = usePatchTaskStatus();
   const deleteTask = useDeleteTask();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Close context menu on scroll or resize
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClose = () => {
+      setMenuOpen(false);
+      setMenuPosition(null);
+    };
+    window.addEventListener("scroll", handleClose, true);
+    window.addEventListener("resize", handleClose);
+    return () => {
+      window.removeEventListener("scroll", handleClose, true);
+      window.removeEventListener("resize", handleClose);
+    };
+  }, [menuOpen]);
+
 
   const isDone = task.status === "DONE";
 
@@ -58,15 +77,40 @@ export function TaskCard({ task, onEdit }: Props) {
 
   const handleStatusChange = (newStatus: TaskStatus) => {
     setMenuOpen(false);
+    setMenuPosition(null);
     patchStatus.mutate({
       id: task.id,
       status: newStatus,
     });
   };
 
+  const handleToggleMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    sound.playClick();
+    if (menuOpen) {
+      setMenuOpen(false);
+      setMenuPosition(null);
+    } else if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const menuHeight = 180;
+      const menuWidth = 144;
+      const openUpwards =
+        rect.bottom + menuHeight > window.innerHeight && rect.top > menuHeight;
+      const top = openUpwards ? rect.top - menuHeight - 4 : rect.bottom + 4;
+      let left = rect.right - menuWidth;
+      if (left < 8) left = 8;
+      if (left + menuWidth > window.innerWidth - 8) {
+        left = window.innerWidth - menuWidth - 8;
+      }
+      setMenuPosition({ top, left });
+      setMenuOpen(true);
+    }
+  };
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setMenuOpen(false);
+    setMenuPosition(null);
     setShowDeleteConfirm(true);
   };
 
@@ -116,62 +160,18 @@ export function TaskCard({ task, onEdit }: Props) {
             {/* Context Menu Trigger */}
             <div className="relative flex-shrink-0">
               <button
+                ref={buttonRef}
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  sound.playClick();
-                  setMenuOpen(!menuOpen);
-                }}
-                className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-surface-3 text-ink-subtle hover:text-ink transition-all"
+                onClick={handleToggleMenu}
+                className={cn(
+                  "p-1 rounded hover:bg-surface-3 text-ink-subtle hover:text-ink transition-all cursor-pointer",
+                  menuOpen
+                    ? "opacity-100 bg-surface-3 text-ink"
+                    : "opacity-0 group-hover:opacity-100"
+                )}
               >
                 <MoreVertical className="w-3.5 h-3.5" />
               </button>
-
-              {menuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-20"
-                    onClick={() => setMenuOpen(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-1 w-36 rounded-md bg-surface-2 border border-hairline-strong shadow-xl z-30 py-1 text-xs">
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onEdit(task);
-                      }}
-                      className="w-full px-3 py-1.5 text-left text-ink hover:bg-surface-3 flex items-center gap-2"
-                    >
-                      <Edit2 className="w-3 h-3 text-ink-subtle" />
-                      Edit
-                    </button>
-
-                    <div className="border-t border-hairline my-1 px-3 py-1 text-[10px] font-mono uppercase text-ink-tertiary">
-                      Move To:
-                    </div>
-                    {ALL_STATUSES.filter((s) => s.id !== task.status).map(
-                      (statusItem) => (
-                        <button
-                          key={statusItem.id}
-                          onClick={() => handleStatusChange(statusItem.id)}
-                          className="w-full px-3 py-1 text-left text-ink-muted hover:text-ink hover:bg-surface-3 flex items-center justify-between text-[11px]"
-                        >
-                          <span>{statusItem.label}</span>
-                          <ArrowRight className="w-2.5 h-2.5 text-ink-tertiary" />
-                        </button>
-                      )
-                    )}
-
-                    <div className="border-t border-hairline my-1" />
-                    <button
-                      onClick={handleDelete}
-                      className="w-full px-3 py-1.5 text-left text-rose-400 hover:bg-surface-3 flex items-center gap-2"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Delete
-                    </button>
-                  </div>
-                </>
-              )}
             </div>
           </div>
 
@@ -205,6 +205,69 @@ export function TaskCard({ task, onEdit }: Props) {
         </div>
       </div>
 
+      {/* Portal-based floating context menu: never clipped by Kanban column overflow */}
+      {menuOpen && menuPosition && typeof document !== "undefined" && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-[9998]"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(false);
+              setMenuPosition(null);
+            }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: `${menuPosition.top}px`,
+              left: `${menuPosition.left}px`,
+              width: "144px",
+              zIndex: 9999,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="rounded-md bg-surface-2 border border-hairline-strong shadow-2xl py-1 text-xs select-none animate-in fade-in zoom-in-95 duration-100"
+          >
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                setMenuPosition(null);
+                onEdit(task);
+              }}
+              className="w-full px-3 py-1.5 text-left text-ink hover:bg-surface-3 flex items-center gap-2 cursor-pointer transition-colors"
+            >
+              <Edit2 className="w-3 h-3 text-ink-subtle" />
+              Edit
+            </button>
+
+            <div className="border-t border-hairline my-1 px-3 py-1 text-[10px] font-mono uppercase text-ink-tertiary">
+              Move To:
+            </div>
+            {ALL_STATUSES.filter((s) => s.id !== task.status).map(
+              (statusItem) => (
+                <button
+                  key={statusItem.id}
+                  onClick={() => handleStatusChange(statusItem.id)}
+                  className="w-full px-3 py-1 text-left text-ink-muted hover:text-ink hover:bg-surface-3 flex items-center justify-between text-[11px] cursor-pointer transition-colors"
+                >
+                  <span>{statusItem.label}</span>
+                  <ArrowRight className="w-2.5 h-2.5 text-ink-tertiary" />
+                </button>
+              )
+            )}
+
+            <div className="border-t border-hairline my-1" />
+            <button
+              onClick={handleDelete}
+              className="w-full px-3 py-1.5 text-left text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 cursor-pointer transition-colors"
+            >
+              <Trash2 className="w-3 h-3" />
+              Delete
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
+
       <ConfirmModal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
@@ -218,3 +281,4 @@ export function TaskCard({ task, onEdit }: Props) {
     </div>
   );
 }
+

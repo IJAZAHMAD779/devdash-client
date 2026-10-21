@@ -1,20 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 import {
-  Sparkles,
   Send,
   X,
   Trash2,
-  ChevronDown,
   Bot,
   User,
-  Zap,
   AlertCircle,
-  Clock,
-  CheckCircle2,
 } from "lucide-react";
-import { useExecuteAiCommand, useAiStatus } from "@/hooks/use-ai-copilot";
+import { useExecuteAiCommand } from "@/hooks/use-ai-copilot";
 import { AiMessage } from "@/types/ai";
 import { AiActionCard } from "./ai-action-card";
 import { sound } from "@/lib/audio";
@@ -39,7 +35,7 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
       id: "welcome",
       role: "assistant",
       content:
-        "Hello! I am **DevDash Copilot** powered by **Qwen on Groq**.\n\nI can directly manage your workspace through natural language. Ask me to schedule reminders, create Kanban tasks, capture technical notes, or query your active projects.",
+        "Hello! I am **DevDash AI**.\n\nI can directly manage your workspace through natural language. Ask me to schedule reminders, create Kanban tasks, capture technical notes, or query your active projects.",
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -47,8 +43,8 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const { data: status } = useAiStatus();
   const executeMutation = useExecuteAiCommand();
+
 
   // Auto-scroll to bottom of conversation
   useEffect(() => {
@@ -133,27 +129,23 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="DevDash AI Copilot"
+      aria-label="DevDash AI"
       className="fixed bottom-20 right-6 z-50 w-[430px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-6.5rem)] bg-surface-1/95 border border-hairline-strong rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 select-none"
     >
       {/* 1. Header */}
       <div className="h-14 px-4 border-b border-hairline flex items-center justify-between bg-surface-1 shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-            <Sparkles className="w-4 h-4" />
+            <Bot className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-ink tracking-tight">
-                DevDash Copilot
-              </span>
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-3 text-ink-muted border border-hairline">
-                {status?.model ? status.model.replace(/^qwen\//, "") : "qwen3.8-27b"}
+                DevDash AI
               </span>
             </div>
-            <span className="text-[10px] text-ink-subtle flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Groq High-Speed Engine</span>
+            <span className="text-[10px] text-ink-subtle">
+              Workspace Assistant
             </span>
           </div>
         </div>
@@ -171,7 +163,7 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
               sound.playClick(600);
               onClose();
             }}
-            title="Close Copilot (⌘J)"
+            title="Close DevDash AI (⌘J)"
             className="p-1.5 rounded-md hover:bg-surface-2 text-ink-tertiary hover:text-ink transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -201,7 +193,7 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
                 ) : (
                   <>
                     <Bot className="w-3 h-3 text-primary" />
-                    <span>Qwen Copilot</span>
+                    <span>DevDash AI</span>
                   </>
                 )}
               </div>
@@ -209,13 +201,50 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
               {/* Message Bubble */}
               <div
                 className={cn(
-                  "px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap break-words",
+                  "px-3.5 py-2.5 rounded-2xl leading-relaxed break-words text-xs",
                   isUser
-                    ? "bg-primary text-white rounded-br-xs font-normal"
+                    ? "bg-primary text-white rounded-br-xs font-normal whitespace-pre-wrap"
                     : "bg-surface-2 text-ink border border-hairline rounded-bl-xs font-normal shadow-xs"
                 )}
               >
-                {msg.content}
+                {isUser ? (
+                  msg.content
+                ) : (
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => (
+                        <p className="mb-1.5 last:mb-0 leading-relaxed text-ink">
+                          {children}
+                        </p>
+                      ),
+                      strong: ({ children }) => (
+                        <strong className="font-semibold text-ink">
+                          {children}
+                        </strong>
+                      ),
+                      code: ({ children }) => (
+                        <code className="px-1.5 py-0.5 rounded bg-surface-3 border border-hairline font-mono text-[11px] text-primary-hover">
+                          {children}
+                        </code>
+                      ),
+                      ul: ({ children }) => (
+                        <ul className="list-disc pl-4 my-1.5 space-y-1 text-ink-muted">
+                          {children}
+                        </ul>
+                      ),
+                      ol: ({ children }) => (
+                        <ol className="list-decimal pl-4 my-1.5 space-y-1 text-ink-muted">
+                          {children}
+                        </ol>
+                      ),
+                      li: ({ children }) => (
+                        <li className="leading-relaxed">{children}</li>
+                      ),
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                )}
               </div>
 
               {/* Action Cards (Rendered if actions were executed) */}
@@ -235,7 +264,7 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
           <div className="flex flex-col gap-1.5 mr-auto items-start max-w-[85%]">
             <div className="flex items-center gap-1.5 text-[10px] font-mono text-ink-tertiary px-1">
               <Bot className="w-3 h-3 text-primary" />
-              <span>Qwen Copilot</span>
+              <span>DevDash AI</span>
             </div>
             <div className="px-3.5 py-2.5 rounded-2xl rounded-bl-xs bg-surface-2 border border-hairline flex items-center gap-2.5 text-ink-muted">
               <span className="flex gap-1 items-center">
@@ -277,7 +306,7 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Qwen to add tasks, schedule reminders..."
+            placeholder="Ask DevDash AI to add tasks, schedule reminders..."
             disabled={executeMutation.isPending}
             className="flex-1 max-h-32 min-h-[42px] px-3.5 py-2.5 bg-transparent text-xs text-ink placeholder:text-ink-tertiary focus:outline-none resize-none no-scrollbar"
           />
@@ -298,10 +327,11 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
         </div>
 
         <div className="flex items-center justify-between px-1 pt-2 text-[10px] font-mono text-ink-tertiary">
-          <span>Groq • Qwen 3.8 27B</span>
+          <span>DevDash AI</span>
           <span>Shift+Enter for newline</span>
         </div>
       </div>
     </div>
   );
 }
+

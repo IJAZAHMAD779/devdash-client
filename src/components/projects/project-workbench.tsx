@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ExternalLink,
@@ -17,6 +17,7 @@ import {
   Layers,
   Calendar,
   AlertCircle,
+  Plus,
 } from "lucide-react";
 import { Project } from "@/types/project";
 import { useProject } from "@/hooks/use-projects";
@@ -24,8 +25,11 @@ import { ProjectStatusBadge } from "./project-status-badge";
 import { ProjectFavicon } from "./project-favicon";
 import { GitHubTelemetryBadge } from "./github-telemetry-badge";
 import { ProjectOpenGraphCard } from "./project-opengraph-card";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+
 
 interface ProjectWorkbenchProps {
   project: Project | null;
@@ -42,10 +46,14 @@ export function ProjectWorkbench({
   onToggleFavorite,
   className,
 }: ProjectWorkbenchProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+
   // Fetch detailed project entity including relational tasks, snippets, notes, components
   const { data: detailedProject, isLoading } = useProject(initialProject?.id);
 
   const project = detailedProject || initialProject;
+
 
   // Task metrics calculation
   const taskMetrics = useMemo(() => {
@@ -194,9 +202,7 @@ export function ProjectWorkbench({
             <button
               onClick={() => {
                 sound.playClick(400);
-                if (window.confirm(`Delete project "${project.title}"?`)) {
-                  onDelete(project.id);
-                }
+                setShowDeleteConfirm(true);
               }}
               title="Delete Project"
               className="p-1.5 rounded-md hover:bg-rose-500/10 text-ink-tertiary hover:text-rose-400 border border-transparent hover:border-rose-500/20 transition-colors cursor-pointer"
@@ -251,13 +257,26 @@ export function ProjectWorkbench({
             <h3 className="text-xs font-semibold tracking-[-0.2px] text-ink-subtle uppercase">
               Tasks & Sprint Progress
             </h3>
-            <Link
-              href="/tasks"
-              className="text-[11px] font-medium text-primary hover:text-primary-hover flex items-center gap-1"
-            >
-              <span>Go to Kanban</span>
-              <ExternalLink className="w-3 h-3" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick(900);
+                  setIsNewTaskModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-2 hover:bg-surface-3 border border-hairline text-[11px] font-medium text-ink transition-colors cursor-pointer"
+              >
+                <Plus className="w-3 h-3 text-primary" />
+                <span>Add Task</span>
+              </button>
+              <Link
+                href="/tasks"
+                className="text-[11px] font-medium text-primary hover:text-primary-hover flex items-center gap-1"
+              >
+                <span>Go to Kanban</span>
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+            </div>
           </div>
 
           <div className="p-5 rounded-lg border border-hairline bg-surface-1 flex flex-col justify-between space-y-4">
@@ -404,6 +423,22 @@ export function ProjectWorkbench({
           </Link>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={() => onDelete(project.id)}
+        title="Delete Project"
+        description={`Are you sure you want to delete project "${project.title}"? All associated tasks, snippets, components, and notes will be affected.`}
+        confirmText="Delete Project"
+        variant="danger"
+      />
+
+      <NewTaskModal
+        isOpen={isNewTaskModalOpen}
+        defaultProjectId={project.id}
+        onClose={() => setIsNewTaskModalOpen(false)}
+      />
     </div>
   );
 }

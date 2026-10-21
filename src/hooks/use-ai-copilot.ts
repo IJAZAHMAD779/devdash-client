@@ -9,6 +9,8 @@ import {
   AiStatusResponse,
 } from "@/types/ai";
 
+import { toast } from "@/lib/toast";
+
 export function useAiStatus() {
   return useQuery<AiStatusResponse>({
     queryKey: ["ai-status"],
@@ -45,19 +47,34 @@ export function useExecuteAiCommand() {
     onSuccess: (data) => {
       sound.playSuccess();
 
-      // Invalidate relevant query keys so newly created entities appear immediately
+      // Invalidate relevant query keys and show immediate toast notifications
       if (data.actions && data.actions.length > 0) {
         for (const action of data.actions) {
           if (action.type === "TASK") {
             queryClient.invalidateQueries({ queryKey: ["tasks"] });
+            toast.success("Task created", {
+              description: action.title,
+            });
           } else if (action.type === "REMINDER") {
             queryClient.invalidateQueries({ queryKey: ["reminders"] });
+            toast.success("Reminder scheduled", {
+              description: action.title,
+            });
           } else if (action.type === "NOTE") {
             queryClient.invalidateQueries({ queryKey: ["notes"] });
+            toast.success("Note saved", {
+              description: action.title,
+            });
           } else if (action.type === "SNIPPET") {
             queryClient.invalidateQueries({ queryKey: ["snippets"] });
+            toast.success("Snippet saved", {
+              description: action.title,
+            });
           } else if (action.type === "BOOKMARK") {
             queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+            toast.success("Bookmark saved", {
+              description: action.title,
+            });
           }
         }
         // Always refresh recent projects and activity

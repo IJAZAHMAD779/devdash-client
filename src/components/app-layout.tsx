@@ -4,6 +4,7 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { SpotlightSearch } from "@/components/search/spotlight-search";
+import { AiFloatingButton } from "@/components/ai/ai-floating-button";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -24,6 +25,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <SpotlightSearch />
+      <AiFloatingButton />
     </div>
   );
 }

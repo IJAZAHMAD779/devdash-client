@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import {
   Send,
   X,
@@ -180,8 +182,8 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
             <div
               key={msg.id}
               className={cn(
-                "flex flex-col gap-1.5 max-w-[88%]",
-                isUser ? "ml-auto items-end" : "mr-auto items-start"
+                "flex flex-col gap-1.5",
+                isUser ? "ml-auto items-end max-w-[88%]" : "mr-auto items-start w-full max-w-[96%]"
               )}
             >
               <div className="flex items-center gap-1.5 text-[10px] font-mono text-ink-tertiary px-1">
@@ -201,19 +203,20 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
               {/* Message Bubble */}
               <div
                 className={cn(
-                  "px-3.5 py-2.5 rounded-2xl leading-relaxed break-words text-xs",
+                  "px-3.5 py-2.5 rounded-2xl leading-relaxed text-xs break-words",
                   isUser
                     ? "bg-primary text-white rounded-br-xs font-normal whitespace-pre-wrap"
-                    : "bg-surface-2 text-ink border border-hairline rounded-bl-xs font-normal shadow-xs"
+                    : "bg-surface-2 text-ink border border-hairline rounded-bl-xs font-normal shadow-xs w-full overflow-hidden"
                 )}
               >
                 {isUser ? (
                   msg.content
                 ) : (
                   <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkBreaks]}
                     components={{
                       p: ({ children }) => (
-                        <p className="mb-1.5 last:mb-0 leading-relaxed text-ink">
+                        <p className="mb-2 last:mb-0 leading-relaxed text-ink">
                           {children}
                         </p>
                       ),
@@ -228,18 +231,66 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
                         </code>
                       ),
                       ul: ({ children }) => (
-                        <ul className="list-disc pl-4 my-1.5 space-y-1 text-ink-muted">
+                        <ul className="list-disc pl-4 my-2 space-y-1 text-ink-muted">
                           {children}
                         </ul>
                       ),
                       ol: ({ children }) => (
-                        <ol className="list-decimal pl-4 my-1.5 space-y-1 text-ink-muted">
+                        <ol className="list-decimal pl-4 my-2 space-y-1 text-ink-muted">
                           {children}
                         </ol>
                       ),
                       li: ({ children }) => (
-                        <li className="leading-relaxed">{children}</li>
+                        <li className="leading-relaxed my-0.5">{children}</li>
                       ),
+                      table: ({ children }) => (
+                        <div className="w-full my-2.5 overflow-x-auto rounded-lg border border-hairline bg-surface-1 shadow-xs">
+                          <table className="w-full text-left border-collapse text-[11px]">
+                            {children}
+                          </table>
+                        </div>
+                      ),
+                      thead: ({ children }) => (
+                        <thead className="bg-surface-3/80 text-ink font-semibold border-b border-hairline">
+                          {children}
+                        </thead>
+                      ),
+                      tbody: ({ children }) => (
+                        <tbody className="divide-y divide-hairline/60">
+                          {children}
+                        </tbody>
+                      ),
+                      tr: ({ children }) => (
+                        <tr className="hover:bg-surface-2/60 transition-colors">
+                          {children}
+                        </tr>
+                      ),
+                      th: ({ children }) => (
+                        <th className="px-2.5 py-1.5 font-semibold text-ink whitespace-nowrap">
+                          {children}
+                        </th>
+                      ),
+                      td: ({ children }) => (
+                        <td className="px-2.5 py-1.5 text-ink-muted leading-snug align-top">
+                          {children}
+                        </td>
+                      ),
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-2 border-primary/60 pl-2.5 my-1.5 text-ink-subtle italic">
+                          {children}
+                        </blockquote>
+                      ),
+                      a: ({ href, children }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline font-medium"
+                        >
+                          {children}
+                        </a>
+                      ),
+                      hr: () => <hr className="my-2 border-hairline" />,
                     }}
                   >
                     {msg.content}

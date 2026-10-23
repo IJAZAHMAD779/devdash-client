@@ -9,8 +9,6 @@ import {
   Search,
   SlidersHorizontal,
   Star,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from "lucide-react";
 import { Project, ProjectStatus } from "@/types/project";
 import { ProjectFavicon } from "./project-favicon";
@@ -22,8 +20,6 @@ interface ProjectExplorerProps {
   selectedProjectId: string | null;
   onSelectProject: (id: string) => void;
   onNewProject: () => void;
-  isCollapsed: boolean;
-  onToggleCollapse: () => void;
   className?: string;
 }
 
@@ -40,8 +36,6 @@ export function ProjectExplorer({
   selectedProjectId,
   onSelectProject,
   onNewProject,
-  isCollapsed,
-  onToggleCollapse,
   className,
 }: ProjectExplorerProps) {
   const [filterText, setFilterText] = useState("");
@@ -131,72 +125,6 @@ export function ProjectExplorer({
     }));
   };
 
-  // Rail mode when collapsed
-  if (isCollapsed) {
-    return (
-      <div
-        className={cn(
-          "w-14 border-r border-hairline bg-surface-1 flex flex-col items-center py-4 select-none shrink-0 transition-all duration-200",
-          className
-        )}
-      >
-        <button
-          onClick={() => {
-            sound.playClick(800);
-            onToggleCollapse();
-          }}
-          title="Expand Explorer Sidebar"
-          className="p-2 rounded-md hover:bg-surface-2 text-ink-subtle hover:text-ink transition-colors mb-4 cursor-pointer"
-        >
-          <PanelLeftOpen className="w-4 h-4" />
-        </button>
-
-        <button
-          onClick={() => {
-            sound.playClick(900);
-            onNewProject();
-          }}
-          title="New Project"
-          className="p-2 rounded-md bg-primary hover:bg-primary-hover text-white transition-colors mb-6 shadow-sm shadow-primary/20 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
-
-        <div className="flex-1 w-full flex flex-col items-center gap-2 overflow-y-auto overflow-x-hidden no-scrollbar px-1.5">
-          {filteredProjects.map((p) => {
-            const isSelected = p.id === selectedProjectId;
-            return (
-              <button
-                key={p.id}
-                onClick={() => {
-                  sound.playClick(750);
-                  onSelectProject(p.id);
-                }}
-                title={p.title}
-                className={cn(
-                  "w-9 h-9 rounded-md flex items-center justify-center transition-all cursor-pointer relative",
-                  isSelected
-                    ? "bg-surface-3 border border-primary/50 shadow-xs"
-                    : "hover:bg-surface-2 text-ink-subtle hover:text-ink"
-                )}
-              >
-                <ProjectFavicon
-                  liveUrl={p.liveUrl}
-                  repositoryUrl={p.repositoryUrl}
-                  title={p.title}
-                  size={18}
-                />
-                {isSelected && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary rounded-r" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       className={cn(
@@ -242,18 +170,6 @@ export function ProjectExplorer({
             className="p-1.5 rounded hover:bg-surface-2 text-ink-subtle hover:text-ink transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Collapse Sidebar Button */}
-          <button
-            onClick={() => {
-              sound.playClick(800);
-              onToggleCollapse();
-            }}
-            title="Collapse Sidebar"
-            className="p-1.5 rounded hover:bg-surface-2 text-ink-tertiary hover:text-ink transition-colors cursor-pointer"
-          >
-            <PanelLeftClose className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

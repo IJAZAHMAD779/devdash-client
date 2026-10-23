@@ -50,7 +50,6 @@ function ProjectsPageInner() {
     initialId
   );
   const [mobilePane, setMobilePane] = useState<"explorer" | "details">("explorer");
-  const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<ProjectStatus | "ALL">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -356,8 +355,6 @@ function ProjectsPageInner() {
                     selectedProjectId={selectedProjectId}
                     onSelectProject={handleSelectProject}
                     onNewProject={handleOpenNewModal}
-                    isCollapsed={isExplorerCollapsed}
-                    onToggleCollapse={() => setIsExplorerCollapsed(!isExplorerCollapsed)}
                     className="w-full md:w-72 lg:w-80"
                   />
                 </div>

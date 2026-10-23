@@ -7,6 +7,10 @@ import {
   FileText,
   Code2,
   Bookmark,
+  BookmarkCheck,
+  BrainCircuit,
+  ListTodo,
+  FileEdit,
   Search,
   ExternalLink,
   Calendar,
@@ -150,6 +154,7 @@ export function AiActionCard({ action, className }: AiActionCardProps) {
       );
 
     case "BOOKMARK":
+    case "UPDATE_BOOKMARK":
       return (
         <div
           className={cn(
@@ -158,12 +163,17 @@ export function AiActionCard({ action, className }: AiActionCardProps) {
           )}
         >
           <div className="flex items-start gap-2.5 min-w-0">
-            <Bookmark className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+            <BookmarkCheck className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
             <div className="min-w-0">
               <span className="text-[10px] font-mono uppercase tracking-wider text-purple-400 font-semibold block">
-                Bookmark Added
+                {action.type === "UPDATE_BOOKMARK" ? "Bookmark Updated" : "Bookmark Added"}
               </span>
               <p className="font-medium text-ink truncate mt-0.5">{action.title}</p>
+              {action.details?.notes && (
+                <p className="text-[11px] text-ink-muted truncate mt-0.5 line-clamp-1">
+                  {action.details.notes}
+                </p>
+              )}
             </div>
           </div>
 
@@ -172,6 +182,100 @@ export function AiActionCard({ action, className }: AiActionCardProps) {
             className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-400 hover:text-purple-300 shrink-0 pt-0.5"
           >
             <span>Catalog</span>
+            <ExternalLink className="w-3 h-3" />
+          </Link>
+        </div>
+      );
+
+    case "ENRICH_BOOKMARKS":
+      return (
+        <div
+          className={cn(
+            "p-3 rounded-lg border border-indigo-500/30 bg-indigo-500/5 flex items-start justify-between gap-3 text-xs transition-colors",
+            className
+          )}
+        >
+          <div className="flex items-start gap-2.5 min-w-0">
+            <BrainCircuit className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-400 font-semibold block">
+                Bookmarks Enriched
+              </span>
+              <p className="font-medium text-ink truncate mt-0.5">{action.title}</p>
+              {action.details?.count && (
+                <span className="inline-block text-[10px] font-mono text-ink-muted mt-0.5">
+                  Generated notes & tags for {action.details.count} resources
+                </span>
+              )}
+            </div>
+          </div>
+
+          <Link
+            href="/resources"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 shrink-0 pt-0.5"
+          >
+            <span>View Catalog</span>
+            <ExternalLink className="w-3 h-3" />
+          </Link>
+        </div>
+      );
+
+    case "UPDATE_TASK":
+      return (
+        <div
+          className={cn(
+            "p-3 rounded-lg border border-primary/30 bg-primary/5 flex items-start justify-between gap-3 text-xs transition-colors",
+            className
+          )}
+        >
+          <div className="flex items-start gap-2.5 min-w-0">
+            <ListTodo className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-primary font-semibold block">
+                Task Updated
+              </span>
+              <p className="font-medium text-ink truncate mt-0.5">{action.title}</p>
+              {action.details?.status && (
+                <span className="inline-block text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-3 text-ink-muted mt-1 uppercase">
+                  {action.details.status}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <Link
+            href="/tasks"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary-hover shrink-0 pt-0.5"
+          >
+            <span>View Board</span>
+            <ExternalLink className="w-3 h-3" />
+          </Link>
+        </div>
+      );
+
+    case "UPDATE_NOTE":
+      return (
+        <div
+          className={cn(
+            "p-3 rounded-lg border border-blue-500/30 bg-blue-500/5 flex items-start justify-between gap-3 text-xs transition-colors",
+            className
+          )}
+        >
+          <div className="flex items-start gap-2.5 min-w-0">
+            <FileEdit className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-blue-400 font-semibold block">
+                Note Updated
+              </span>
+              <p className="font-medium text-ink truncate mt-0.5">{action.title}</p>
+            </div>
+          </div>
+
+          <Link
+            href="/resources"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-400 hover:text-blue-300 shrink-0 pt-0.5"
+          >
+            <span>Read</span>
             <ExternalLink className="w-3 h-3" />
           </Link>
         </div>

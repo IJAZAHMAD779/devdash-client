@@ -13,9 +13,11 @@ import {
   Globe,
   MoreVertical,
   ChevronDown,
+  BrainCircuit,
+  Loader2,
 } from "lucide-react";
 import { Bookmark, PRESET_BOOKMARK_CATEGORIES } from "@/types/bookmark";
-import { useToggleBookmarkFavorite } from "@/hooks/use-bookmarks";
+import { useToggleBookmarkFavorite, useEnrichBookmark } from "@/hooks/use-bookmarks";
 import { BookmarkFavicon } from "./bookmark-favicon";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
@@ -42,6 +44,7 @@ const getCategoryBadge = (cat: string) => {
 
 export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardProps) {
   const toggleFavorite = useToggleBookmarkFavorite();
+  const enrichBookmark = useEnrichBookmark();
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -71,6 +74,23 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
     e.stopPropagation();
     sound.playClick(bm.favorite ? 600 : 900);
     toggleFavorite.mutate(bm.id);
+  };
+
+  const handleQuickEnrich = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    sound.playClick(900);
+    try {
+      await enrichBookmark.mutateAsync(bm.id);
+      setIsExpanded(true);
+      sound.playSuccess();
+      toast.success("AI Note Generated", {
+        description: `Note generated for "${bm.title}".`,
+      });
+    } catch {
+      toast.error("Could not generate note", {
+        description: "Check backend GROQ_API_KEY configuration.",
+      });
+    }
   };
 
   const domain = getHostname(bm.url);
@@ -210,7 +230,7 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
               <span className="truncate">{bm.project.title}</span>
             </span>
           )}
-          {hasDetails && (
+          {hasDetails ? (
             <span className="text-[11px] text-ink-tertiary group-hover:text-ink flex items-center gap-1 font-mono transition-colors">
               <span>{isExpanded ? "Hide notes" : "Notes"}</span>
               <ChevronDown
@@ -220,6 +240,21 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
                 )}
               />
             </span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleQuickEnrich}
+              disabled={enrichBookmark.isPending}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer py-0.5 px-1.5 rounded hover:bg-indigo-500/10 shrink-0"
+              title="Generate developer note with AI"
+            >
+              {enrichBookmark.isPending ? (
+                <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+              ) : (
+                <BrainCircuit className="w-3 h-3 text-indigo-400" />
+              )}
+              <span>AI Note</span>
+            </button>
           )}
         </div>
 

@@ -70,9 +70,24 @@ export function useExecuteAiCommand() {
             toast.success("Snippet saved", {
               description: action.title,
             });
-          } else if (action.type === "BOOKMARK") {
+          } else if (action.type === "BOOKMARK" || action.type === "UPDATE_BOOKMARK") {
             queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
-            toast.success("Bookmark saved", {
+            toast.success(action.type === "BOOKMARK" ? "Bookmark saved" : "Bookmark updated", {
+              description: action.title,
+            });
+          } else if (action.type === "ENRICH_BOOKMARKS") {
+            queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+            toast.success("Bookmarks enriched", {
+              description: action.title,
+            });
+          } else if (action.type === "UPDATE_TASK") {
+            queryClient.invalidateQueries({ queryKey: ["tasks"] });
+            toast.success("Task updated", {
+              description: action.title,
+            });
+          } else if (action.type === "UPDATE_NOTE") {
+            queryClient.invalidateQueries({ queryKey: ["notes"] });
+            toast.success("Note updated", {
               description: action.title,
             });
           }

@@ -12,9 +12,11 @@ import {
   Tag,
   Globe,
   ChevronDown,
+  BrainCircuit,
+  Loader2,
 } from "lucide-react";
 import { Bookmark, PRESET_BOOKMARK_CATEGORIES } from "@/types/bookmark";
-import { useToggleBookmarkFavorite, useDeleteBookmark } from "@/hooks/use-bookmarks";
+import { useToggleBookmarkFavorite, useDeleteBookmark, useEnrichBookmark } from "@/hooks/use-bookmarks";
 import { BookmarkFavicon } from "./bookmark-favicon";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
@@ -42,10 +44,28 @@ const getCategoryBadge = (cat: string) => {
 export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
   const toggleFavorite = useToggleBookmarkFavorite();
   const deleteBookmark = useDeleteBookmark();
+  const enrichBookmark = useEnrichBookmark();
 
   const [copied, setCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleQuickEnrich = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    sound.playClick(900);
+    try {
+      await enrichBookmark.mutateAsync(bm.id);
+      setIsExpanded(true);
+      sound.playSuccess();
+      toast.success("AI Note Generated", {
+        description: `Note generated for "${bm.title}".`,
+      });
+    } catch {
+      toast.error("Could not generate note", {
+        description: "Check backend GROQ_API_KEY configuration.",
+      });
+    }
+  };
 
   const getHostname = (url: string) => {
     try {
@@ -174,7 +194,7 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
             </span>
           )}
 
-          {hasDetails && (
+          {hasDetails ? (
             <span className="text-ink-tertiary group-hover:text-ink-muted transition-colors">
               <ChevronDown
                 className={cn(
@@ -183,6 +203,21 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
                 )}
               />
             </span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleQuickEnrich}
+              disabled={enrichBookmark.isPending}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer py-0.5 px-2 rounded hover:bg-indigo-500/10 shrink-0"
+              title="Generate developer note with AI"
+            >
+              {enrichBookmark.isPending ? (
+                <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+              ) : (
+                <BrainCircuit className="w-3 h-3 text-indigo-400" />
+              )}
+              <span className="hidden sm:inline">AI Note</span>
+            </button>
           )}
         </div>
 

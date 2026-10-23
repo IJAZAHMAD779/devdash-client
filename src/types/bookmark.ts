@@ -82,3 +82,14 @@ export interface ImportedBookmarkItem {
   icon?: string;
   selected: boolean;
 }
+
+export interface BatchEnrichPayload {
+  category?: string;
+  limit?: number;
+  bookmarkIds?: string[];
+}
+
+export interface BatchEnrichResponse {
+  enrichedCount: number;
+  bookmarks: Bookmark[];
+}

@@ -20,6 +20,7 @@ import {
   RefreshCw,
   X,
   Check,
+  BrainCircuit,
 } from "lucide-react";
 import { Bookmark, PRESET_BOOKMARK_CATEGORIES } from "@/types/bookmark";
 import { useBookmarks, useDeleteBookmark } from "@/hooks/use-bookmarks";
@@ -29,6 +30,7 @@ import { BookmarkListRow } from "./bookmark-list-row";
 import { NewBookmarkModal } from "./new-bookmark-modal";
 import { EditBookmarkModal } from "./edit-bookmark-modal";
 import { ImportBookmarksModal } from "./import-bookmarks-modal";
+import { EnrichBookmarksModal } from "./enrich-bookmarks-modal";
 import { exportBookmarksToHtml } from "@/lib/bookmark-parser";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { sound } from "@/lib/audio";
@@ -50,6 +52,7 @@ export function BookmarksCatalog() {
   // Modals state
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isEnrichModalOpen, setIsEnrichModalOpen] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
   const [deletingBookmark, setDeletingBookmark] = useState<Bookmark | null>(null);
 
@@ -94,21 +97,23 @@ export function BookmarksCatalog() {
   });
 
   // Calculate folder counts across all fetched bookmarks
-  const { totalCount, favoriteCount, folderCounts } = useMemo(() => {
+  const { totalCount, favoriteCount, folderCounts, emptyNotesCount } = useMemo(() => {
     let total = 0;
     let favs = 0;
+    let emptyNotes = 0;
     const counts: Record<string, number> = {};
 
     if (allBookmarks) {
       total = allBookmarks.length;
       allBookmarks.forEach((bm) => {
         if (bm.favorite) favs++;
+        if (!bm.notes || bm.notes.trim() === "") emptyNotes++;
         const cat = (bm.category || "tools").toLowerCase();
         counts[cat] = (counts[cat] || 0) + 1;
       });
     }
 
-    return { totalCount: total, favoriteCount: favs, folderCounts: counts };
+    return { totalCount: total, favoriteCount: favs, folderCounts: counts, emptyNotesCount: emptyNotes };
   }, [allBookmarks]);
 
   // Discovered custom folders
@@ -299,6 +304,24 @@ export function BookmarksCatalog() {
               <span className="hidden sm:inline">Export</span>
             </button>
           </div>
+
+          {/* AI Auto-Note Batch Generation */}
+          {emptyNotesCount > 0 && (
+            <button
+              onClick={() => {
+                sound.playClick(900);
+                setIsEnrichModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-xs text-indigo-300 font-medium transition-colors cursor-pointer shrink-0"
+              title={`Auto-generate developer notes with AI for ${emptyNotesCount} bookmarks`}
+            >
+              <BrainCircuit className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden sm:inline">Auto-Note</span>
+              <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-indigo-500/20 text-indigo-200">
+                {emptyNotesCount}
+              </span>
+            </button>
+          )}
 
           {/* Add Bookmark CTA */}
           <button
@@ -759,6 +782,13 @@ export function BookmarksCatalog() {
       <ImportBookmarksModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
+      />
+
+      <EnrichBookmarksModal
+        isOpen={isEnrichModalOpen}
+        onClose={() => setIsEnrichModalOpen(false)}
+        bookmarks={allBookmarks || []}
+        currentCategory={selectedCategory}
       />
 
       <ConfirmModal

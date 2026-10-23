@@ -24,6 +24,7 @@ interface AiCopilotModalProps {
 }
 
 const SUGGESTED_PROMPTS = [
+  "🧠 Add notes to my imported bookmarks",
   "⏰ Remind me tomorrow at 9 AM to review pending PRs",
   "📋 Create a HIGH priority task to fix database connection pooling",
   "📝 Create note: Architecture decisions for background cron jobs",
@@ -37,7 +38,7 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
       id: "welcome",
       role: "assistant",
       content:
-        "Hello! I am **DevDash AI**.\n\nI can directly manage your workspace through natural language. Ask me to schedule reminders, create Kanban tasks, capture technical notes, or query your active projects.",
+        "Hello! I am **DevDash AI**.\n\nI can directly manage your workspace through natural language. Ask me to schedule reminders, create Kanban tasks, capture technical notes, auto-generate notes for your bookmarks, or update existing workspace entities.",
       timestamp: new Date().toISOString(),
     },
   ]);

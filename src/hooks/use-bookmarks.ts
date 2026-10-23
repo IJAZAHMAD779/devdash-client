@@ -8,6 +8,8 @@ import {
   CreateBookmarkPayload,
   UpdateBookmarkPayload,
   BookmarkCategory,
+  BatchEnrichPayload,
+  BatchEnrichResponse,
 } from "@/types/bookmark";
 
 interface BookmarkQueryParams {
@@ -187,6 +189,33 @@ export function useToggleBookmarkFavorite() {
       }
     },
     onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+    },
+  });
+}
+
+export function useBatchEnrichBookmarks() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: BatchEnrichPayload) => {
+      return apiClient.post<BatchEnrichResponse>("/bookmarks/enrich-batch", payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+      queryClient.invalidateQueries({ queryKey: ["activity-logs"] });
+    },
+  });
+}
+
+export function useEnrichBookmark() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return apiClient.post<Bookmark>(`/bookmarks/${id}/enrich`, {});
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
     },
   });

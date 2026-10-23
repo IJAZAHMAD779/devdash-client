@@ -6,7 +6,11 @@ export type AiActionType =
   | "NOTE"
   | "SNIPPET"
   | "BOOKMARK"
-  | "QUERY";
+  | "QUERY"
+  | "UPDATE_BOOKMARK"
+  | "ENRICH_BOOKMARKS"
+  | "UPDATE_TASK"
+  | "UPDATE_NOTE";
 
 export interface ExecutedAction {
   type: AiActionType;

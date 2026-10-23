@@ -154,19 +154,17 @@ export function ProjectCard({ project, onEdit }: Props) {
           {project.description || "No description provided."}
         </p>
 
-        {/* Tech Stack Pills */}
+        {/* Tech Stack */}
         {project.techStack && project.techStack.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {project.techStack.slice(0, 4).map((tech) => (
-              <span
-                key={tech}
-                className="text-[11px] font-mono px-2 py-0.5 rounded bg-surface-3 border border-hairline text-ink-subtle"
-              >
-                {tech}
+          <div className="flex flex-wrap items-center gap-2 mb-4 text-[11px] font-mono text-ink-subtle">
+            {project.techStack.slice(0, 4).map((tech, idx) => (
+              <span key={tech} className="flex items-center gap-2">
+                {idx > 0 && <span className="text-hairline-strong select-none">•</span>}
+                <span className="hover:text-ink transition-colors">{tech}</span>
               </span>
             ))}
             {project.techStack.length > 4 && (
-              <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-surface-3 border border-hairline text-ink-tertiary">
+              <span className="text-ink-tertiary">
                 +{project.techStack.length - 4}
               </span>
             )}

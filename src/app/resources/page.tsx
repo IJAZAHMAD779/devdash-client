@@ -100,7 +100,7 @@ export default function ResourcesPage() {
               sound.playClick(900);
               setIsDigestModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer px-2 py-1.5"
           >
             <Mail className="w-3.5 h-3.5 text-primary" />
             <span>Weekly Digest</span>

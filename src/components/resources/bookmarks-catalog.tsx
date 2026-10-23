@@ -451,7 +451,7 @@ export function BookmarksCatalog() {
                 <BookmarkIcon className={cn("w-3.5 h-3.5", selectedCategory === "ALL" ? "text-primary" : "text-ink-tertiary")} />
                 <span className="truncate">All Bookmarks</span>
               </div>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-3 text-ink-muted">
+              <span className="text-[10px] font-mono text-ink-tertiary">
                 {totalCount}
               </span>
             </button>
@@ -473,7 +473,7 @@ export function BookmarksCatalog() {
                 <Star className={cn("w-3.5 h-3.5", selectedCategory === "FAVORITES" ? "text-amber-400 fill-amber-400" : "text-ink-tertiary")} />
                 <span className="truncate">Starred</span>
               </div>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-3 text-ink-muted">
+              <span className="text-[10px] font-mono text-ink-tertiary">
                 {favoriteCount}
               </span>
             </button>
@@ -509,7 +509,7 @@ export function BookmarksCatalog() {
                     )}
                     <span className="truncate">{cat.label}</span>
                   </div>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-3 text-ink-muted">
+                  <span className="text-[10px] font-mono text-ink-tertiary">
                     {count}
                   </span>
                 </button>
@@ -550,7 +550,7 @@ export function BookmarksCatalog() {
                         )}
                         <span className="truncate">{folder}</span>
                       </div>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-3 text-ink-muted">
+                      <span className="text-[10px] font-mono text-ink-tertiary">
                         {count}
                       </span>
                     </button>

@@ -364,11 +364,10 @@ function ProjectsPageInner() {
               <div className="flex-1 flex overflow-hidden h-[calc(100vh-3.5rem)] min-h-0">
                 <div
                   className={cn(
-                    "h-full",
-                    isExplorerCollapsed && "hidden md:hidden",
-                    mobilePane === "details"
-                      ? "hidden md:flex"
-                      : "flex w-full md:w-auto"
+                    "h-full shrink-0 transition-all duration-200",
+                    isExplorerCollapsed
+                      ? "hidden"
+                      : (mobilePane === "details" ? "hidden md:flex" : "flex w-full md:w-auto")
                   )}
                 >
                   <ProjectExplorer

@@ -250,10 +250,10 @@ export function ProjectOpenGraphCard({
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors shrink-0 cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-ink transition-colors shrink-0 cursor-pointer px-1.5 py-1"
           >
             <span>Launch</span>
-            <ExternalLink className="w-3 h-3 text-ink-subtle" />
+            <ExternalLink className="w-3.5 h-3.5 text-ink-tertiary" />
           </a>
         </div>
       </div>

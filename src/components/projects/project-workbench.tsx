@@ -133,7 +133,7 @@ export function ProjectWorkbench({
               sound.playClick(600);
               onToggleExplorer();
             }}
-            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink text-xs font-medium cursor-pointer transition-colors"
+            className="hidden md:inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer px-2 py-1"
             title="Expand Explorer Sidebar"
           >
             <PanelLeftOpen className="w-3.5 h-3.5 text-primary" />
@@ -187,13 +187,11 @@ export function ProjectWorkbench({
 
               {/* Tech Stack Badges */}
               {project.techStack && project.techStack.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                  {project.techStack.map((tech) => (
-                    <span
-                      key={tech}
-                      className="text-[11px] font-mono px-2 py-0.5 rounded bg-surface-2 border border-hairline text-ink-muted"
-                    >
-                      {tech}
+                <div className="flex items-center gap-2 flex-wrap pt-1 text-[11px] font-mono text-ink-subtle">
+                  {project.techStack.map((tech, idx) => (
+                    <span key={tech} className="flex items-center gap-2">
+                      {idx > 0 && <span className="text-hairline-strong select-none">•</span>}
+                      <span className="hover:text-ink transition-colors">{tech}</span>
                     </span>
                   ))}
                 </div>
@@ -233,9 +231,9 @@ export function ProjectWorkbench({
                 onEdit(project);
               }}
               title="Edit Project"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer px-2 py-1.5"
             >
-              <Edit2 className="w-3.5 h-3.5 text-ink-subtle" />
+              <Edit2 className="w-3.5 h-3.5 text-ink-tertiary" />
               <span>Edit</span>
             </button>
 
@@ -384,8 +382,8 @@ export function ProjectWorkbench({
             className="p-4 rounded-lg border border-hairline bg-surface-1 hover:border-hairline-strong transition-all duration-150 group cursor-pointer"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 rounded-lg bg-surface-2 border border-hairline flex items-center justify-center text-ink-subtle group-hover:text-primary transition-colors">
-                <CheckCircle2 className="w-4 h-4" />
+              <div className="text-ink-subtle group-hover:text-primary transition-colors flex items-center">
+                <CheckCircle2 className="w-5 h-5" />
               </div>
               <span className="text-lg font-bold font-mono text-ink">
                 {project._count?.tasks ?? taskMetrics.total}
@@ -405,8 +403,8 @@ export function ProjectWorkbench({
             className="p-4 rounded-lg border border-hairline bg-surface-1 hover:border-hairline-strong transition-all duration-150 group cursor-pointer"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 rounded-lg bg-surface-2 border border-hairline flex items-center justify-center text-ink-subtle group-hover:text-primary transition-colors">
-                <Code2 className="w-4 h-4" />
+              <div className="text-ink-subtle group-hover:text-primary transition-colors flex items-center">
+                <Code2 className="w-5 h-5" />
               </div>
               <span className="text-lg font-bold font-mono text-ink">
                 {project._count?.snippets ?? (project.snippets?.length || 0)}
@@ -426,8 +424,8 @@ export function ProjectWorkbench({
             className="p-4 rounded-lg border border-hairline bg-surface-1 hover:border-hairline-strong transition-all duration-150 group cursor-pointer"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 rounded-lg bg-surface-2 border border-hairline flex items-center justify-center text-ink-subtle group-hover:text-primary transition-colors">
-                <Component className="w-4 h-4" />
+              <div className="text-ink-subtle group-hover:text-primary transition-colors flex items-center">
+                <Component className="w-5 h-5" />
               </div>
               <span className="text-lg font-bold font-mono text-ink">
                 {project._count?.components ?? (project.components?.length || 0)}
@@ -447,8 +445,8 @@ export function ProjectWorkbench({
             className="p-4 rounded-lg border border-hairline bg-surface-1 hover:border-hairline-strong transition-all duration-150 group cursor-pointer"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 rounded-lg bg-surface-2 border border-hairline flex items-center justify-center text-ink-subtle group-hover:text-primary transition-colors">
-                <FileText className="w-4 h-4" />
+              <div className="text-ink-subtle group-hover:text-primary transition-colors flex items-center">
+                <FileText className="w-5 h-5" />
               </div>
               <span className="text-lg font-bold font-mono text-ink">
                 {project._count?.notes ?? (project.notes?.length || 0)}

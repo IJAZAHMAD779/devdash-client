@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { Project, ProjectStatus } from "@/types/project";
 import { ProjectFavicon } from "./project-favicon";
-import { ProgressRing } from "@/components/ui/progress-ring";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
@@ -279,33 +278,11 @@ export function ProjectExplorer({
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
-                            {project.favorite && (
+                          {project.favorite && (
+                            <div className="flex items-center gap-1 shrink-0 ml-1.5">
                               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                            )}
-                            {project._count && (
-                              <div className="flex items-center gap-1">
-                                <ProgressRing
-                                  progress={
-                                    project.status === "COMPLETED"
-                                      ? 100
-                                      : project.tasks && project.tasks.length > 0
-                                      ? Math.round(
-                                          (project.tasks.filter((t) => t.status === "DONE").length /
-                                            project.tasks.length) *
-                                            100
-                                        )
-                                      : 0
-                                  }
-                                  size={12}
-                                  strokeWidth={2}
-                                />
-                                <span className="text-[10px] font-mono text-ink-tertiary group-hover:text-ink-subtle">
-                                  {project._count.tasks}t
-                                </span>
-                              </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </button>
                       );
                     })}

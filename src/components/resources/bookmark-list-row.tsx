@@ -112,7 +112,7 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
             onClick={handleToggleStar}
             title={bm.favorite ? "Unstar bookmark" : "Star bookmark"}
             aria-label={bm.favorite ? "Unstar bookmark" : "Star bookmark"}
-            className="p-1 -ml-1 rounded hover:bg-surface-3 transition-colors text-ink-subtle hover:text-amber-400 shrink-0 cursor-pointer"
+            className="p-1 -ml-1 transition-colors text-ink-subtle hover:text-amber-400 shrink-0 cursor-pointer"
           >
             <Star
               className={cn(
@@ -142,10 +142,6 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
               >
                 {bm.title}
               </a>
-              <span className="hidden lg:inline-flex items-center gap-1 text-[11px] font-mono text-ink-tertiary truncate">
-                <Globe className="w-2.5 h-2.5 shrink-0" />
-                {domain}
-              </span>
             </div>
             {!isExpanded && bm.notes && (
               <span className="text-[11px] text-ink-tertiary truncate hidden sm:block">
@@ -198,7 +194,7 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
             onClick={handleCopy}
             title={copied ? "Copied!" : "Copy link"}
             aria-label="Copy link"
-            className="p-1.5 rounded hover:bg-surface-3 hover:text-ink transition-colors cursor-pointer"
+            className="p-1.5 text-ink-tertiary hover:text-ink transition-colors cursor-pointer"
           >
             {copied ? (
               <Check className="w-3.5 h-3.5 text-emerald-400" />

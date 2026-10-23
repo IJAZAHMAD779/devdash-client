@@ -91,14 +91,10 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
       <div className="p-3.5 sm:p-4 border-b border-hairline/80 flex items-start justify-between gap-2.5 bg-surface-1/60">
         <div className="flex-1 min-w-0">
           {/* Domain & Category label */}
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <div className="flex items-center gap-2 mb-2">
             <BookmarkFavicon domain={domain} url={bm.url} size={16} />
             <span className="text-xs font-bold text-ink tracking-tight">
               {categoryConfig.label}
-            </span>
-            <span className="text-[11px] font-mono text-ink-tertiary flex items-center gap-1 truncate">
-              <Globe className="w-2.5 h-2.5 shrink-0" />
-              {domain}
             </span>
           </div>
 
@@ -121,10 +117,10 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
             type="button"
             onClick={handleToggleStar}
             className={cn(
-              "p-1.5 rounded-md transition-all cursor-pointer",
+              "p-1 transition-all cursor-pointer",
               bm.favorite
-                ? "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
-                : "text-ink-tertiary hover:text-amber-400 hover:bg-surface-2 opacity-60 group-hover:opacity-100"
+                ? "text-amber-400"
+                : "text-ink-tertiary hover:text-amber-400 opacity-60 group-hover:opacity-100"
             )}
             title={bm.favorite ? "Unstar bookmark" : "Star as favorite"}
           >
@@ -233,10 +229,10 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
             type="button"
             onClick={handleCopy}
             className={cn(
-              "p-1.5 rounded-md border text-xs transition-all duration-150 cursor-pointer flex items-center justify-center",
+              "p-1.5 text-xs transition-all duration-150 cursor-pointer flex items-center justify-center",
               copied
-                ? "bg-semantic-success/15 border-semantic-success/30 text-semantic-success"
-                : "bg-surface-2 hover:bg-surface-3 border-hairline text-ink-muted hover:text-ink"
+                ? "text-emerald-400"
+                : "text-ink-muted hover:text-ink"
             )}
             title="Copy URL"
           >

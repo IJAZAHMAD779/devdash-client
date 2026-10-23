@@ -54,7 +54,7 @@ export function SnippetCard({ snippet, onEdit }: Props) {
   };
 
   return (
-    <div className="flex flex-col rounded-xl bg-surface-1 border border-hairline hover:border-hairline-strong transition-all duration-200 overflow-hidden shadow-sm">
+    <div className="flex flex-col rounded-xl bg-surface-1 border border-hairline hover:border-primary/40 hover:shadow-[0_0_24px_-4px_rgba(37,99,235,0.12)] transition-all duration-200 overflow-hidden shadow-sm">
       {/* Header */}
       <div className="p-4 border-b border-hairline flex items-start justify-between gap-3 bg-surface-1/60">
         <div className="flex-1 min-w-0">

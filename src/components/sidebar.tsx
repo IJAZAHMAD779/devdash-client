@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  LayoutDashboard,
   FolderKanban,
   CheckSquare,
   Code2,
@@ -26,6 +27,7 @@ interface NavItem {
 }
 
 const navigationItems: NavItem[] = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
   { name: "Snippets", href: "/snippets", icon: Code2 },
@@ -92,7 +94,7 @@ export function Sidebar() {
           </button>
         ) : (
           <>
-            <DevDashLogo size={28} href="/projects" />
+            <DevDashLogo size={28} href="/dashboard" />
             <button
               onClick={toggleCollapsed}
               title="Collapse sidebar"

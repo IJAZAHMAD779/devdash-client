@@ -17,6 +17,7 @@ import { Project } from "@/types/project";
 import { ProjectStatusBadge } from "./project-status-badge";
 import { ProjectFavicon } from "./project-favicon";
 import { useToggleFavorite, useDeleteProject } from "@/hooks/use-projects";
+import { ProgressRing } from "@/components/ui/progress-ring";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -58,8 +59,14 @@ export function ProjectCard({ project, onEdit }: Props) {
     }
   };
 
+  const completionRate = project.tasks && project.tasks.length > 0
+    ? Math.round((project.tasks.filter((t) => t.status === "DONE").length / project.tasks.length) * 100)
+    : project.status === "COMPLETED"
+    ? 100
+    : 0;
+
   return (
-    <div className="group relative flex flex-col justify-between p-5 rounded-lg bg-surface-1 border border-hairline hover:border-hairline-strong hover:bg-surface-2/60 transition-all duration-200">
+    <div className="group relative flex flex-col justify-between p-5 rounded-xl bg-surface-1 border border-hairline hover:border-primary/40 hover:shadow-[0_0_24px_-4px_rgba(37,99,235,0.12)] hover:bg-surface-2/60 transition-all duration-200">
       {/* Top Header: Title, Status, Favorite */}
       <div>
         <div className="flex items-start justify-between gap-3 mb-2.5">
@@ -172,11 +179,11 @@ export function ProjectCard({ project, onEdit }: Props) {
         {/* Linked Item Counters */}
         <div className="flex items-center gap-3 font-mono text-[11px]">
           <span
-            title="Linked Tasks"
-            className="flex items-center gap-1 hover:text-ink transition-colors"
+            title={`Task Progress: ${completionRate}%`}
+            className="flex items-center gap-1.5 hover:text-ink transition-colors"
           >
-            <CheckSquare className="w-3 h-3 text-ink-tertiary" />
-            {project._count?.tasks ?? 0}
+            <ProgressRing progress={completionRate} size={15} strokeWidth={2.5} />
+            <span>{project._count?.tasks ?? 0}</span>
           </span>
           <span
             title="Saved Snippets"

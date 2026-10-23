@@ -12,9 +12,12 @@ import {
   Eye,
   Layers,
   Palette,
+  Play,
+  Sparkles,
 } from "lucide-react";
 import { UIComponentItem, ComponentFramework, ComponentStyling } from "@/types/component";
 import { CodeBlock } from "@/components/ui/code-block";
+import { ComponentLivePreview } from "./component-live-preview";
 import {
   useToggleComponentFavorite,
   useDeleteComponent,
@@ -80,7 +83,7 @@ const STYLING_CONFIG: Record<
 export function ComponentCard({ component, onEdit }: Props) {
   const toggleFavorite = useToggleComponentFavorite();
   const deleteComponent = useDeleteComponent();
-  const [activeTab, setActiveTab] = useState<"code" | "preview">("code");
+  const [activeTab, setActiveTab] = useState<"code" | "usage" | "sandbox">("code");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -123,7 +126,7 @@ export function ComponentCard({ component, onEdit }: Props) {
   };
 
   return (
-    <div className="flex flex-col rounded-xl bg-surface-1 border border-hairline hover:border-hairline-strong transition-all duration-200 overflow-hidden shadow-sm">
+    <div className="flex flex-col rounded-xl bg-surface-1 border border-hairline hover:border-primary/40 hover:shadow-[0_0_24px_-4px_rgba(37,99,235,0.12)] transition-all duration-200 overflow-hidden shadow-sm">
       {/* Header */}
       <div className="p-4 border-b border-hairline flex items-start justify-between gap-3 bg-surface-1/60">
         <div className="flex-1 min-w-0">
@@ -227,14 +230,11 @@ export function ComponentCard({ component, onEdit }: Props) {
         </div>
       </div>
 
-      {/* Code / Preview Tab Toggle (if previewCode exists) */}
-      {component.previewCode && (
-        <div className="px-4 py-1.5 bg-surface-1/80 border-b border-hairline flex items-center gap-1">
+      {/* Tabs: Code | Usage (if previewCode exists) | Live Sandbox */}
+      <div className="px-3.5 py-1.5 bg-surface-1/80 border-b border-hairline flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => {
-              sound.playClick(850);
-              setActiveTab("code");
-            }}
+            onClick={() => setActiveTab("code")}
             className={cn(
               "px-2.5 py-1 rounded text-[11px] font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer",
               activeTab === "code"
@@ -243,37 +243,57 @@ export function ComponentCard({ component, onEdit }: Props) {
             )}
           >
             <Code2 className="w-3 h-3" />
-            <span>Component Code</span>
+            <span>Code</span>
           </button>
-          <button
-            onClick={() => {
-              sound.playClick(850);
-              setActiveTab("preview");
-            }}
-            className={cn(
-              "px-2.5 py-1 rounded text-[11px] font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer",
-              activeTab === "preview"
-                ? "bg-surface-3 text-ink font-semibold"
-                : "text-ink-tertiary hover:text-ink"
-            )}
-          >
-            <Eye className="w-3 h-3" />
-            <span>Usage / Preview</span>
-          </button>
-        </div>
-      )}
 
-      {/* Code Display with Shiki & Copy */}
+          {component.previewCode && (
+            <button
+              onClick={() => setActiveTab("usage")}
+              className={cn(
+                "px-2.5 py-1 rounded text-[11px] font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer",
+                activeTab === "usage"
+                  ? "bg-surface-3 text-ink font-semibold"
+                  : "text-ink-tertiary hover:text-ink"
+              )}
+            >
+              <Eye className="w-3 h-3" />
+              <span>Usage</span>
+            </button>
+          )}
+        </div>
+
+        <button
+          onClick={() => setActiveTab("sandbox")}
+          className={cn(
+            "px-2.5 py-1 rounded text-[11px] font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer",
+            activeTab === "sandbox"
+              ? "bg-primary/20 text-primary border border-primary/30 font-semibold"
+              : "text-ink-tertiary hover:text-primary hover:bg-surface-2"
+          )}
+        >
+          <Sparkles className="w-3 h-3" />
+          <span>Live Sandbox</span>
+        </button>
+      </div>
+
+      {/* Main Content: CodeBlock vs Live Sandbox */}
       <div className="p-3 bg-surface-1/30 flex-1">
-        <CodeBlock
-          code={
-            activeTab === "code"
-              ? component.code
-              : component.previewCode || component.code
-          }
-          language={getLanguage()}
-          className="max-h-80"
-        />
+        {activeTab === "sandbox" ? (
+          <ComponentLivePreview
+            code={component.code}
+            name={component.name}
+          />
+        ) : (
+          <CodeBlock
+            code={
+              activeTab === "code"
+                ? component.code
+                : component.previewCode || component.code
+            }
+            language={getLanguage()}
+            className="max-h-80"
+          />
+        )}
       </div>
 
       {/* Footer Tags */}

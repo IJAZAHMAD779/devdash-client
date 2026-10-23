@@ -76,7 +76,7 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
   const categoryConfig = getCategoryBadge(bm.category);
 
   return (
-    <div className="rounded-xl bg-surface-1 border border-hairline hover:border-hairline-strong transition-all duration-200 overflow-hidden shadow-sm flex flex-col group relative">
+    <div className="rounded-xl bg-surface-1 border border-hairline hover:border-primary/40 hover:shadow-[0_0_24px_-4px_rgba(37,99,235,0.12)] transition-all duration-200 overflow-hidden flex flex-col group relative">
       {/* Card Header */}
       <div className="p-3.5 sm:p-4 border-b border-hairline/80 flex items-start justify-between gap-2.5 bg-surface-1/60">
         <div className="flex-1 min-w-0">

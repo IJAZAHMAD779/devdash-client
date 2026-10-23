@@ -7,6 +7,7 @@ import {
   Menu,
   X,
   Search,
+  LayoutDashboard,
   FolderKanban,
   CheckSquare,
   Code2,
@@ -26,6 +27,7 @@ interface NavItem {
 }
 
 const navigationItems: NavItem[] = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
   { name: "Snippets", href: "/snippets", icon: Code2 },
@@ -84,7 +86,7 @@ export function MobileNav() {
             <Menu className="w-5 h-5" />
           </button>
 
-          <Link href="/projects" className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2">
             <DevDashLogo size={24} href="" />
             <span className="text-xs font-semibold tracking-tight text-ink">
               DevDash

@@ -135,7 +135,7 @@ export function TaskCard({ task, onEdit }: Props) {
       draggable
       onDragStart={handleDragStart}
       className={cn(
-        "group relative p-3.5 rounded-lg bg-surface-1 border border-hairline hover:border-hairline-strong hover:bg-surface-2/70 transition-all duration-150 cursor-grab active:cursor-grabbing shadow-sm",
+        "group relative p-3.5 rounded-lg bg-surface-1 border border-hairline hover:border-primary/40 hover:shadow-[0_0_20px_-4px_rgba(37,99,235,0.12)] hover:bg-surface-2/70 transition-all duration-150 cursor-grab active:cursor-grabbing shadow-sm",
         isDone && "opacity-75"
       )}
     >

@@ -30,6 +30,7 @@ import { ProgressRing } from "@/components/ui/progress-ring";
 import { ProjectFavicon } from "@/components/projects/project-favicon";
 import { ProjectStatusBadge } from "@/components/projects/project-status-badge";
 import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
+import { RemindersModal } from "@/components/reminders/reminders-modal";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
@@ -49,6 +50,7 @@ export default function DashboardPage() {
   const [copiedScratchpad, setCopiedScratchpad] = useState(false);
   const [quickTaskTitle, setQuickTaskTitle] = useState("");
   const [isSubmittingQuickTask, setIsSubmittingQuickTask] = useState(false);
+  const [isRemindersModalOpen, setIsRemindersModalOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -258,9 +260,10 @@ export default function DashboardPage() {
           </Link>
 
           {/* Metric 4: Scheduled Reminders */}
-          <Link
-            href="/resources"
-            className="group p-4 sm:p-5 rounded-xl bg-surface-1 border border-hairline hover:border-primary/40 hover:shadow-[0_0_24px_-4px_rgba(37,99,235,0.12)] transition-all duration-200 flex flex-col justify-between"
+          <button
+            type="button"
+            onClick={() => setIsRemindersModalOpen(true)}
+            className="group p-4 sm:p-5 rounded-xl bg-surface-1 border border-hairline hover:border-primary/40 hover:shadow-[0_0_24px_-4px_rgba(37,99,235,0.12)] transition-all duration-200 flex flex-col justify-between text-left cursor-pointer"
           >
             <div className="flex items-center justify-between text-ink-tertiary mb-3">
               <span className="text-xs font-mono uppercase tracking-wider">Scheduled Reminders</span>
@@ -272,7 +275,7 @@ export default function DashboardPage() {
               </span>
               <span className="text-xs text-ink-muted font-mono">in queue</span>
             </div>
-          </Link>
+          </button>
         </div>
 
         {/* Row 2: Two-Column Command Layout */}
@@ -529,6 +532,11 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      <RemindersModal
+        isOpen={isRemindersModalOpen}
+        onClose={() => setIsRemindersModalOpen(false)}
+      />
     </div>
   );
 }

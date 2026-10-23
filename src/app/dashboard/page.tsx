@@ -31,6 +31,7 @@ import { ProjectFavicon } from "@/components/projects/project-favicon";
 import { ProjectStatusBadge } from "@/components/projects/project-status-badge";
 import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
 import { RemindersModal } from "@/components/reminders/reminders-modal";
+import { DevPetCompanion } from "@/components/pet/dev-pet";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
@@ -171,9 +172,12 @@ export default function DashboardPage() {
                 {todayFormatted}
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-[-0.6px] text-ink">
-              {greeting}, {user?.firstName || "Developer"}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-[-0.6px] text-ink">
+                {greeting}, {user?.firstName || "Developer"}
+              </h1>
+              <DevPetCompanion />
+            </div>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">

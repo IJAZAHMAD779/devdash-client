@@ -101,7 +101,7 @@ export function ProjectFavicon({
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-md bg-surface-2 border border-hairline text-ink-subtle shrink-0",
+          "flex items-center justify-center text-ink-subtle shrink-0",
           className
         )}
         style={{ width: size, height: size }}
@@ -110,15 +110,15 @@ export function ProjectFavicon({
         {repositoryUrl && !liveUrl ? (
           <Terminal
             style={{
-              width: Math.max(10, size * 0.55),
-              height: Math.max(10, size * 0.55),
+              width: Math.max(12, size * 0.75),
+              height: Math.max(12, size * 0.75),
             }}
           />
         ) : (
           <Globe
             style={{
-              width: Math.max(10, size * 0.55),
-              height: Math.max(10, size * 0.55),
+              width: Math.max(12, size * 0.75),
+              height: Math.max(12, size * 0.75),
             }}
           />
         )}
@@ -131,7 +131,7 @@ export function ProjectFavicon({
   return (
     <div
       className={cn(
-        "relative rounded-md overflow-hidden bg-surface-2 border border-hairline flex items-center justify-center shrink-0",
+        "relative flex items-center justify-center shrink-0",
         className
       )}
       style={{ width: size, height: size }}
@@ -145,7 +145,7 @@ export function ProjectFavicon({
         width={size}
         height={size}
         onError={handleImageError}
-        className="object-contain w-full h-full p-0.5 select-none"
+        className="object-contain w-full h-full select-none"
         loading="lazy"
         referrerPolicy="no-referrer"
       />

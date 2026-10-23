@@ -55,6 +55,26 @@ function ProjectsPageInner() {
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("devdash_projects_sidebar_collapsed");
+      if (saved === "true") {
+        setIsExplorerCollapsed(true);
+      }
+    }
+  }, []);
+
+  const handleToggleExplorerCollapse = () => {
+    setIsExplorerCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("devdash_projects_sidebar_collapsed", String(next));
+      }
+      return next;
+    });
+  };
 
   // Tabs Sliding Pill state & refs (from 16-tabs-sliding.md)
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -345,6 +365,7 @@ function ProjectsPageInner() {
                 <div
                   className={cn(
                     "h-full",
+                    isExplorerCollapsed && "hidden md:hidden",
                     mobilePane === "details"
                       ? "hidden md:flex"
                       : "flex w-full md:w-auto"
@@ -355,6 +376,7 @@ function ProjectsPageInner() {
                     selectedProjectId={selectedProjectId}
                     onSelectProject={handleSelectProject}
                     onNewProject={handleOpenNewModal}
+                    onToggleCollapse={handleToggleExplorerCollapse}
                     className="w-full md:w-72 lg:w-80"
                   />
                 </div>
@@ -372,6 +394,8 @@ function ProjectsPageInner() {
                     onDelete={handleDeleteProject}
                     onToggleFavorite={handleToggleFavorite}
                     onBackToExplorer={() => setMobilePane("explorer")}
+                    isExplorerCollapsed={isExplorerCollapsed}
+                    onToggleExplorer={handleToggleExplorerCollapse}
                   />
                 </div>
               </div>

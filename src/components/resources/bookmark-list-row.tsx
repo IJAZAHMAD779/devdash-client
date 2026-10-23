@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   Star,
-  ExternalLink,
+  ArrowUpRight,
   Copy,
   Check,
   Edit2,
@@ -11,9 +11,11 @@ import {
   FolderKanban,
   Tag,
   Globe,
+  ChevronDown,
 } from "lucide-react";
 import { Bookmark, PRESET_BOOKMARK_CATEGORIES } from "@/types/bookmark";
 import { useToggleBookmarkFavorite, useDeleteBookmark } from "@/hooks/use-bookmarks";
+import { BookmarkFavicon } from "./bookmark-favicon";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -30,12 +32,10 @@ const getCategoryBadge = (cat: string) => {
   if (preset) {
     return {
       label: preset.label,
-      badgeClass: preset.badgeClass,
     };
   }
   return {
     label: cat.charAt(0).toUpperCase() + cat.slice(1),
-    badgeClass: "bg-surface-3 text-ink-muted border-hairline",
   };
 };
 
@@ -45,6 +45,7 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
 
   const [copied, setCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const getHostname = (url: string) => {
     try {
@@ -90,10 +91,19 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
 
   const categoryConfig = getCategoryBadge(bm.category);
   const domain = getHostname(bm.url);
+  const hasDetails = Boolean(bm.notes || (bm.tags && bm.tags.length > 0));
 
   return (
     <>
-      <div className="group flex items-center justify-between px-3.5 sm:px-4 py-2.5 bg-surface-1 border-b border-hairline hover:bg-surface-2 transition-colors duration-150 text-xs first:rounded-t-lg last:rounded-b-lg last:border-b-0 select-none">
+      <div
+        onClick={() => {
+          if (hasDetails) setIsExpanded(!isExpanded);
+        }}
+        className={cn(
+          "group flex items-center justify-between px-3.5 sm:px-4 py-2.5 bg-surface-1 border-b border-hairline hover:bg-surface-2/70 transition-colors duration-150 text-xs first:rounded-t-lg last:rounded-b-lg last:border-b-0",
+          hasDetails && "cursor-pointer"
+        )}
+      >
         {/* Left: Star, Favicon, Title, Domain */}
         <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
           {/* Star Button */}
@@ -115,14 +125,7 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
           </button>
 
           {/* Favicon */}
-          <img
-            src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-            alt=""
-            className="w-4 h-4 rounded-xs shrink-0 object-contain bg-surface-2 p-0.5"
-            onError={(e) => {
-              (e.currentTarget as HTMLElement).style.display = "none";
-            }}
-          />
+          <BookmarkFavicon domain={domain} url={bm.url} size={16} />
 
           {/* Title & Notes snippet */}
           <div className="flex flex-col min-w-0 flex-1">
@@ -131,8 +134,11 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
                 href={bm.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => sound.playClick(950)}
-                className="font-medium tracking-[-0.1px] text-ink hover:text-primary transition-colors truncate max-w-sm sm:max-w-md"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  sound.playClick(950);
+                }}
+                className="font-medium tracking-[-0.1px] text-ink hover:text-primary transition-colors truncate max-w-sm sm:max-w-md cursor-pointer"
               >
                 {bm.title}
               </a>
@@ -141,7 +147,7 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
                 {domain}
               </span>
             </div>
-            {bm.notes && (
+            {!isExpanded && bm.notes && (
               <span className="text-[11px] text-ink-tertiary truncate hidden sm:block">
                 {bm.notes}
               </span>
@@ -149,14 +155,9 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
           </div>
         </div>
 
-        {/* Middle: Category / Folder Badge & Project */}
-        <div className="hidden sm:flex items-center gap-2 shrink-0 mr-4">
-          <span
-            className={cn(
-              "text-[10px] font-mono px-2 py-0.5 rounded-full border font-medium truncate max-w-[120px]",
-              categoryConfig.badgeClass
-            )}
-          >
+        {/* Middle: Category & Project */}
+        <div className="hidden sm:flex items-center gap-2.5 shrink-0 mr-4">
+          <span className="text-xs font-bold text-ink tracking-tight truncate max-w-[120px]">
             {categoryConfig.label}
           </span>
 
@@ -176,10 +177,21 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
               )}
             </span>
           )}
+
+          {hasDetails && (
+            <span className="text-ink-tertiary group-hover:text-ink-muted transition-colors">
+              <ChevronDown
+                className={cn(
+                  "w-3.5 h-3.5 transition-transform duration-150",
+                  isExpanded && "rotate-180"
+                )}
+              />
+            </span>
+          )}
         </div>
 
         {/* Right: Quick Actions */}
-        <div className="flex items-center gap-1.5 shrink-0 text-ink-subtle">
+        <div className="flex items-center gap-1 shrink-0 text-ink-subtle" onClick={(e) => e.stopPropagation()}>
           {/* Copy Link Button */}
           <button
             type="button"
@@ -198,7 +210,8 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
           {/* Edit */}
           <button
             type="button"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               sound.playClick(750);
               onEdit(bm);
             }}
@@ -220,21 +233,43 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
             <Trash2 className="w-3.5 h-3.5 text-ink-tertiary hover:text-rose-400" />
           </button>
 
-          {/* External Visit Button */}
+          {/* External Visit Button - diagonal arrow with no background */}
           <a
             href={bm.url}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => sound.playClick(950)}
+            onClick={(e) => {
+              e.stopPropagation();
+              sound.playClick(950);
+            }}
             title="Visit URL"
             aria-label="Visit bookmark URL"
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-2 hover:bg-surface-3 text-ink text-xs font-medium border border-hairline transition-colors ml-1 cursor-pointer"
+            className="p-1.5 rounded text-ink-muted hover:text-primary transition-colors cursor-pointer flex items-center justify-center ml-0.5"
           >
-            <span className="hidden sm:inline text-[11px]">Visit</span>
-            <ExternalLink className="w-3 h-3 text-ink-tertiary" />
+            <ArrowUpRight className="w-4 h-4" />
           </a>
         </div>
       </div>
+
+      {/* Expandable Notes & Tags Drawer */}
+      {isExpanded && hasDetails && (
+        <div className="px-4 py-2.5 bg-surface-2/40 border-b border-hairline/60 text-xs text-ink-muted leading-relaxed space-y-1.5 animate-in fade-in duration-150">
+          {bm.notes && <p className="whitespace-pre-wrap">{bm.notes}</p>}
+          {bm.tags && bm.tags.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              <Tag className="w-2.5 h-2.5 text-ink-subtle shrink-0" />
+              {bm.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-3 text-ink-muted border border-hairline"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={showDeleteConfirm}

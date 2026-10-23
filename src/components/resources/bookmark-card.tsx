@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   Star,
-  ExternalLink,
+  ArrowUpRight,
   Copy,
   Check,
   Edit2,
@@ -12,9 +12,11 @@ import {
   Tag,
   Globe,
   MoreVertical,
+  ChevronDown,
 } from "lucide-react";
 import { Bookmark, PRESET_BOOKMARK_CATEGORIES } from "@/types/bookmark";
 import { useToggleBookmarkFavorite } from "@/hooks/use-bookmarks";
+import { BookmarkFavicon } from "./bookmark-favicon";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -31,12 +33,10 @@ const getCategoryBadge = (cat: string) => {
   if (preset) {
     return {
       label: preset.label,
-      badgeClass: preset.badgeClass,
     };
   }
   return {
     label: cat.charAt(0).toUpperCase() + cat.slice(1),
-    badgeClass: "bg-surface-3 text-ink-muted border-hairline",
   };
 };
 
@@ -44,6 +44,7 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
   const toggleFavorite = useToggleBookmarkFavorite();
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const getHostname = (url: string) => {
     try {
@@ -74,28 +75,25 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
 
   const domain = getHostname(bm.url);
   const categoryConfig = getCategoryBadge(bm.category);
+  const hasDetails = Boolean(bm.notes || (bm.tags && bm.tags.length > 0));
 
   return (
-    <div className="rounded-xl bg-surface-1 border border-hairline hover:border-primary/40 hover:shadow-[0_0_24px_-4px_rgba(37,99,235,0.12)] transition-all duration-200 overflow-hidden flex flex-col group relative">
+    <div
+      onClick={() => {
+        if (hasDetails) setIsExpanded(!isExpanded);
+      }}
+      className={cn(
+        "rounded-xl bg-surface-1 border border-hairline hover:border-primary/40 hover:shadow-[0_0_24px_-4px_rgba(37,99,235,0.12)] transition-all duration-200 overflow-hidden flex flex-col group relative",
+        hasDetails && "cursor-pointer"
+      )}
+    >
       {/* Card Header */}
       <div className="p-3.5 sm:p-4 border-b border-hairline/80 flex items-start justify-between gap-2.5 bg-surface-1/60">
         <div className="flex-1 min-w-0">
-          {/* Domain & Category badges */}
-          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-            <img
-              src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-              alt=""
-              className="w-4 h-4 rounded-xs shrink-0 object-contain bg-surface-2 p-0.5"
-              onError={(e) => {
-                (e.currentTarget as HTMLElement).style.display = "none";
-              }}
-            />
-            <span
-              className={cn(
-                "text-[10px] font-mono px-2 py-0.5 rounded-full border font-medium",
-                categoryConfig.badgeClass
-              )}
-            >
+          {/* Domain & Category label */}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <BookmarkFavicon domain={domain} url={bm.url} size={16} />
+            <span className="text-xs font-bold text-ink tracking-tight">
               {categoryConfig.label}
             </span>
             <span className="text-[11px] font-mono text-ink-tertiary flex items-center gap-1 truncate">
@@ -109,7 +107,8 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
             href={bm.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-semibold tracking-[-0.2px] text-ink hover:text-primary transition-colors line-clamp-1 block cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-sm font-semibold tracking-[-0.2px] text-ink hover:text-primary transition-colors line-clamp-2 min-h-[2.5rem] flex items-center cursor-pointer"
             title={bm.title}
           >
             {bm.title}
@@ -117,7 +116,7 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
         </div>
 
         {/* Top Right Actions: Star + Menu */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             onClick={handleToggleStar}
@@ -186,42 +185,49 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
         </div>
       </div>
 
-      {/* Notes / Description */}
-      {bm.notes && (
-        <div className="p-3.5 sm:p-4 text-xs text-ink-muted line-clamp-2 leading-relaxed flex-1">
-          {bm.notes}
-        </div>
-      )}
-
-      {/* Tags */}
-      {bm.tags && bm.tags.length > 0 && (
-        <div className="px-3.5 sm:px-4 py-2 border-t border-hairline/40 bg-surface-1/20 flex items-center gap-1.5 flex-wrap">
-          <Tag className="w-2.5 h-2.5 text-ink-subtle shrink-0" />
-          {bm.tags.map((tag) => (
-            <span
-              key={tag}
-              className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-2 text-ink-muted border border-hairline"
-            >
-              #{tag}
-            </span>
-          ))}
+      {/* Notes & Tags Drawer (Expands/Collapses on Click) */}
+      {isExpanded && hasDetails && (
+        <div className="p-3.5 border-t border-hairline/60 bg-surface-2/40 text-xs text-ink-muted leading-relaxed space-y-2 animate-in fade-in duration-150">
+          {bm.notes && <p className="whitespace-pre-wrap">{bm.notes}</p>}
+          {bm.tags && bm.tags.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap pt-1">
+              <Tag className="w-2.5 h-2.5 text-ink-subtle shrink-0" />
+              {bm.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-3 text-ink-muted border border-hairline"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* Footer with External Link, Copy, and Project Pill */}
-      <div className="px-3.5 sm:px-4 py-2.5 border-t border-hairline/60 bg-surface-1/40 flex items-center justify-between text-xs mt-auto">
+      <div className="px-3.5 sm:p-4 py-2.5 border-t border-hairline/60 bg-surface-1/40 flex items-center justify-between text-xs mt-auto">
         <div className="flex items-center gap-2 truncate min-w-0 mr-2">
-          {bm.project ? (
+          {bm.project && (
             <span className="text-[11px] text-ink-tertiary flex items-center gap-1 truncate font-mono">
               <FolderKanban className="w-3 h-3 shrink-0" />
               <span className="truncate">{bm.project.title}</span>
             </span>
-          ) : (
-            <span className="text-[11px] text-ink-subtle font-mono">Workspace</span>
+          )}
+          {hasDetails && (
+            <span className="text-[11px] text-ink-tertiary group-hover:text-ink flex items-center gap-1 font-mono transition-colors">
+              <span>{isExpanded ? "Hide notes" : "Notes"}</span>
+              <ChevronDown
+                className={cn(
+                  "w-3 h-3 transition-transform duration-150",
+                  isExpanded && "rotate-180"
+                )}
+              />
+            </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           {/* Copy URL with Icon Swap */}
           <button
             type="button"
@@ -241,16 +247,16 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
             )}
           </button>
 
-          {/* Visit link */}
+          {/* Visit link - diagonal arrow with no background */}
           <a
             href={bm.url}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => sound.playClick(950)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-2 hover:bg-surface-3 text-ink text-xs font-medium border border-hairline transition-colors shrink-0 group/link"
+            className="p-1.5 rounded-md text-ink-muted hover:text-primary transition-colors cursor-pointer flex items-center justify-center"
+            title="Visit URL"
           >
-            <span>Visit</span>
-            <ExternalLink className="w-3 h-3 text-ink-tertiary group-hover/link:text-primary transition-colors" />
+            <ArrowUpRight className="w-4 h-4" />
           </a>
         </div>
       </div>

@@ -19,6 +19,7 @@ import {
   AlertCircle,
   Plus,
   ChevronLeft,
+  PanelLeftOpen,
 } from "lucide-react";
 import { Project } from "@/types/project";
 import { useProject } from "@/hooks/use-projects";
@@ -38,6 +39,8 @@ interface ProjectWorkbenchProps {
   onDelete: (id: string) => void;
   onToggleFavorite: (id: string, favorite: boolean) => void;
   onBackToExplorer?: () => void;
+  isExplorerCollapsed?: boolean;
+  onToggleExplorer?: () => void;
   className?: string;
 }
 
@@ -47,6 +50,8 @@ export function ProjectWorkbench({
   onDelete,
   onToggleFavorite,
   onBackToExplorer,
+  isExplorerCollapsed,
+  onToggleExplorer,
   className,
 }: ProjectWorkbenchProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -105,20 +110,37 @@ export function ProjectWorkbench({
         className
       )}
     >
-      {/* Mobile Back Button */}
-      {onBackToExplorer && (
-        <button
-          type="button"
-          onClick={() => {
-            sound.playClick(600);
-            onBackToExplorer();
-          }}
-          className="md:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium cursor-pointer self-start transition-colors"
-        >
-          <ChevronLeft className="w-3.5 h-3.5" />
-          <span>Back to Projects</span>
-        </button>
-      )}
+      {/* Navigation and Sidebar Expand Bar */}
+      <div className="flex items-center gap-2">
+        {onBackToExplorer && (
+          <button
+            type="button"
+            onClick={() => {
+              sound.playClick(600);
+              onBackToExplorer();
+            }}
+            className="md:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium cursor-pointer self-start transition-colors"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+            <span>Back to Projects</span>
+          </button>
+        )}
+
+        {isExplorerCollapsed && onToggleExplorer && (
+          <button
+            type="button"
+            onClick={() => {
+              sound.playClick(600);
+              onToggleExplorer();
+            }}
+            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink text-xs font-medium cursor-pointer transition-colors"
+            title="Expand Explorer Sidebar"
+          >
+            <PanelLeftOpen className="w-3.5 h-3.5 text-primary" />
+            <span>Show Explorer</span>
+          </button>
+        )}
+      </div>
 
       {/* 1. Header Command Section */}
       <div className="p-4 sm:p-6 rounded-xl bg-surface-1 border border-hairline relative">
@@ -186,10 +208,10 @@ export function ProjectWorkbench({
                 href={project.liveUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer px-2 py-1.5"
               >
                 <span>Live Site</span>
-                <ExternalLink className="w-3.5 h-3.5 text-ink-subtle" />
+                <ExternalLink className="w-3.5 h-3.5 text-ink-tertiary" />
               </a>
             )}
 
@@ -198,9 +220,9 @@ export function ProjectWorkbench({
                 href={project.repositoryUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer px-2 py-1.5"
               >
-                <Github className="w-3.5 h-3.5" />
+                <Github className="w-3.5 h-3.5 text-ink-tertiary" />
                 <span>Repo</span>
               </a>
             )}

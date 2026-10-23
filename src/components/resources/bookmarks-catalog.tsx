@@ -54,6 +54,12 @@ export function BookmarksCatalog() {
   const [deletingBookmark, setDeletingBookmark] = useState<Bookmark | null>(null);
 
   const debouncedSearch = useDebounce(searchQuery, 250);
+  const [visibleCount, setVisibleCount] = useState(30);
+
+  // Reset pagination when category, project, or search query changes
+  useEffect(() => {
+    setVisibleCount(30);
+  }, [selectedCategory, selectedProjectId, debouncedSearch]);
 
   // Restore preferred view mode from localStorage
   useEffect(() => {
@@ -146,6 +152,11 @@ export function BookmarksCatalog() {
       return true;
     });
   }, [allBookmarks, selectedCategory, debouncedSearch]);
+
+  // Progressive chunking for fast DOM performance on large bookmark sets
+  const visibleBookmarks = useMemo(() => {
+    return filteredBookmarks.slice(0, visibleCount);
+  }, [filteredBookmarks, visibleCount]);
 
   const handleCreateFolder = (e: React.FormEvent) => {
     e.preventDefault();
@@ -626,30 +637,54 @@ export function BookmarksCatalog() {
               </button>
             </div>
           ) : filteredBookmarks.length > 0 ? (
-            viewMode === "grid" ? (
-              /* Grid view */
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-                {filteredBookmarks.map((bm) => (
-                  <BookmarkCard
-                    key={bm.id}
-                    bookmark={bm}
-                    onEdit={(b) => setEditingBookmark(b)}
-                    onDelete={(b) => setDeletingBookmark(b)}
-                  />
-                ))}
-              </div>
-            ) : (
-              /* Compact List view */
-              <div className="rounded-xl border border-hairline bg-surface-1 divide-y divide-hairline shadow-sm overflow-hidden">
-                {filteredBookmarks.map((bm) => (
-                  <BookmarkListRow
-                    key={bm.id}
-                    bookmark={bm}
-                    onEdit={(b) => setEditingBookmark(b)}
-                  />
-                ))}
-              </div>
-            )
+            <div className="space-y-6">
+              {viewMode === "grid" ? (
+                /* Grid view */
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+                  {visibleBookmarks.map((bm) => (
+                    <BookmarkCard
+                      key={bm.id}
+                      bookmark={bm}
+                      onEdit={(b) => setEditingBookmark(b)}
+                      onDelete={(b) => setDeletingBookmark(b)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                /* Compact List view */
+                <div className="rounded-xl border border-hairline bg-surface-1 divide-y divide-hairline shadow-sm overflow-hidden">
+                  {visibleBookmarks.map((bm) => (
+                    <BookmarkListRow
+                      key={bm.id}
+                      bookmark={bm}
+                      onEdit={(b) => setEditingBookmark(b)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Progressive Load More Trigger */}
+              {visibleCount < filteredBookmarks.length && (
+                <div className="pt-4 pb-2 flex flex-col items-center justify-center gap-2">
+                  <p className="text-xs font-mono text-ink-tertiary">
+                    Showing {visibleBookmarks.length} of {filteredBookmarks.length} bookmarks
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sound.playClick(750);
+                      setVisibleCount((prev) => prev + 30);
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
+                  >
+                    <span>Load More Bookmarks</span>
+                    <span className="font-mono text-[10px] text-ink-tertiary">
+                      (+{Math.min(30, filteredBookmarks.length - visibleBookmarks.length)})
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             /* Empty state */
             <div className="py-20 text-center max-w-md mx-auto">

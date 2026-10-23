@@ -288,7 +288,7 @@ export function ProjectDataGrid({
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Open Live Preview"
-                          className="p-1 rounded hover:bg-surface-3 text-ink-subtle hover:text-primary transition-colors cursor-pointer"
+                          className="p-1 text-ink-subtle hover:text-primary transition-colors cursor-pointer"
                         >
                           <Globe className="w-3.5 h-3.5" />
                         </a>
@@ -299,7 +299,7 @@ export function ProjectDataGrid({
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Open Repository"
-                          className="p-1 rounded hover:bg-surface-3 text-ink-subtle hover:text-ink transition-colors cursor-pointer"
+                          className="p-1 text-ink-subtle hover:text-ink transition-colors cursor-pointer"
                         >
                           <Github className="w-3.5 h-3.5" />
                         </a>

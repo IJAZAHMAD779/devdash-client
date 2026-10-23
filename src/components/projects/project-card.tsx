@@ -209,14 +209,14 @@ export function ProjectCard({ project, onEdit }: Props) {
         </div>
 
         {/* Repository & Demo Links */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {project.repositoryUrl && (
             <a
               href={project.repositoryUrl}
               target="_blank"
               rel="noopener noreferrer"
               title="Open GitHub Repository"
-              className="p-1 rounded hover:bg-surface-3 text-ink-subtle hover:text-ink transition-colors"
+              className="p-1 text-ink-subtle hover:text-ink transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               <Github className="w-3.5 h-3.5" />
@@ -228,7 +228,7 @@ export function ProjectCard({ project, onEdit }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               title="Open Live Preview"
-              className="p-1 rounded hover:bg-surface-3 text-ink-subtle hover:text-primary transition-colors"
+              className="p-1 text-ink-subtle hover:text-primary transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               <ExternalLink className="w-3.5 h-3.5" />

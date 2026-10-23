@@ -164,7 +164,7 @@ export function ProjectListRow({ project, onEdit }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               title="Open GitHub Repository"
-              className="p-1 rounded hover:bg-surface-3 text-ink-subtle hover:text-ink transition-colors"
+              className="p-1 text-ink-subtle hover:text-ink transition-colors"
             >
               <Github className="w-3.5 h-3.5" />
             </a>
@@ -175,7 +175,7 @@ export function ProjectListRow({ project, onEdit }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               title="Open Live Preview"
-              className="p-1 rounded hover:bg-surface-3 text-ink-subtle hover:text-primary transition-colors"
+              className="p-1 text-ink-subtle hover:text-primary transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
             </a>

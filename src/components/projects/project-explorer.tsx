@@ -9,6 +9,7 @@ import {
   Search,
   SlidersHorizontal,
   Star,
+  PanelLeftClose,
 } from "lucide-react";
 import { Project, ProjectStatus } from "@/types/project";
 import { ProjectFavicon } from "./project-favicon";
@@ -21,6 +22,7 @@ interface ProjectExplorerProps {
   selectedProjectId: string | null;
   onSelectProject: (id: string) => void;
   onNewProject: () => void;
+  onToggleCollapse?: () => void;
   className?: string;
 }
 
@@ -37,6 +39,7 @@ export function ProjectExplorer({
   selectedProjectId,
   onSelectProject,
   onNewProject,
+  onToggleCollapse,
   className,
 }: ProjectExplorerProps) {
   const [filterText, setFilterText] = useState("");
@@ -172,6 +175,21 @@ export function ProjectExplorer({
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
+
+          {/* Collapse Sidebar Button (Desktop) */}
+          {onToggleCollapse && (
+            <button
+              onClick={() => {
+                sound.playClick(600);
+                onToggleCollapse();
+              }}
+              title="Collapse Explorer"
+              aria-label="Collapse Explorer"
+              className="hidden md:flex p-1.5 rounded hover:bg-surface-2 text-ink-tertiary hover:text-ink transition-colors cursor-pointer"
+            >
+              <PanelLeftClose className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

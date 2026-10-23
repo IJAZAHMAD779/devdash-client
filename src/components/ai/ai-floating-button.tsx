@@ -31,13 +31,13 @@ export function AiFloatingButton() {
   return (
     <>
       {/* Floating Action Button (FAB) */}
-      <div className="fixed bottom-6 right-6 z-40 select-none">
+      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 select-none">
         <button
           onClick={toggleOpen}
           aria-label={isOpen ? "Close DevDash AI" : "Open DevDash AI (⌘J)"}
           title={isOpen ? "Close DevDash AI" : "DevDash AI (⌘J)"}
           className={cn(
-            "relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            "relative w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             isOpen
               ? "bg-surface-3 text-ink border border-hairline-strong hover:bg-surface-4"
               : "bg-primary text-white hover:bg-primary-hover border border-primary-hover/30 hover:scale-105 active:scale-95"

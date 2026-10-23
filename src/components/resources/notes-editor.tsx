@@ -12,6 +12,7 @@ import {
   X,
   Loader2,
   Trash2,
+  ChevronLeft,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Note } from "@/types/note";
@@ -41,9 +42,10 @@ interface Props {
   isNew: boolean;
   onSaved: (note: Note) => void;
   onDeleted: () => void;
+  onBackToList?: () => void;
 }
 
-export function NotesEditor({ activeNote, isNew, onSaved, onDeleted }: Props) {
+export function NotesEditor({ activeNote, isNew, onSaved, onDeleted, onBackToList }: Props) {
   const createNote = useCreateNote();
   const updateNote = useUpdateNote();
   const deleteNote = useDeleteNote();
@@ -59,6 +61,12 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted }: Props) {
   const [favorite, setFavorite] = useState(false);
   const [viewMode, setViewMode] = useState<"edit" | "split" | "preview">("split");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setViewMode("edit");
+    }
+  }, []);
 
   useEffect(() => {
     if (activeNote) {
@@ -167,7 +175,21 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted }: Props) {
   return (
     <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
       {/* Top action toolbar */}
-      <div className="px-6 py-3 border-b border-hairline bg-surface-1/60 flex items-center justify-between gap-4">
+      <div className="px-3 sm:px-6 py-2.5 sm:py-3 border-b border-hairline bg-surface-1/60 flex items-center justify-between gap-2 sm:gap-4">
+        {onBackToList && (
+          <button
+            type="button"
+            onClick={() => {
+              sound.playClick(600);
+              onBackToList();
+            }}
+            className="md:hidden p-1.5 -ml-1 rounded-md hover:bg-surface-2 text-ink-subtle hover:text-ink transition-colors cursor-pointer shrink-0"
+            title="Back to notes list"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
+
         {/* Title Input */}
         <input
           type="text"
@@ -177,7 +199,7 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted }: Props) {
             setTitle(e.target.value);
             setHasUnsavedChanges(true);
           }}
-          className="text-base font-semibold tracking-[-0.3px] text-ink bg-transparent focus:outline-none flex-1 placeholder:text-ink-tertiary"
+          className="text-sm sm:text-base font-semibold tracking-[-0.3px] text-ink bg-transparent focus:outline-none flex-1 placeholder:text-ink-tertiary min-w-0"
         />
 
         <div className="flex items-center gap-2 shrink-0">

@@ -93,10 +93,10 @@ export default function ComponentsCatalogPage() {
   return (
     <div className="flex-1 min-h-screen bg-canvas text-ink flex flex-col">
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="px-4 sm:px-8 pt-4 sm:pt-8 pb-4 sm:pb-6 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-semibold tracking-[-0.6px] text-ink">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.6px] text-ink">
               UI Component Catalog
             </h1>
             <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-surface-2 border border-hairline text-ink-subtle">
@@ -124,7 +124,7 @@ export default function ComponentsCatalogPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="px-8 py-4 border-b border-hairline bg-surface-1/40 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+      <div className="px-4 sm:px-8 py-3 sm:py-4 border-b border-hairline bg-surface-1/40 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         {/* Left: Search input */}
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
@@ -200,7 +200,7 @@ export default function ComponentsCatalogPage() {
       </div>
 
       {/* Framework Tabs Bar */}
-      <div className="px-8 py-2.5 border-b border-hairline bg-surface-1/20 overflow-x-auto flex items-center gap-1.5 no-scrollbar">
+      <div className="px-4 sm:px-8 py-2.5 border-b border-hairline bg-surface-1/20 overflow-x-auto flex items-center gap-1.5 no-scrollbar">
         {FRAMEWORK_TABS.map((tab) => {
           const isActive = selectedFramework === tab.id;
           return (
@@ -224,7 +224,7 @@ export default function ComponentsCatalogPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-3.5 sm:p-6 lg:p-8">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {[1, 2, 3, 4, 5, 6].map((i) => (

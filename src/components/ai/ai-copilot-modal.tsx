@@ -128,14 +128,30 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="DevDash AI"
-      className="fixed bottom-20 right-6 z-50 w-[430px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-6.5rem)] bg-surface-1/95 border border-hairline-strong rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 select-none"
-    >
-      {/* 1. Header */}
-      <div className="h-14 px-4 border-b border-hairline flex items-center justify-between bg-surface-1 shrink-0">
+    <>
+      {/* Mobile backdrop */}
+      <div
+        className="sm:hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150"
+        onClick={() => {
+          sound.playClick(600);
+          onClose();
+        }}
+        aria-hidden="true"
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="DevDash AI"
+        className="fixed inset-x-0 bottom-0 z-50 h-[85vh] max-h-[85vh] sm:inset-auto sm:bottom-20 sm:right-6 sm:w-[430px] sm:max-w-[calc(100vw-2rem)] sm:h-[600px] sm:max-h-[calc(100vh-6.5rem)] bg-surface-1 sm:bg-surface-1/95 border-t sm:border border-hairline-strong rounded-t-2xl sm:rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 select-none"
+      >
+        {/* Mobile drag handle */}
+        <div className="sm:hidden w-full pt-2 pb-1 flex justify-center bg-surface-1">
+          <div className="w-10 h-1 rounded-full bg-surface-3" />
+        </div>
+
+        {/* 1. Header */}
+        <div className="h-14 px-4 border-b border-hairline flex items-center justify-between bg-surface-1 shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
             <Bot className="w-4 h-4" />
@@ -335,12 +351,12 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
 
       {/* 3. Suggested Prompt Chips (Shown when chat has only welcome message) */}
       {messages.length <= 1 && (
-        <div className="px-3 py-2 border-t border-hairline/60 bg-surface-1/40 flex flex-wrap gap-1.5 shrink-0">
+        <div className="px-3 py-2 border-t border-hairline/60 bg-surface-1/40 flex gap-1.5 overflow-x-auto sm:flex-wrap no-scrollbar shrink-0">
           {SUGGESTED_PROMPTS.map((promptText, i) => (
             <button
               key={i}
               onClick={() => handleSend(promptText)}
-              className="text-[11px] px-2.5 py-1 rounded-full bg-surface-2 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink transition-colors text-left cursor-pointer truncate max-w-full"
+              className="text-[11px] px-2.5 py-1 rounded-full bg-surface-2 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink transition-colors text-left cursor-pointer shrink-0 max-w-[280px] truncate sm:max-w-full"
             >
               {promptText}
             </button>
@@ -383,6 +399,7 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

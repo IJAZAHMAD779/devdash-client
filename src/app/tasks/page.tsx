@@ -39,6 +39,7 @@ export default function TasksPage() {
   const [selectedPriority, setSelectedPriority] = useState<Priority | "ALL">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [mobileActiveStatus, setMobileActiveStatus] = useState<TaskStatus>("TODO");
 
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [modalInitialStatus, setModalInitialStatus] = useState<TaskStatus>("TODO");
@@ -74,10 +75,10 @@ export default function TasksPage() {
   return (
     <div className="flex-1 min-h-screen bg-canvas text-ink flex flex-col">
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="px-4 sm:px-8 pt-4 sm:pt-8 pb-4 sm:pb-6 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-semibold tracking-[-0.6px] text-ink">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.6px] text-ink">
               Tasks Board
             </h1>
             <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-surface-2 border border-hairline text-ink-subtle">
@@ -118,7 +119,7 @@ export default function TasksPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="px-8 py-4 border-b border-hairline bg-surface-1/40 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <div className="px-4 sm:px-8 py-3 sm:py-4 border-b border-hairline bg-surface-1/40 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Left: Search input */}
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
@@ -209,7 +210,7 @@ export default function TasksPage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-6 lg:p-8 overflow-y-auto">
+      <div className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto">
         {/* Loading Skeletons */}
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
@@ -307,33 +308,80 @@ export default function TasksPage() {
               </div>
             )}
 
-            {/* Kanban Board View - 4-column balanced grid with zero horizontal scroll */}
+            {/* Kanban Board View */}
             {tasks && tasks.length > 0 && viewMode === "kanban" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full items-start pb-6">
-                {KANBAN_COLUMNS.map((column) => (
-                  <KanbanColumn
-                    key={column.id}
-                    status={column.id}
-                    title={column.title}
-                    dotColor={column.dotColor}
-                    tasks={tasks.filter((t) => t.status === column.id)}
-                    onNewTaskWithStatus={(st) => handleOpenNewModal(st)}
-                    onEditTask={(t) => setEditingTask(t)}
-                  />
-                ))}
-              </div>
+              <>
+                {/* Mobile Column Switcher (Hidden on md:) */}
+                <div className="md:hidden flex items-center gap-1.5 p-1 bg-surface-2/80 border border-hairline rounded-lg mb-3.5 overflow-x-auto no-scrollbar">
+                  {KANBAN_COLUMNS.map((col) => {
+                    const count = tasks.filter((t) => t.status === col.id).length;
+                    const isActive = mobileActiveStatus === col.id;
+                    return (
+                      <button
+                        key={col.id}
+                        onClick={() => {
+                          sound.playClick(700);
+                          setMobileActiveStatus(col.id);
+                        }}
+                        className={cn(
+                          "flex-1 min-w-[76px] py-1.5 px-2 rounded-md text-[11px] font-medium flex items-center justify-center gap-1.5 transition-all whitespace-nowrap cursor-pointer",
+                          isActive
+                            ? "bg-surface-4 text-ink shadow-xs font-semibold"
+                            : "text-ink-subtle hover:text-ink hover:bg-surface-3/50"
+                        )}
+                      >
+                        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", col.dotColor)} />
+                        <span>{col.title}</span>
+                        <span className="text-[10px] font-mono opacity-60">({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Mobile: Single Active Column */}
+                <div className="md:hidden pb-6">
+                  {KANBAN_COLUMNS.filter((col) => col.id === mobileActiveStatus).map((column) => (
+                    <KanbanColumn
+                      key={column.id}
+                      status={column.id}
+                      title={column.title}
+                      dotColor={column.dotColor}
+                      tasks={tasks.filter((t) => t.status === column.id)}
+                      onNewTaskWithStatus={(st) => handleOpenNewModal(st)}
+                      onEditTask={(t) => setEditingTask(t)}
+                    />
+                  ))}
+                </div>
+
+                {/* Desktop: 4-Column Balanced Grid */}
+                <div className="hidden md:grid md:grid-cols-2 xl:grid-cols-4 gap-4 w-full items-start pb-6">
+                  {KANBAN_COLUMNS.map((column) => (
+                    <KanbanColumn
+                      key={column.id}
+                      status={column.id}
+                      title={column.title}
+                      dotColor={column.dotColor}
+                      tasks={tasks.filter((t) => t.status === column.id)}
+                      onNewTaskWithStatus={(st) => handleOpenNewModal(st)}
+                      onEditTask={(t) => setEditingTask(t)}
+                    />
+                  ))}
+                </div>
+              </>
             )}
 
-            {/* List View - remove overflow-hidden so dropdown menus are never clipped */}
+            {/* List View - wrapped in overflow-x-auto for small screens */}
             {tasks && tasks.length > 0 && viewMode === "list" && (
-              <div className="rounded-lg border border-hairline divide-y divide-hairline max-w-5xl bg-surface-1">
-                {tasks.map((task) => (
-                  <TaskListRow
-                    key={task.id}
-                    task={task}
-                    onEdit={(t) => setEditingTask(t)}
-                  />
-                ))}
+              <div className="w-full overflow-x-auto no-scrollbar">
+                <div className="rounded-lg border border-hairline divide-y divide-hairline min-w-[500px] sm:min-w-0 max-w-5xl bg-surface-1">
+                  {tasks.map((task) => (
+                    <TaskListRow
+                      key={task.id}
+                      task={task}
+                      onEdit={(t) => setEditingTask(t)}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </>

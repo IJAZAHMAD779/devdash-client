@@ -18,6 +18,7 @@ import {
   Calendar,
   AlertCircle,
   Plus,
+  ChevronLeft,
 } from "lucide-react";
 import { Project } from "@/types/project";
 import { useProject } from "@/hooks/use-projects";
@@ -36,6 +37,7 @@ interface ProjectWorkbenchProps {
   onEdit: (project: Project) => void;
   onDelete: (id: string) => void;
   onToggleFavorite: (id: string, favorite: boolean) => void;
+  onBackToExplorer?: () => void;
   className?: string;
 }
 
@@ -44,6 +46,7 @@ export function ProjectWorkbench({
   onEdit,
   onDelete,
   onToggleFavorite,
+  onBackToExplorer,
   className,
 }: ProjectWorkbenchProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -98,12 +101,27 @@ export function ProjectWorkbench({
   return (
     <div
       className={cn(
-        "flex-1 overflow-y-auto bg-canvas text-ink flex flex-col p-6 lg:p-8 space-y-6",
+        "flex-1 overflow-y-auto bg-canvas text-ink flex flex-col p-3.5 sm:p-6 lg:p-8 space-y-4 sm:space-y-6",
         className
       )}
     >
+      {/* Mobile Back Button */}
+      {onBackToExplorer && (
+        <button
+          type="button"
+          onClick={() => {
+            sound.playClick(600);
+            onBackToExplorer();
+          }}
+          className="md:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium cursor-pointer self-start transition-colors"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+          <span>Back to Projects</span>
+        </button>
+      )}
+
       {/* 1. Header Command Section */}
-      <div className="p-6 rounded-xl bg-surface-1 border border-hairline relative">
+      <div className="p-4 sm:p-6 rounded-xl bg-surface-1 border border-hairline relative">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           {/* Left Title & Status */}
           <div className="flex items-start gap-4 min-w-0">

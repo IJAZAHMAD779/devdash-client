@@ -63,7 +63,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex-shrink-0 bg-surface-1 border-r border-hairline flex flex-col h-screen sticky top-0 select-none transition-all duration-200 ease-in-out z-20",
+        "hidden md:flex flex-shrink-0 bg-surface-1 border-r border-hairline flex-col h-screen sticky top-0 select-none transition-all duration-200 ease-in-out z-20",
         isCollapsed ? "w-[68px]" : "w-64"
       )}
     >

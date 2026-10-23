@@ -29,6 +29,8 @@ export default function ResourcesPage() {
   const [notesSearchQuery, setNotesSearchQuery] = useState("");
   const [isDigestModalOpen, setIsDigestModalOpen] = useState(false);
 
+  const [mobileNoteView, setMobileNoteView] = useState<"list" | "editor">("list");
+
   const debouncedNotesSearch = useDebounce(notesSearchQuery, 300);
 
   const { data: notes } = useNotes({
@@ -55,30 +57,34 @@ export default function ResourcesPage() {
   const handleSelectNote = (note: Note) => {
     setIsCreatingNewNote(false);
     setSelectedNoteId(note.id);
+    setMobileNoteView("editor");
   };
 
   const handleNewNote = () => {
     setSelectedNoteId(null);
     setIsCreatingNewNote(true);
+    setMobileNoteView("editor");
   };
 
   const handleNoteSaved = (savedNote: Note) => {
     setIsCreatingNewNote(false);
     setSelectedNoteId(savedNote.id);
+    setMobileNoteView("editor");
   };
 
   const handleNoteDeleted = () => {
     setSelectedNoteId(null);
     setIsCreatingNewNote(false);
+    setMobileNoteView("list");
   };
 
   return (
     <div className="flex-1 h-screen max-h-screen bg-canvas text-ink flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-8 pt-6 pb-4 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-1/40 shrink-0">
+      <div className="px-4 sm:px-8 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-1/40 shrink-0">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-semibold tracking-[-0.6px] text-ink">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.6px] text-ink">
               Resources & Knowledge
             </h1>
           </div>
@@ -88,7 +94,7 @@ export default function ResourcesPage() {
         </div>
 
         {/* Right side: Digest trigger */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             onClick={() => {
               sound.playClick(900);
@@ -103,14 +109,14 @@ export default function ResourcesPage() {
       </div>
 
       {/* Sliding Pill Tabs Bar */}
-      <div className="px-8 py-3 border-b border-hairline bg-surface-1/20 flex items-center gap-2 shrink-0">
+      <div className="px-4 sm:px-8 py-2.5 sm:py-3 border-b border-hairline bg-surface-1/20 flex items-center gap-2 shrink-0 overflow-x-auto no-scrollbar">
         <button
           onClick={() => {
             sound.playClick(850);
             setActiveTab("notes");
           }}
           className={cn(
-            "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium tracking-tight transition-all duration-150 cursor-pointer",
+            "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium tracking-tight transition-all duration-150 cursor-pointer whitespace-nowrap",
             activeTab === "notes"
               ? "bg-surface-3 text-ink font-semibold shadow-xs border border-hairline"
               : "text-ink-muted hover:text-ink hover:bg-surface-2"
@@ -131,7 +137,7 @@ export default function ResourcesPage() {
             setActiveTab("bookmarks");
           }}
           className={cn(
-            "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium tracking-tight transition-all duration-150 cursor-pointer",
+            "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium tracking-tight transition-all duration-150 cursor-pointer whitespace-nowrap",
             activeTab === "bookmarks"
               ? "bg-surface-3 text-ink font-semibold shadow-xs border border-hairline"
               : "text-ink-muted hover:text-ink hover:bg-surface-2"
@@ -153,13 +159,17 @@ export default function ResourcesPage() {
               onNewNote={handleNewNote}
               searchQuery={notesSearchQuery}
               onSearchChange={setNotesSearchQuery}
+              className={mobileNoteView === "editor" ? "hidden md:flex" : "flex"}
             />
-            <NotesEditor
-              activeNote={activeNote}
-              isNew={isCreatingNewNote}
-              onSaved={handleNoteSaved}
-              onDeleted={handleNoteDeleted}
-            />
+            <div className={cn("flex-1 h-full min-w-0 overflow-hidden", mobileNoteView === "list" ? "hidden md:flex flex-col" : "flex flex-col")}>
+              <NotesEditor
+                activeNote={activeNote}
+                isNew={isCreatingNewNote}
+                onSaved={handleNoteSaved}
+                onDeleted={handleNoteDeleted}
+                onBackToList={() => setMobileNoteView("list")}
+              />
+            </div>
           </div>
         ) : (
           <div className="flex-1 min-h-0 flex flex-col h-full overflow-hidden">

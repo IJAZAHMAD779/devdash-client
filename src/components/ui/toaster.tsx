@@ -154,7 +154,7 @@ export function Toaster() {
       role="region"
       aria-label="Notifications"
       aria-atomic="true"
-      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[99999] flex flex-col gap-2.5 pointer-events-none max-w-full"
+      className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-[99999] flex flex-col gap-2.5 pointer-events-none max-w-[calc(100vw-2rem)] sm:max-w-md items-end"
     >
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />

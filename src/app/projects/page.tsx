@@ -49,6 +49,7 @@ function ProjectsPageInner() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     initialId
   );
+  const [mobilePane, setMobilePane] = useState<"explorer" | "details">("explorer");
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<ProjectStatus | "ALL">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,6 +104,7 @@ function ProjectsPageInner() {
   const handleSelectProject = (id: string) => {
     setSelectedProjectId(id);
     updateUrlState(id, viewMode);
+    setMobilePane("details");
   };
 
   const handleViewModeChange = (mode: ViewMode) => {
@@ -228,7 +230,7 @@ function ProjectsPageInner() {
 
       {/* Filter Toolbar for Table and Grid Views */}
       {viewMode !== "workbench" && (
-        <div className="px-6 lg:px-8 py-3.5 border-b border-hairline bg-surface-1/40 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-3.5 border-b border-hairline bg-surface-1/40 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           {/* Left: Search input */}
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
@@ -242,7 +244,7 @@ function ProjectsPageInner() {
           </div>
 
           {/* Right: Sliding Tabs Segmented Control */}
-          <div className="t-tabs overflow-x-auto" role="tablist">
+          <div className="t-tabs overflow-x-auto no-scrollbar" role="tablist">
             <span
               className="t-tabs-pill"
               aria-hidden="true"
@@ -341,26 +343,46 @@ function ProjectsPageInner() {
             {/* View 1: Workbench Dual-Pane (Explorer + Command Center) */}
             {projects && projects.length > 0 && viewMode === "workbench" && (
               <div className="flex-1 flex overflow-hidden h-[calc(100vh-3.5rem)] min-h-0">
-                <ProjectExplorer
-                  projects={projects}
-                  selectedProjectId={selectedProjectId}
-                  onSelectProject={handleSelectProject}
-                  onNewProject={handleOpenNewModal}
-                  isCollapsed={isExplorerCollapsed}
-                  onToggleCollapse={() => setIsExplorerCollapsed(!isExplorerCollapsed)}
-                />
-                <ProjectWorkbench
-                  project={activeProject}
-                  onEdit={(p) => setEditingProject(p)}
-                  onDelete={handleDeleteProject}
-                  onToggleFavorite={handleToggleFavorite}
-                />
+                <div
+                  className={cn(
+                    "h-full",
+                    mobilePane === "details"
+                      ? "hidden md:flex"
+                      : "flex w-full md:w-auto"
+                  )}
+                >
+                  <ProjectExplorer
+                    projects={projects}
+                    selectedProjectId={selectedProjectId}
+                    onSelectProject={handleSelectProject}
+                    onNewProject={handleOpenNewModal}
+                    isCollapsed={isExplorerCollapsed}
+                    onToggleCollapse={() => setIsExplorerCollapsed(!isExplorerCollapsed)}
+                    className="w-full md:w-72 lg:w-80"
+                  />
+                </div>
+                <div
+                  className={cn(
+                    "h-full flex-1 min-w-0",
+                    mobilePane === "explorer"
+                      ? "hidden md:flex"
+                      : "flex"
+                  )}
+                >
+                  <ProjectWorkbench
+                    project={activeProject}
+                    onEdit={(p) => setEditingProject(p)}
+                    onDelete={handleDeleteProject}
+                    onToggleFavorite={handleToggleFavorite}
+                    onBackToExplorer={() => setMobilePane("explorer")}
+                  />
+                </div>
               </div>
             )}
 
             {/* View 2: High-Density Data Grid (Spreadsheet) */}
             {projects && projects.length > 0 && viewMode === "table" && (
-              <div className="p-6 lg:p-8 flex-1 overflow-y-auto">
+              <div className="p-3.5 sm:p-6 lg:p-8 flex-1 overflow-y-auto">
                 <ProjectDataGrid
                   projects={projects}
                   onSelectProject={(id) => {
@@ -376,7 +398,7 @@ function ProjectsPageInner() {
 
             {/* View 3: Classic Card Grid */}
             {projects && projects.length > 0 && viewMode === "grid" && (
-              <div className="p-6 lg:p-8 flex-1 overflow-y-auto">
+              <div className="p-3.5 sm:p-6 lg:p-8 flex-1 overflow-y-auto">
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {projects.map((project) => (
                     <ProjectCard

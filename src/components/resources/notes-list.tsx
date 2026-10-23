@@ -24,6 +24,7 @@ interface Props {
   onNewNote: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  className?: string;
 }
 
 export function NotesList({
@@ -33,6 +34,7 @@ export function NotesList({
   onNewNote,
   searchQuery,
   onSearchChange,
+  className,
 }: Props) {
   const toggleFavorite = useToggleNoteFavorite();
   const deleteNote = useDeleteNote();
@@ -73,7 +75,7 @@ export function NotesList({
   });
 
   return (
-    <div className="w-80 shrink-0 border-r border-hairline flex flex-col bg-surface-1/40 h-full">
+    <div className={cn("w-full md:w-80 shrink-0 border-r border-hairline flex flex-col bg-surface-1/40 h-full", className)}>
       {/* Top search & new note button */}
       <div className="p-3 border-b border-hairline flex items-center gap-2">
         <div className="relative flex-1">

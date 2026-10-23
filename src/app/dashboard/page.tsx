@@ -168,10 +168,6 @@ export default function DashboardPage() {
                 <Calendar className="w-3.5 h-3.5 text-primary" />
                 {todayFormatted}
               </span>
-              <span className="inline-block w-1 h-1 rounded-full bg-hairline-strong" />
-              <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                Workspace Active
-              </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-[-0.6px] text-ink">
               {greeting}, {user?.firstName || "Developer"}

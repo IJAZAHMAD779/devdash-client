@@ -154,9 +154,7 @@ export function AiCopilotModal({ isOpen, onClose }: AiCopilotModalProps) {
         {/* 1. Header */}
         <div className="h-14 px-4 border-b border-hairline flex items-center justify-between bg-surface-1 shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-            <Bot className="w-4 h-4" />
-          </div>
+          <Bot className="w-6 h-6 text-primary shrink-0" />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-ink tracking-tight">

@@ -27,7 +27,9 @@ export function useExecuteAiCommand() {
 
   return useMutation({
     mutationFn: async (payload: { message: string; history?: any[] }) => {
-      const clientTime = new Date().toISOString();
+      const now = new Date();
+      const clientTime = now.toString();
+      const timezoneOffsetMinutes = now.getTimezoneOffset();
       let timezone = "UTC";
       try {
         timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -39,6 +41,7 @@ export function useExecuteAiCommand() {
         message: payload.message,
         clientTime,
         timezone,
+        timezoneOffsetMinutes,
         history: payload.history,
       };
 

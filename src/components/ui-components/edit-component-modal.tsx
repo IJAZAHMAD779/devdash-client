@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Save, Star, Loader2, Layers, Palette } from "lucide-react";
+import { X, Save, Star, Loader2, Layers, Palette, Folder } from "lucide-react";
 import { useUpdateComponent } from "@/hooks/use-components";
 import { useProjects } from "@/hooks/use-projects";
 import {
@@ -41,6 +41,7 @@ export function EditComponentModal({ component, isOpen, onClose }: Props) {
   const [isClosing, setIsClosing] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("general");
   const [framework, setFramework] = useState<ComponentFramework>("REACT");
   const [styling, setStyling] = useState<ComponentStyling>("TAILWIND");
   const [code, setCode] = useState("");
@@ -55,6 +56,7 @@ export function EditComponentModal({ component, isOpen, onClose }: Props) {
     if (component && isOpen) {
       setName(component.name);
       setDescription(component.description || "");
+      setCategory(component.category || "general");
       setFramework(component.framework);
       setStyling(component.styling);
       setCode(component.code);
@@ -121,6 +123,7 @@ export function EditComponentModal({ component, isOpen, onClose }: Props) {
         payload: {
           name: name.trim(),
           description: description.trim() || null,
+          category: category.trim() || "general",
           framework,
           styling,
           code: code.trim(),
@@ -208,8 +211,8 @@ export function EditComponentModal({ component, isOpen, onClose }: Props) {
             </div>
           )}
 
-          {/* Component Name & Project Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Component Name, Category & Project Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-ink-muted mb-1.5">
                 Component Name <span className="text-primary">*</span>
@@ -220,6 +223,20 @@ export function EditComponentModal({ component, isOpen, onClose }: Props) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
+                className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink placeholder:text-ink-tertiary transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-ink-muted mb-1.5 flex items-center gap-1.5">
+                <Folder className="w-3.5 h-3.5 text-ink-tertiary" />
+                <span>Category / Folder</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. navbars, buttons, sliders"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink placeholder:text-ink-tertiary transition-colors"
               />
             </div>

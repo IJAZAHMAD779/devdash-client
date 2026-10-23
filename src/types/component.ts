@@ -22,6 +22,7 @@ export interface UIComponentItem {
   projectId: string | null;
   name: string;
   description: string | null;
+  category?: string;
   framework: ComponentFramework;
   styling: ComponentStyling;
   code: string;
@@ -36,6 +37,7 @@ export interface UIComponentItem {
 export interface CreateComponentPayload {
   name: string;
   description?: string;
+  category?: string;
   framework?: ComponentFramework;
   styling?: ComponentStyling;
   code: string;
@@ -48,6 +50,7 @@ export interface CreateComponentPayload {
 export interface UpdateComponentPayload {
   name?: string;
   description?: string | null;
+  category?: string;
   framework?: ComponentFramework;
   styling?: ComponentStyling;
   code?: string;

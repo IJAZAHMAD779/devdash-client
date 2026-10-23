@@ -77,33 +77,19 @@ export default function SnippetsPage() {
 
   return (
     <div className="flex-1 min-h-screen bg-canvas text-ink flex flex-col">
-      {/* Header */}
-      <div className="px-4 sm:px-8 pt-4 sm:pt-8 pb-4 sm:pb-6 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.6px] text-ink">
-              Code Snippets Vault
-            </h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-surface-2 border border-hairline text-ink-subtle">
-              {totalCount} Snippet{totalCount === 1 ? "" : "s"}
-            </span>
-            {favoriteCount > 0 && (
-              <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center gap-1">
-                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                {favoriteCount}
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-ink-muted">
-            Reusable snippets, shell configs, and patterns with Shiki syntax highlighting & 1-click secret masking.
-          </p>
+      {/* Top Header — unified h-14 height matching sidebar brand header */}
+      <div className="h-14 px-4 sm:px-6 border-b border-hairline flex items-center justify-between gap-4 bg-surface-1/40 flex-shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <h1 className="text-sm sm:text-base font-semibold tracking-[-0.3px] text-ink truncate">
+            Code Snippets Vault
+          </h1>
         </div>
 
         <button
           onClick={handleOpenNewModal}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 self-start sm:self-auto cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 flex-shrink-0 cursor-pointer"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
           <span>New Snippet</span>
         </button>
       </div>

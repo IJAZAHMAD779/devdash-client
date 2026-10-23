@@ -14,6 +14,7 @@ import {
 interface ComponentQueryParams {
   framework?: ComponentFramework;
   styling?: ComponentStyling;
+  category?: string;
   projectId?: string;
   favorite?: boolean;
   search?: string;
@@ -26,6 +27,7 @@ export function useUIComponents(params?: ComponentQueryParams) {
       const searchParams = new URLSearchParams();
       if (params?.framework) searchParams.append("framework", params.framework);
       if (params?.styling) searchParams.append("styling", params.styling);
+      if (params?.category && params.category !== "ALL") searchParams.append("category", params.category);
       if (params?.projectId) searchParams.append("projectId", params.projectId);
       if (params?.favorite !== undefined)
         searchParams.append("favorite", String(params.favorite));
@@ -58,6 +60,7 @@ export function useCreateComponent() {
         projectId: newComp.projectId ?? null,
         name: newComp.name,
         description: newComp.description ?? null,
+        category: newComp.category || "general",
         framework: newComp.framework ?? "REACT",
         styling: newComp.styling ?? "TAILWIND",
         code: newComp.code,

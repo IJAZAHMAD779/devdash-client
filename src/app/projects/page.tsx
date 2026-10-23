@@ -42,10 +42,16 @@ const STATUS_TABS: { id: ProjectStatus | "ALL"; label: string }[] = [
 
 function ProjectsPageInner() {
   const searchParams = useSearchParams();
-  const initialView = (searchParams.get("view") as ViewMode) || "workbench";
   const initialId = searchParams.get("id");
-
-  const [viewMode, setViewMode] = useState<ViewMode>(initialView);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") {
+      const urlView = searchParams.get("view") as ViewMode;
+      if (urlView) return urlView;
+      const saved = localStorage.getItem("devdash_projects_view_mode") as ViewMode;
+      if (saved && ["workbench", "table", "grid"].includes(saved)) return saved;
+    }
+    return (searchParams.get("view") as ViewMode) || "workbench";
+  });
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     initialId
   );
@@ -129,6 +135,9 @@ function ProjectsPageInner() {
   const handleViewModeChange = (mode: ViewMode) => {
     sound.playClick(700);
     setViewMode(mode);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("devdash_projects_view_mode", mode);
+    }
     updateUrlState(selectedProjectId, mode);
   };
 
@@ -185,9 +194,6 @@ function ProjectsPageInner() {
           <h1 className="text-sm sm:text-base font-semibold tracking-[-0.3px] text-ink truncate">
             Projects Hub
           </h1>
-          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-surface-2 border border-hairline text-ink-subtle">
-            {projects?.length ?? 0}
-          </span>
         </div>
 
         <div className="flex items-center gap-2.5 flex-shrink-0">

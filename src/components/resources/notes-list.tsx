@@ -101,7 +101,7 @@ export function NotesList({
       </div>
 
       {/* Notes List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-hairline/40">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y divide-y divide-hairline/40">
         {sortedNotes.length === 0 ? (
           <div className="py-12 px-4 text-center text-xs text-ink-muted">
             <BookOpen className="w-6 h-6 text-primary/40 mx-auto mb-2" />

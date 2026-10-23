@@ -37,14 +37,28 @@ const KANBAN_COLUMNS: { id: TaskStatus; title: string; dotColor: string }[] = [
 export default function TasksPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedPriority, setSelectedPriority] = useState<Priority | "ALL">("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [viewMode, setViewMode] = useState<"kanban" | "list">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("devdash_tasks_view_mode") as "kanban" | "list";
+      if (saved && ["kanban", "list"].includes(saved)) return saved;
+    }
+    return "kanban";
+  });
   const [mobileActiveStatus, setMobileActiveStatus] = useState<TaskStatus>("TODO");
+
+  const handleViewModeChange = (mode: "kanban" | "list") => {
+    sound.playClick(700);
+    setViewMode(mode);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("devdash_tasks_view_mode", mode);
+    }
+  };
 
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [modalInitialStatus, setModalInitialStatus] = useState<TaskStatus>("TODO");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isRemindersOpen, setIsRemindersOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -74,33 +88,25 @@ export default function TasksPage() {
 
   return (
     <div className="flex-1 min-h-screen bg-canvas text-ink flex flex-col">
-      {/* Header */}
-      <div className="px-4 sm:px-8 pt-4 sm:pt-8 pb-4 sm:pb-6 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.6px] text-ink">
-              Tasks Board
-            </h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-surface-2 border border-hairline text-ink-subtle">
-              {completedCount}/{totalCount} Completed
-            </span>
-          </div>
-          <p className="text-xs text-ink-muted">
-            Drag-and-drop kanban board & list tracking features, fixes, and milestones.
-          </p>
+      {/* Top Header — unified h-14 height matching sidebar brand header */}
+      <div className="h-14 px-4 sm:px-6 border-b border-hairline flex items-center justify-between gap-4 bg-surface-1/40 flex-shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <h1 className="text-sm sm:text-base font-semibold tracking-[-0.3px] text-ink truncate">
+            Tasks Board
+          </h1>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex items-center gap-2.5 flex-shrink-0">
           <button
             onClick={() => {
               sound.playClick(800);
               setIsRemindersOpen(true);
             }}
             title="Scheduled Email Reminders"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
           >
             <Bell className="w-3.5 h-3.5 text-primary" />
-            <span>Reminders</span>
+            <span className="hidden sm:inline">Reminders</span>
             {pendingRemindersCount > 0 && (
               <span className="px-1.5 py-0.2 rounded-full bg-primary/20 text-primary border border-primary/30 font-mono text-[10px]">
                 {pendingRemindersCount}
@@ -110,9 +116,9 @@ export default function TasksPage() {
 
           <button
             onClick={() => handleOpenNewModal("TODO")}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>New Task</span>
           </button>
         </div>
@@ -176,13 +182,10 @@ export default function TasksPage() {
           {/* View Switcher (Kanban vs List) */}
           <div className="flex items-center p-0.5 rounded-md bg-surface-2 border border-hairline">
             <button
-              onClick={() => {
-                sound.playClick(700);
-                setViewMode("kanban");
-              }}
+              onClick={() => handleViewModeChange("kanban")}
               title="Kanban Board view"
               className={cn(
-                "p-1.5 rounded text-xs transition-colors",
+                "p-1.5 rounded text-xs transition-colors cursor-pointer",
                 viewMode === "kanban"
                   ? "bg-surface-4 text-ink shadow-sm"
                   : "text-ink-tertiary hover:text-ink"
@@ -191,13 +194,10 @@ export default function TasksPage() {
               <Kanban className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => {
-                sound.playClick(700);
-                setViewMode("list");
-              }}
+              onClick={() => handleViewModeChange("list")}
               title="List view"
               className={cn(
-                "p-1.5 rounded text-xs transition-colors",
+                "p-1.5 rounded text-xs transition-colors cursor-pointer",
                 viewMode === "list"
                   ? "bg-surface-4 text-ink shadow-sm"
                   : "text-ink-tertiary hover:text-ink"

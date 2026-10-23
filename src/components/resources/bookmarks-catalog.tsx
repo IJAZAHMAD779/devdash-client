@@ -21,6 +21,8 @@ import {
   X,
   Check,
   BrainCircuit,
+  PanelLeft,
+  PanelLeftClose,
 } from "lucide-react";
 import { Bookmark, PRESET_BOOKMARK_CATEGORIES } from "@/types/bookmark";
 import { useBookmarks, useDeleteBookmark } from "@/hooks/use-bookmarks";
@@ -42,7 +44,32 @@ export function BookmarksCatalog() {
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("devdash-bookmark-view-mode");
+      if (saved === "list" || saved === "grid") return saved;
+    }
+    return "grid";
+  });
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("devdash_bookmarks_sidebar_collapsed");
+      if (saved === "true") setIsSidebarCollapsed(true);
+    }
+  }, []);
+
+  const handleToggleSidebar = () => {
+    sound.playClick(700);
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("devdash_bookmarks_sidebar_collapsed", String(next));
+      }
+      return next;
+    });
+  };
 
   // Custom user-created folders for quick workflow
   const [userCreatedFolders, setUserCreatedFolders] = useState<string[]>([]);
@@ -63,16 +90,6 @@ export function BookmarksCatalog() {
   useEffect(() => {
     setVisibleCount(30);
   }, [selectedCategory, selectedProjectId, debouncedSearch]);
-
-  // Restore preferred view mode from localStorage
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("devdash-bookmark-view-mode");
-      if (saved === "list" || saved === "grid") {
-        setViewMode(saved);
-      }
-    }
-  }, []);
 
   const handleToggleViewMode = (mode: "grid" | "list") => {
     sound.playClick(850);
@@ -236,6 +253,19 @@ export function BookmarksCatalog() {
 
         {/* Right: Project Filter, View Mode, Import/Export & Add */}
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
+          {/* Toggle Folder Sidebar */}
+          <button
+            onClick={handleToggleSidebar}
+            title={isSidebarCollapsed ? "Show Folders Sidebar" : "Hide Folders Sidebar"}
+            className="hidden md:inline-flex items-center justify-center p-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink transition-colors cursor-pointer shrink-0"
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeft className="w-3.5 h-3.5 text-primary" />
+            ) : (
+              <PanelLeftClose className="w-3.5 h-3.5 text-ink-tertiary" />
+            )}
+          </button>
+
           {/* Project Filter */}
           <div className="flex items-center gap-1.5">
             <FolderKanban className="w-3.5 h-3.5 text-ink-tertiary shrink-0" />
@@ -410,7 +440,12 @@ export function BookmarksCatalog() {
         </div>
 
         {/* Desktop Folder Navigation Sidebar */}
-        <aside className="w-56 shrink-0 border-r border-hairline bg-surface-1/30 hidden md:flex flex-col p-3 overflow-y-auto">
+        <aside
+          className={cn(
+            "w-56 shrink-0 border-r border-hairline bg-surface-1/30 flex-col p-3 overflow-y-auto",
+            isSidebarCollapsed ? "hidden" : "hidden md:flex"
+          )}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-2 py-1 mb-2">
             <span className="text-[11px] font-mono uppercase tracking-wider text-ink-tertiary">

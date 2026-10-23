@@ -18,7 +18,6 @@ import {
   Trash2,
   Calendar,
   AlertTriangle,
-  Sparkles,
   Layers,
 } from "lucide-react";
 import { useProjects } from "@/hooks/use-projects";
@@ -364,7 +363,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="text-center py-6 text-xs text-ink-muted">
-                  <Sparkles className="w-5 h-5 text-emerald-400 mx-auto mb-2 opacity-80" />
+                  <Check className="w-5 h-5 text-emerald-400 mx-auto mb-2 opacity-80" />
                   <span>No high priority tasks pending. You&apos;re completely caught up!</span>
                 </div>
               )}

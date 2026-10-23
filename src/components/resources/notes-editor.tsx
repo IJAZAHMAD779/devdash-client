@@ -76,6 +76,8 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted, onBackToLis
       setTags(activeNote.tags || []);
       setFavorite(activeNote.favorite);
       setHasUnsavedChanges(false);
+      // Open notes in view/preview mode by default when clicked
+      setViewMode("preview");
     } else if (isNew) {
       setTitle("Untitled Note");
       setContent("## Overview\n\nStart typing markdown here...\n\n- Key feature 1\n- Key feature 2\n\n```typescript\nconst message = 'Hello DevDash';\n```");
@@ -83,6 +85,7 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted, onBackToLis
       setTags([]);
       setFavorite(false);
       setHasUnsavedChanges(true);
+      setViewMode(typeof window !== "undefined" && window.innerWidth >= 1024 ? "split" : "edit");
     }
   }, [activeNote, isNew]);
 
@@ -203,6 +206,36 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted, onBackToLis
         />
 
         <div className="flex items-center gap-2 shrink-0">
+          {/* Quick Edit/View Action for Note */}
+          {activeNote && (
+            <button
+              type="button"
+              onClick={() => {
+                sound.playClick(800);
+                setViewMode(viewMode === "preview" ? "edit" : "preview");
+              }}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer border border-hairline",
+                viewMode === "preview"
+                  ? "bg-surface-2 hover:bg-surface-3 text-ink"
+                  : "bg-surface-3 text-primary border-primary/30"
+              )}
+              title={viewMode === "preview" ? "Switch to Edit Mode" : "Switch to Preview Mode"}
+            >
+              {viewMode === "preview" ? (
+                <>
+                  <Edit3 className="w-3.5 h-3.5 text-primary" />
+                  <span className="hidden sm:inline">Edit</span>
+                </>
+              ) : (
+                <>
+                  <Eye className="w-3.5 h-3.5 text-primary" />
+                  <span className="hidden sm:inline">View</span>
+                </>
+              )}
+            </button>
+          )}
+
           {/* Mode Switcher */}
           <div className="flex items-center bg-surface-2 rounded-lg p-0.5 border border-hairline">
             <button
@@ -356,12 +389,12 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted, onBackToLis
       </div>
 
       {/* Editor / Preview Work Area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* Source Markdown Editor */}
         {(viewMode === "edit" || viewMode === "split") && (
           <div
             className={cn(
-              "flex-1 flex flex-col p-6 overflow-y-auto",
+              "flex-1 min-h-0 flex flex-col p-4 sm:p-6 overflow-y-auto overscroll-contain touch-pan-y",
               viewMode === "split" && "border-r border-hairline"
             )}
           >
@@ -372,14 +405,14 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted, onBackToLis
                 setHasUnsavedChanges(true);
               }}
               placeholder="Write your markdown note here..."
-              className="w-full flex-1 bg-transparent text-xs font-mono text-ink placeholder:text-ink-tertiary focus:outline-none resize-none leading-relaxed"
+              className="w-full flex-1 bg-transparent text-xs font-mono text-ink placeholder:text-ink-tertiary focus:outline-none resize-none leading-relaxed touch-pan-y"
             />
           </div>
         )}
 
         {/* Rendered Preview Panel */}
         {(viewMode === "preview" || viewMode === "split") && (
-          <div className="flex-1 p-6 overflow-y-auto bg-surface-1/10">
+          <div className="flex-1 min-h-0 p-4 sm:p-6 overflow-y-auto overscroll-contain touch-pan-y bg-surface-1/10">
             <MarkdownPreview content={content} />
           </div>
         )}

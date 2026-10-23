@@ -32,6 +32,7 @@ export interface AiCommandPayload {
   message: string;
   clientTime?: string;
   timezone?: string;
+  timezoneOffsetMinutes?: number;
   history?: Array<{
     role: "user" | "assistant" | "system";
     content: string;

@@ -6,7 +6,8 @@ import {
   BookOpen,
   Bookmark as BookmarkIcon,
   Mail,
-  Sparkles,
+  PanelLeft,
+  PanelLeftClose,
 } from "lucide-react";
 import { useNotes } from "@/hooks/use-notes";
 import { Note } from "@/types/note";
@@ -28,8 +29,27 @@ export default function ResourcesPage() {
   const [isCreatingNewNote, setIsCreatingNewNote] = useState(false);
   const [notesSearchQuery, setNotesSearchQuery] = useState("");
   const [isDigestModalOpen, setIsDigestModalOpen] = useState(false);
+  const [isNotesSidebarCollapsed, setIsNotesSidebarCollapsed] = useState(false);
 
   const [mobileNoteView, setMobileNoteView] = useState<"list" | "editor">("list");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("devdash_notes_sidebar_collapsed");
+      if (saved === "true") setIsNotesSidebarCollapsed(true);
+    }
+  }, []);
+
+  const handleToggleNotesSidebar = () => {
+    sound.playClick(700);
+    setIsNotesSidebarCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("devdash_notes_sidebar_collapsed", String(next));
+      }
+      return next;
+    });
+  };
 
   const debouncedNotesSearch = useDebounce(notesSearchQuery, 300);
 
@@ -80,27 +100,22 @@ export default function ResourcesPage() {
 
   return (
     <div className="flex-1 h-screen max-h-screen bg-canvas text-ink flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="px-4 sm:px-8 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-1/40 shrink-0">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.6px] text-ink">
-              Resources & Knowledge
-            </h1>
-          </div>
-          <p className="text-xs text-ink-muted">
-            Personal markdown knowledge base, curated developer bookmarks, and automated Weekly Digest.
-          </p>
+      {/* Top Header — unified h-14 height matching sidebar brand header */}
+      <div className="h-14 px-4 sm:px-6 border-b border-hairline flex items-center justify-between gap-4 bg-surface-1/40 flex-shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <h1 className="text-sm sm:text-base font-semibold tracking-[-0.3px] text-ink truncate">
+            Resources & Knowledge
+          </h1>
         </div>
 
         {/* Right side: Digest trigger */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => {
               sound.playClick(900);
               setIsDigestModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer px-2 py-1.5"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer px-2.5 py-1.5 rounded-md hover:bg-surface-2"
           >
             <Mail className="w-3.5 h-3.5 text-primary" />
             <span>Weekly Digest</span>
@@ -109,14 +124,14 @@ export default function ResourcesPage() {
       </div>
 
       {/* Sliding Pill Tabs Bar */}
-      <div className="px-4 sm:px-8 py-2.5 sm:py-3 border-b border-hairline bg-surface-1/20 flex items-center gap-2 shrink-0 overflow-x-auto no-scrollbar">
+      <div className="px-4 sm:px-6 py-2 border-b border-hairline bg-surface-1/20 flex items-center gap-2 shrink-0 overflow-x-auto no-scrollbar">
         <button
           onClick={() => {
             sound.playClick(850);
             setActiveTab("notes");
           }}
           className={cn(
-            "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium tracking-tight transition-all duration-150 cursor-pointer whitespace-nowrap",
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium tracking-tight transition-all duration-150 cursor-pointer whitespace-nowrap",
             activeTab === "notes"
               ? "bg-surface-3 text-ink font-semibold shadow-xs border border-hairline"
               : "text-ink-muted hover:text-ink hover:bg-surface-2"
@@ -124,11 +139,6 @@ export default function ResourcesPage() {
         >
           <BookOpen className="w-3.5 h-3.5 text-primary" />
           <span>Technical Notes</span>
-          {notes && (
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-2 text-ink-tertiary">
-              {notes.length}
-            </span>
-          )}
         </button>
 
         <button
@@ -137,7 +147,7 @@ export default function ResourcesPage() {
             setActiveTab("bookmarks");
           }}
           className={cn(
-            "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium tracking-tight transition-all duration-150 cursor-pointer whitespace-nowrap",
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium tracking-tight transition-all duration-150 cursor-pointer whitespace-nowrap",
             activeTab === "bookmarks"
               ? "bg-surface-3 text-ink font-semibold shadow-xs border border-hairline"
               : "text-ink-muted hover:text-ink hover:bg-surface-2"
@@ -146,6 +156,26 @@ export default function ResourcesPage() {
           <BookmarkIcon className="w-3.5 h-3.5 text-rose-400" />
           <span>URL Bookmarks</span>
         </button>
+
+        {activeTab === "notes" && (
+          <button
+            onClick={handleToggleNotesSidebar}
+            title={isNotesSidebarCollapsed ? "Expand Notes Sidebar" : "Collapse Notes Sidebar"}
+            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer ml-auto"
+          >
+            {isNotesSidebarCollapsed ? (
+              <>
+                <PanelLeft className="w-3.5 h-3.5 text-primary" />
+                <span>Show Notes List</span>
+              </>
+            ) : (
+              <>
+                <PanelLeftClose className="w-3.5 h-3.5 text-ink-tertiary" />
+                <span>Hide Notes List</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Main Workspace Body */}
@@ -159,7 +189,10 @@ export default function ResourcesPage() {
               onNewNote={handleNewNote}
               searchQuery={notesSearchQuery}
               onSearchChange={setNotesSearchQuery}
-              className={mobileNoteView === "editor" ? "hidden md:flex" : "flex"}
+              className={cn(
+                mobileNoteView === "editor" ? "hidden md:flex" : "flex",
+                isNotesSidebarCollapsed && "md:hidden"
+              )}
             />
             <div className={cn("flex-1 h-full min-w-0 overflow-hidden", mobileNoteView === "list" ? "hidden md:flex flex-col" : "flex flex-col")}>
               <NotesEditor

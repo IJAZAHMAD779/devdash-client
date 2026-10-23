@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Sparkles, Maximize2, Minimize2, RefreshCw } from "lucide-react";
+import { Play, Maximize2, Minimize2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -78,16 +78,16 @@ export function ComponentLivePreview({ code, name, className }: Props) {
       {/* Top Toolbar */}
       <div className="px-3 py-1.5 bg-surface-2/80 border-b border-hairline flex items-center justify-between text-xs">
         <div className="flex items-center gap-1.5 text-ink-tertiary">
-          <Sparkles className="w-3 h-3 text-primary" />
+          <Play className="w-3 h-3 text-emerald-400" />
           <span className="text-[11px] font-mono text-ink-muted">
-            Live Sandbox
+            Live Preview
           </span>
         </div>
 
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setIframeKey((k) => k + 1)}
+            onClick={() => setIframeKey((k: number) => k + 1)}
             title="Reload sandbox preview"
             className="p-1 rounded text-ink-tertiary hover:text-ink hover:bg-surface-3 transition-colors cursor-pointer"
           >

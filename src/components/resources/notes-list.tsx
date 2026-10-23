@@ -9,6 +9,7 @@ import {
   FolderKanban,
   Tag,
   Trash2,
+  PanelLeftClose,
 } from "lucide-react";
 import { Note } from "@/types/note";
 import { useToggleNoteFavorite, useDeleteNote } from "@/hooks/use-notes";
@@ -24,6 +25,7 @@ interface Props {
   onNewNote: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onToggleCollapse?: () => void;
   className?: string;
 }
 
@@ -34,6 +36,7 @@ export function NotesList({
   onNewNote,
   searchQuery,
   onSearchChange,
+  onToggleCollapse,
   className,
 }: Props) {
   const toggleFavorite = useToggleNoteFavorite();
@@ -76,7 +79,7 @@ export function NotesList({
 
   return (
     <div className={cn("w-full md:w-80 shrink-0 border-r border-hairline flex flex-col bg-surface-1/40 h-full", className)}>
-      {/* Top search & new note button */}
+      {/* Top search, new note & collapse button */}
       <div className="p-3 border-b border-hairline flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
@@ -98,6 +101,19 @@ export function NotesList({
         >
           <Plus className="w-4 h-4" />
         </button>
+        {onToggleCollapse && (
+          <button
+            onClick={() => {
+              sound.playClick(600);
+              onToggleCollapse();
+            }}
+            title="Collapse Notes Sidebar"
+            aria-label="Collapse Notes Sidebar"
+            className="hidden md:flex p-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink transition-colors cursor-pointer shrink-0"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Notes List */}

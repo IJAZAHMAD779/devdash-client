@@ -21,8 +21,8 @@ import {
   X,
   Check,
   BrainCircuit,
-  PanelLeft,
   PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { Bookmark, PRESET_BOOKMARK_CATEGORIES } from "@/types/bookmark";
 import { useBookmarks, useDeleteBookmark } from "@/hooks/use-bookmarks";
@@ -231,41 +231,41 @@ export function BookmarksCatalog() {
     <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
       {/* Top Filter & Actions Toolbar */}
       <div className="px-4 sm:px-8 py-3 border-b border-hairline bg-surface-1/40 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 shrink-0">
-        {/* Left: Search input */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
-          <input
-            type="text"
-            placeholder="Search bookmarks by title, url, tags, or notes..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-8 py-1.5 rounded-md bg-surface-2 border border-hairline text-xs text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none transition-colors"
-          />
-          {searchQuery && (
+        {/* Left: Expand Folders Button + Search input */}
+        <div className="flex items-center gap-2 flex-1 max-w-lg">
+          {isSidebarCollapsed && (
             <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-ink-tertiary hover:text-ink rounded cursor-pointer"
+              onClick={handleToggleSidebar}
+              title="Expand Folders Sidebar"
+              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer shrink-0"
             >
-              <X className="w-3 h-3" />
+              <PanelLeftOpen className="w-3.5 h-3.5 text-primary" />
+              <span>Folders</span>
             </button>
           )}
+
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
+            <input
+              type="text"
+              placeholder="Search bookmarks by title, url, tags, or notes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-1.5 rounded-md bg-surface-2 border border-hairline text-xs text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-ink-tertiary hover:text-ink rounded cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Right: Project Filter, View Mode, Import/Export & Add */}
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
-          {/* Toggle Folder Sidebar */}
-          <button
-            onClick={handleToggleSidebar}
-            title={isSidebarCollapsed ? "Show Folders Sidebar" : "Hide Folders Sidebar"}
-            className="hidden md:inline-flex items-center justify-center p-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink transition-colors cursor-pointer shrink-0"
-          >
-            {isSidebarCollapsed ? (
-              <PanelLeft className="w-3.5 h-3.5 text-primary" />
-            ) : (
-              <PanelLeftClose className="w-3.5 h-3.5 text-ink-tertiary" />
-            )}
-          </button>
-
           {/* Project Filter */}
           <div className="flex items-center gap-1.5">
             <FolderKanban className="w-3.5 h-3.5 text-ink-tertiary shrink-0" />
@@ -451,13 +451,23 @@ export function BookmarksCatalog() {
             <span className="text-[11px] font-mono uppercase tracking-wider text-ink-tertiary">
               Vault Folders
             </span>
-            <button
-              onClick={() => setIsCreatingFolder(!isCreatingFolder)}
-              className="p-1 rounded text-ink-tertiary hover:text-primary hover:bg-surface-2 transition-colors cursor-pointer"
-              title="Create New Folder"
-            >
-              <FolderPlus className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsCreatingFolder(!isCreatingFolder)}
+                className="p-1 rounded text-ink-tertiary hover:text-primary hover:bg-surface-2 transition-colors cursor-pointer"
+                title="Create New Folder"
+              >
+                <FolderPlus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleToggleSidebar}
+                className="p-1 rounded text-ink-tertiary hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
+                title="Collapse Folders Sidebar"
+                aria-label="Collapse Folders Sidebar"
+              >
+                <PanelLeftClose className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Inline Folder Creator */}

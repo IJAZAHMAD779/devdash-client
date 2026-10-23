@@ -6,8 +6,6 @@ import {
   BookOpen,
   Bookmark as BookmarkIcon,
   Mail,
-  PanelLeft,
-  PanelLeftClose,
 } from "lucide-react";
 import { useNotes } from "@/hooks/use-notes";
 import { Note } from "@/types/note";
@@ -156,26 +154,6 @@ export default function ResourcesPage() {
           <BookmarkIcon className="w-3.5 h-3.5 text-rose-400" />
           <span>URL Bookmarks</span>
         </button>
-
-        {activeTab === "notes" && (
-          <button
-            onClick={handleToggleNotesSidebar}
-            title={isNotesSidebarCollapsed ? "Expand Notes Sidebar" : "Collapse Notes Sidebar"}
-            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer ml-auto"
-          >
-            {isNotesSidebarCollapsed ? (
-              <>
-                <PanelLeft className="w-3.5 h-3.5 text-primary" />
-                <span>Show Notes List</span>
-              </>
-            ) : (
-              <>
-                <PanelLeftClose className="w-3.5 h-3.5 text-ink-tertiary" />
-                <span>Hide Notes List</span>
-              </>
-            )}
-          </button>
-        )}
       </div>
 
       {/* Main Workspace Body */}
@@ -189,6 +167,7 @@ export default function ResourcesPage() {
               onNewNote={handleNewNote}
               searchQuery={notesSearchQuery}
               onSearchChange={setNotesSearchQuery}
+              onToggleCollapse={handleToggleNotesSidebar}
               className={cn(
                 mobileNoteView === "editor" ? "hidden md:flex" : "flex",
                 isNotesSidebarCollapsed && "md:hidden"
@@ -201,6 +180,8 @@ export default function ResourcesPage() {
                 onSaved={handleNoteSaved}
                 onDeleted={handleNoteDeleted}
                 onBackToList={() => setMobileNoteView("list")}
+                isSidebarCollapsed={isNotesSidebarCollapsed}
+                onToggleSidebar={handleToggleNotesSidebar}
               />
             </div>
           </div>

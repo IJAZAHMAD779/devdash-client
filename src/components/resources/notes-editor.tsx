@@ -13,6 +13,7 @@ import {
   Loader2,
   Trash2,
   ChevronLeft,
+  PanelLeftOpen,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Note } from "@/types/note";
@@ -43,9 +44,19 @@ interface Props {
   onSaved: (note: Note) => void;
   onDeleted: () => void;
   onBackToList?: () => void;
+  isSidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export function NotesEditor({ activeNote, isNew, onSaved, onDeleted, onBackToList }: Props) {
+export function NotesEditor({
+  activeNote,
+  isNew,
+  onSaved,
+  onDeleted,
+  onBackToList,
+  isSidebarCollapsed,
+  onToggleSidebar,
+}: Props) {
   const createNote = useCreateNote();
   const updateNote = useUpdateNote();
   const deleteNote = useDeleteNote();
@@ -167,8 +178,22 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted, onBackToLis
 
   if (!activeNote && !isNew) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8 text-center text-ink-muted text-xs">
-        Select a note from the left list or create a new note to start writing.
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-ink-muted text-xs">
+        {isSidebarCollapsed && onToggleSidebar && (
+          <button
+            type="button"
+            onClick={() => {
+              sound.playClick(600);
+              onToggleSidebar();
+            }}
+            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer mb-3"
+            title="Expand Notes Sidebar"
+          >
+            <PanelLeftOpen className="w-3.5 h-3.5 text-primary" />
+            <span>Show Notes</span>
+          </button>
+        )}
+        <p>Select a note from the left list or create a new note to start writing.</p>
       </div>
     );
   }
@@ -190,6 +215,21 @@ export function NotesEditor({ activeNote, isNew, onSaved, onDeleted, onBackToLis
             title="Back to notes list"
           >
             <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
+
+        {isSidebarCollapsed && onToggleSidebar && (
+          <button
+            type="button"
+            onClick={() => {
+              sound.playClick(600);
+              onToggleSidebar();
+            }}
+            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer shrink-0"
+            title="Expand Notes Sidebar"
+          >
+            <PanelLeftOpen className="w-3.5 h-3.5 text-primary" />
+            <span>Notes</span>
           </button>
         )}
 

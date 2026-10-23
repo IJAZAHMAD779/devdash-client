@@ -42,6 +42,7 @@ export interface Bookmark {
   category: BookmarkCategory;
   tags: string[];
   notes: string | null;
+  favorite: boolean;
   createdAt: string;
   updatedAt: string;
   project?: BookmarkProjectRef | null;
@@ -54,6 +55,7 @@ export interface CreateBookmarkPayload {
   tags?: string[];
   notes?: string | null;
   projectId?: string | null;
+  favorite?: boolean;
 }
 
 export interface UpdateBookmarkPayload {
@@ -63,4 +65,20 @@ export interface UpdateBookmarkPayload {
   tags?: string[];
   notes?: string | null;
   projectId?: string | null;
+  favorite?: boolean;
+}
+
+export interface BatchCreateBookmarksPayload {
+  bookmarks: CreateBookmarkPayload[];
+}
+
+export interface ImportedBookmarkItem {
+  id: string;
+  title: string;
+  url: string;
+  category: string;
+  folderPath: string[];
+  addDate?: string;
+  icon?: string;
+  selected: boolean;
 }

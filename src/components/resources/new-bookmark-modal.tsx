@@ -8,6 +8,7 @@ import {
   Loader2,
   Link2,
   Clipboard,
+  Star,
 } from "lucide-react";
 import { useCreateBookmark } from "@/hooks/use-bookmarks";
 import { useProjects } from "@/hooks/use-projects";
@@ -24,9 +25,10 @@ import { toast } from "@/lib/toast";
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  defaultCategory?: string;
 }
 
-export function NewBookmarkModal({ isOpen, onClose }: Props) {
+export function NewBookmarkModal({ isOpen, onClose, defaultCategory }: Props) {
   const createBookmark = useCreateBookmark();
   const { data: projects } = useProjects();
 
@@ -40,6 +42,7 @@ export function NewBookmarkModal({ isOpen, onClose }: Props) {
   const [projectId, setProjectId] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [favorite, setFavorite] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [isFetchingPreview, setIsFetchingPreview] = useState(false);
@@ -49,10 +52,28 @@ export function NewBookmarkModal({ isOpen, onClose }: Props) {
     if (isOpen) {
       setTitle("");
       setUrl("");
-      setCategory("tools");
-      setIsCustomCategory(false);
-      setCustomCategoryInput("");
+      const initialCat = defaultCategory && defaultCategory !== "ALL" ? defaultCategory.toLowerCase() : "tools";
+      const isPreset = PRESET_BOOKMARK_CATEGORIES.some((p) => p.id === initialCat);
+      if (isPreset) {
+        setCategory(initialCat);
+        setIsCustomCategory(false);
+        setCustomCategoryInput("");
+      } else if (defaultCategory && defaultCategory !== "ALL") {
+        setCategory("tools");
+        setIsCustomCategory(true);
+        setCustomCategoryInput(defaultCategory);
+      } else {
+        setCategory("tools");
+        setIsCustomCategory(false);
+        setCustomCategoryInput("");
+      }
       setNotes("");
+      setProjectId("");
+      setTags([]);
+      setTagInput("");
+      setFavorite(false);
+      setError(null);
+      setIsClosing(false);
       setProjectId("");
       setTags([]);
       setTagInput("");
@@ -171,6 +192,7 @@ export function NewBookmarkModal({ isOpen, onClose }: Props) {
         notes: notes.trim() || undefined,
         projectId: projectId || null,
         tags,
+        favorite,
       });
 
       sound.playSuccess();
@@ -214,12 +236,31 @@ export function NewBookmarkModal({ isOpen, onClose }: Props) {
               Add URL Bookmark
             </h2>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-1 rounded-md text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                sound.playClick(favorite ? 600 : 900);
+                setFavorite(!favorite);
+              }}
+              className={cn(
+                "p-1.5 rounded-md border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
+                favorite
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                  : "bg-surface-2 border-hairline text-ink-muted hover:text-ink hover:bg-surface-3"
+              )}
+              title={favorite ? "Starred favorite" : "Mark as favorite"}
+            >
+              <Star className={cn("w-3.5 h-3.5", favorite && "fill-amber-400 text-amber-400")} />
+              <span className="text-[11px] font-mono">{favorite ? "Starred" : "Star"}</span>
+            </button>
+            <button
+              onClick={handleClose}
+              className="p-1 rounded-md text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Form Body */}

@@ -15,6 +15,7 @@ interface BookmarkQueryParams {
   projectId?: string;
   tag?: string;
   search?: string;
+  favorite?: boolean;
 }
 
 export function useBookmarks(params?: BookmarkQueryParams) {
@@ -25,6 +26,8 @@ export function useBookmarks(params?: BookmarkQueryParams) {
       if (params?.category) searchParams.append("category", params.category);
       if (params?.projectId) searchParams.append("projectId", params.projectId);
       if (params?.tag) searchParams.append("tag", params.tag);
+      if (params?.favorite !== undefined)
+        searchParams.append("favorite", String(params.favorite));
       if (params?.search && params.search.trim())
         searchParams.append("search", params.search.trim());
 
@@ -55,6 +58,7 @@ export function useCreateBookmark() {
         category: newBm.category ?? "tools",
         tags: newBm.tags ?? [],
         notes: newBm.notes ?? null,
+        favorite: newBm.favorite ?? false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -128,6 +132,51 @@ export function useDeleteBookmark() {
 
       queryClient.setQueryData<Bookmark[]>(["bookmarks"], (old = []) =>
         old.filter((item) => item.id !== id)
+      );
+
+      return { previous };
+    },
+    onError: (err, id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["bookmarks"], context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+    },
+  });
+}
+
+export function useBatchCreateBookmarks() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { bookmarks: CreateBookmarkPayload[] }) => {
+      return apiClient.post<{ count: number; message: string }>("/bookmarks/batch", payload);
+    },
+    onSuccess: () => {
+      sound.playSuccess();
+      queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+    },
+  });
+}
+
+export function useToggleBookmarkFavorite() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return apiClient.patch<Bookmark>(`/bookmarks/${id}/favorite`, {});
+    },
+    onMutate: async (id) => {
+      sound.playClick(850);
+      await queryClient.cancelQueries({ queryKey: ["bookmarks"] });
+      const previous = queryClient.getQueryData<Bookmark[]>(["bookmarks"]);
+
+      queryClient.setQueryData<Bookmark[]>(["bookmarks"], (old = []) =>
+        old.map((item) =>
+          item.id === id ? { ...item, favorite: !item.favorite } : item
+        )
       );
 
       return { previous };

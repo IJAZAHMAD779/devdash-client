@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Save, Bookmark as BookmarkIcon, Loader2, Link2 } from "lucide-react";
+import { X, Save, Bookmark as BookmarkIcon, Loader2, Link2, Star } from "lucide-react";
 import { useUpdateBookmark } from "@/hooks/use-bookmarks";
 import { useProjects } from "@/hooks/use-projects";
 import {
@@ -33,6 +33,7 @@ export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
   const [projectId, setProjectId] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [favorite, setFavorite] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
       setProjectId(bookmark.projectId || "");
       setTags(bookmark.tags || []);
       setTagInput("");
+      setFavorite(bookmark.favorite ?? false);
       setError(null);
       setIsClosing(false);
     }
@@ -119,6 +121,7 @@ export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
           notes: notes.trim() || null,
           projectId: projectId || null,
           tags,
+          favorite,
         },
       });
 
@@ -163,12 +166,31 @@ export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
               Edit Bookmark
             </h2>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-1 rounded-md text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                sound.playClick(favorite ? 600 : 900);
+                setFavorite(!favorite);
+              }}
+              className={cn(
+                "p-1.5 rounded-md border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
+                favorite
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                  : "bg-surface-2 border-hairline text-ink-muted hover:text-ink hover:bg-surface-3"
+              )}
+              title={favorite ? "Starred favorite" : "Mark as favorite"}
+            >
+              <Star className={cn("w-3.5 h-3.5", favorite && "fill-amber-400 text-amber-400")} />
+              <span className="text-[11px] font-mono">{favorite ? "Starred" : "Star"}</span>
+            </button>
+            <button
+              onClick={handleClose}
+              className="p-1 rounded-md text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Form Body */}

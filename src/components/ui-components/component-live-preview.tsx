@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { RefreshCw, Monitor, Tablet, Smartphone, AlertCircle, Code2 } from "lucide-react";
+import { RefreshCw, Monitor, Tablet, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -20,7 +20,7 @@ export function ComponentLivePreview({
   const [iframeKey, setIframeKey] = useState(0);
   const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
 
-  // Generate safe HTML payload with in-browser Babel + React 18 + Lucide proxy + Tailwind
+  // Generate safe HTML payload with in-browser Babel 7 + React 18 + CommonJS require runtime
   const srcDoc = useMemo(() => {
     const serializedCode = JSON.stringify(code.trim());
 
@@ -34,8 +34,8 @@ export function ComponentLivePreview({
   <!-- React 18 UMD -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- Babel Standalone for live in-browser TSX/JSX compilation -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Babel Standalone 7.26.4 (Stable pinned release - avoids unpkg Babel 8 alpha bug) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -94,21 +94,7 @@ export function ComponentLivePreview({
         try {
           const rawCode = ${serializedCode};
 
-          // 1. Setup Sandbox Execution Context on window
-          window.React = React;
-          window.ReactDOM = ReactDOM;
-          window.useState = React.useState;
-          window.useEffect = React.useEffect;
-          window.useMemo = React.useMemo;
-          window.useCallback = React.useCallback;
-          window.useRef = React.useRef;
-          window.createContext = React.createContext;
-          window.useContext = React.useContext;
-          window.useReducer = React.useReducer;
-          window.forwardRef = React.forwardRef;
-          window.cn = function(...classes) { return classes.filter(Boolean).join(" "); };
-
-          // Lucide icon helper
+          // 1. Setup Sandbox Lucide Icon Dictionary
           const iconPathMap = {
             User: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
             Heart: "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z",
@@ -119,7 +105,9 @@ export function ComponentLivePreview({
             Settings: "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
             Sparkles: "m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z",
             ChevronRight: "m9 18 6-6-6-6",
+            ChevronLeft: "m15 18-6-6 6-6",
             ChevronDown: "m6 9 6 6 6-6",
+            ChevronUp: "m18 15-6-6-6 6",
             Play: "polygon points='6 3 20 12 6 21 6 3'",
             Pause: "rect width='4' height='16' x='6' y='4' rect width='4' height='16' x='14' y='4'",
             RotateCcw: "path d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' path d='M3 3v5h5'",
@@ -146,11 +134,7 @@ export function ComponentLivePreview({
             };
           }
 
-          Object.keys(iconPathMap).forEach(function(iconName) {
-            window[iconName] = makeIcon(iconName);
-          });
-
-          // Missing Subcomponent Proxy (e.g. AvatarLabelGroup, Tooltip, Dropdown, etc.)
+          // 2. Setup Subcomponent Proxy
           function makeProxyComponent(compName) {
             return function(props) {
               if (props && props.children) {
@@ -182,57 +166,64 @@ export function ComponentLivePreview({
             };
           }
 
-          [
-            "Avatar", "AvatarImage", "AvatarFallback", "AvatarLabelGroup",
-            "Button", "Badge", "Card", "CardHeader", "CardTitle", "CardDescription", "CardContent", "CardFooter",
-            "Input", "Label", "Dialog", "DialogTrigger", "DialogContent", "DialogHeader", "DialogTitle", "DialogDescription",
-            "DropdownMenu", "DropdownMenuTrigger", "DropdownMenuContent", "DropdownMenuItem",
-            "Tabs", "TabsList", "TabsTrigger", "TabsContent",
-            "Tooltip", "TooltipTrigger", "TooltipContent", "TooltipProvider",
-            "Skeleton", "Switch", "Select", "SelectTrigger", "SelectValue", "SelectContent", "SelectItem"
-          ].forEach(function(name) {
-            window[name] = makeProxyComponent(name);
+          // 3. Module require() resolver for in-browser modules
+          const LucideProxy = new Proxy({}, {
+            get: function(target, prop) {
+              return makeIcon(String(prop));
+            }
           });
 
-          // 2. Preprocess Code: Strip imports and normalize exports
-          let processed = rawCode;
-          processed = processed.replace(/^\\s*import\\s+[^;]+;?\\s*$/gm, "");
-          processed = processed.replace(/import\\s+([\\s\\S]*?)\\s+from\\s+['"][^'"]+['"];?/g, "");
-          processed = processed.replace(/export\\s+default\\s+/g, "window.__DevDashExportDefault = ");
-          processed = processed.replace(/export\\s+(function|const|let|var|class)\\s+/g, "window.");
+          const CustomComponentsProxy = new Proxy({}, {
+            get: function(target, prop) {
+              if (prop === "cn") {
+                return function(...classes) { return classes.filter(Boolean).join(" "); };
+              }
+              return makeProxyComponent(String(prop));
+            }
+          });
 
-          // 3. Compile with Babel using standard presets without obsolete options
-          const transformed = Babel.transform(processed, {
-            presets: ["react", "typescript"],
+          function customRequire(moduleName) {
+            if (moduleName === "react") return React;
+            if (moduleName === "react-dom" || moduleName === "react-dom/client") return ReactDOM;
+            if (moduleName === "lucide-react") return LucideProxy;
+            return CustomComponentsProxy;
+          }
+
+          // 4. Compile with Babel 7 Standalone
+          // Using preset env with commonjs modules + react + typescript
+          const transformed = Babel.transform(rawCode, {
+            presets: [
+              ["env", { modules: "commonjs" }],
+              "react",
+              "typescript"
+            ],
             filename: "component.tsx"
           }).code;
 
-          // 4. Execute transformed code in global scope
-          window.eval(transformed);
+          // 5. Execute in isolated module environment
+          const moduleObj = { exports: {} };
+          const runFn = new Function("module", "exports", "require", "React", "ReactDOM", transformed);
+          runFn(moduleObj, moduleObj.exports, customRequire, React, ReactDOM);
 
-          // 5. Discover exported component to mount
-          let ComponentToRender = window.__DevDashExportDefault;
+          // 6. Discover the component to mount
+          const exported = moduleObj.exports;
+          let ComponentToRender = exported && (exported.default || exported.__esModule && exported.default);
 
-          if (!ComponentToRender) {
-            // Find any declared uppercase component on window
-            const matches = Array.from(rawCode.matchAll(/(?:function|const|let)\\s+([A-Z][a-zA-Z0-9]*)/g));
-            for (let i = 0; i < matches.length; i++) {
-              const compName = matches[i][1];
-              try {
-                if (typeof window[compName] === "function") {
-                  ComponentToRender = window[compName];
-                  break;
-                }
-              } catch(e) {}
-            }
+          if (!ComponentToRender && typeof exported === "function") {
+            ComponentToRender = exported;
+          }
+
+          if (!ComponentToRender && exported && typeof exported === "object") {
+            const values = Object.values(exported);
+            ComponentToRender = values.find(function(v) { return typeof v === "function"; });
           }
 
           if (!ComponentToRender) {
-            showError("Could not find a React component to mount. Please ensure the component is exported (e.g. export const MyComponent = () => ...).");
+            showError("Could not find an exported React component. Make sure your component is exported (e.g. export const MyComponent = () => ... or export default).");
             return;
           }
 
-          // 6. Mount to DOM
+          // 7. Mount to DOM
           rootEl.innerHTML = "";
           const root = ReactDOM.createRoot(rootEl);
           root.render(React.createElement(ComponentToRender));

@@ -103,6 +103,7 @@ export function ComponentLivePreview({
             Plus: "M5 12h14 M12 5v14",
             Search: "m21 21-4.3-4.3 M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z",
             Settings: "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
+            Settings2: "M20 7h-9 M14 17H5 M7 7H4 M20 17h-3 M14 5v4 M11 15v4",
             Sparkles: "m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z",
             ChevronRight: "m9 18 6-6-6-6",
             ChevronLeft: "m15 18-6-6 6-6",
@@ -166,7 +167,29 @@ export function ComponentLivePreview({
             };
           }
 
-          // 3. Module require() resolver for in-browser modules
+          // 3. Universal Safe Object / Function Proxy for arbitrary data & helpers
+          const SafeObjectProxy = new Proxy(function() {}, {
+            get: function(target, prop) {
+              if (prop === "name") return "Dev Pet";
+              if (prop === "title") return "Preview Item";
+              if (prop === "species") return "Virtual Pet";
+              if (prop === "enabled") return true;
+              if (prop === "style") return "illustrated";
+              if (prop === "size") return "md";
+              if (prop === "petId") return "dog";
+              if (prop === "hasPixelStyle") return false;
+              if (prop === "directionsUrl" || prop === "reactionsUrl" || prop === "pixelDirectionsUrl" || prop === "pixelReactionsUrl") {
+                return "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'><circle cx='75' cy='75' r='50' fill='%233b82f6'/><circle cx='60' cy='65' r='6' fill='white'/><circle cx='90' cy='65' r='6' fill='white'/></svg>";
+              }
+              if (prop in iconPathMap) return makeIcon(String(prop));
+              return SafeObjectProxy;
+            },
+            apply: function() {
+              return SafeObjectProxy;
+            }
+          });
+
+          // 4. Module require() resolver for in-browser modules
           const LucideProxy = new Proxy({}, {
             get: function(target, prop) {
               return makeIcon(String(prop));
@@ -178,7 +201,10 @@ export function ComponentLivePreview({
               if (prop === "cn") {
                 return function(...classes) { return classes.filter(Boolean).join(" "); };
               }
-              return makeProxyComponent(String(prop));
+              if (typeof prop === "string" && prop[0] === prop[0].toUpperCase()) {
+                return makeProxyComponent(String(prop));
+              }
+              return SafeObjectProxy;
             }
           });
 
@@ -189,7 +215,7 @@ export function ComponentLivePreview({
             return CustomComponentsProxy;
           }
 
-          // 4. Transform import statements to CommonJS require() calls
+          // 5. Preprocess Code: Transform imports to require() and collect exports
           let processed = rawCode;
 
           // Replace import * as Foo from "foo"
@@ -228,30 +254,46 @@ export function ComponentLivePreview({
           // Strip side-effect imports: import "styles.css"
           processed = processed.replace(/import\\s*['"][^'"]+['"];?/g, "");
 
+          // Collect explicitly exported names before stripping keywords
+          const exportedNames = [];
+          const exportFuncRegex = /export\\s+function\\s+([A-Za-z0-9_$]+)/g;
+          let match;
+          while ((match = exportFuncRegex.exec(processed)) !== null) {
+            exportedNames.push(match[1]);
+          }
+          const exportConstRegex = /export\\s+(?:const|let|var)\\s+([A-Za-z0-9_$]+)/g;
+          while ((match = exportConstRegex.exec(processed)) !== null) {
+            exportedNames.push(match[1]);
+          }
+
           // Strip export default and export keywords
           processed = processed.replace(/export\\s+default\\s+/g, "module.exports.default = ");
           processed = processed.replace(/export\\s+(function|const|let|var|class)\\s+/g, "$1 ");
 
-          // Auto-export first uppercase component function if no export default
-          if (!processed.includes("module.exports.default =")) {
-            const compMatch = rawCode.match(/(?:function|const|let)\\s+([A-Z][a-zA-Z0-9]*)/);
-            if (compMatch && compMatch[1]) {
-              processed += "\\nif (typeof " + compMatch[1] + " !== 'undefined') { module.exports.default = " + compMatch[1] + "; }";
-            }
-          }
+          // Attach all explicitly exported names to module.exports
+          exportedNames.forEach(function(expName) {
+            processed += "\\nif (typeof " + expName + " !== 'undefined') { module.exports['" + expName + "'] = " + expName + "; }";
+          });
 
-          // 5. Compile with Babel 7 Standalone (JSX + TypeScript)
+          // If no default export, find a component function among exports
+          processed += "\\nif (!module.exports.default) {\\n" +
+            "  for (const k of Object.keys(module.exports)) {\\n" +
+            "    if (typeof module.exports[k] === 'function') { module.exports.default = module.exports[k]; break; }\\n" +
+            "  }\\n" +
+            "}";
+
+          // 6. Compile with Babel 7 Standalone (JSX + TypeScript)
           const transformed = Babel.transform(processed, {
             presets: ["react", "typescript"],
             filename: "component.tsx"
           }).code;
 
-          // 6. Execute in isolated module environment
+          // 7. Execute in isolated module environment
           const moduleObj = { exports: {} };
           const runFn = new Function("module", "exports", "require", "React", "ReactDOM", transformed);
           runFn(moduleObj, moduleObj.exports, customRequire, React, ReactDOM);
 
-          // 7. Discover the component to mount
+          // 8. Discover the component to mount
           const exported = moduleObj.exports;
           let ComponentToRender = exported && (exported.default || (exported.__esModule && exported.default));
 
@@ -265,11 +307,11 @@ export function ComponentLivePreview({
           }
 
           if (!ComponentToRender) {
-            showError("Could not find an exported React component. Make sure your component is exported (e.g. export const MyComponent = () => ... or export default).");
+            showError("Could not find an exported React component. Make sure your component is exported (e.g. export function MyComponent() or export default).");
             return;
           }
 
-          // 8. Mount to DOM
+          // 9. Mount to DOM
           rootEl.innerHTML = "";
           const root = ReactDOM.createRoot(rootEl);
           root.render(React.createElement(ComponentToRender));

@@ -9,6 +9,7 @@ import {
   Trash2,
   Edit2,
   ArrowRight,
+  Eye,
 } from "lucide-react";
 import { Task, TaskStatus } from "@/types/task";
 import { TaskPriorityBadge } from "./task-priority-badge";
@@ -22,6 +23,7 @@ import { toast } from "@/lib/toast";
 interface Props {
   task: Task;
   onEdit: (task: Task) => void;
+  onView?: (task: Task) => void;
 }
 
 const ALL_STATUSES: { id: TaskStatus; label: string }[] = [
@@ -31,7 +33,7 @@ const ALL_STATUSES: { id: TaskStatus; label: string }[] = [
   { id: "DONE", label: "Done" },
 ];
 
-export function TaskCard({ task, onEdit }: Props) {
+export function TaskCard({ task, onEdit, onView }: Props) {
   const patchStatus = usePatchTaskStatus();
   const deleteTask = useDeleteTask();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -130,12 +132,24 @@ export function TaskCard({ task, onEdit }: Props) {
     e.dataTransfer.effectAllowed = "move";
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // If clicking an interactive button, checkbox or menu, ignore
+    if ((e.target as HTMLElement).closest("button, input, [role='menu']")) return;
+    sound.playClick(800);
+    if (onView) {
+      onView(task);
+    } else {
+      onEdit(task);
+    }
+  };
+
   return (
     <div
       draggable
       onDragStart={handleDragStart}
+      onClick={handleCardClick}
       className={cn(
-        "group relative p-3.5 rounded-lg bg-surface-1 border border-hairline hover:border-primary/40 hover:shadow-[0_0_20px_-4px_rgba(37,99,235,0.12)] hover:bg-surface-2/70 transition-all duration-150 cursor-grab active:cursor-grabbing shadow-sm",
+        "group relative p-3.5 rounded-lg bg-surface-1 border border-hairline hover:border-primary/50 hover:shadow-[0_0_20px_-4px_rgba(37,99,235,0.15)] hover:bg-surface-2/70 transition-all duration-150 cursor-pointer shadow-sm select-none",
         isDone && "opacity-75"
       )}
     >
@@ -227,6 +241,23 @@ export function TaskCard({ task, onEdit }: Props) {
             onClick={(e) => e.stopPropagation()}
             className="rounded-md bg-surface-2 border border-hairline-strong shadow-2xl py-1 text-xs select-none animate-in fade-in zoom-in-95 duration-100"
           >
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                setMenuPosition(null);
+                sound.playClick(800);
+                if (onView) {
+                  onView(task);
+                } else {
+                  onEdit(task);
+                }
+              }}
+              className="w-full px-3 py-1.5 text-left text-ink hover:bg-surface-3 flex items-center gap-2 cursor-pointer transition-colors"
+            >
+              <Eye className="w-3 h-3 text-primary" />
+              View Details
+            </button>
+
             <button
               onClick={() => {
                 setMenuOpen(false);

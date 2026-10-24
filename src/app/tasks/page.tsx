@@ -21,6 +21,7 @@ import { KanbanColumn } from "@/components/tasks/kanban-column";
 import { TaskListRow } from "@/components/tasks/task-list-row";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { EditTaskModal } from "@/components/tasks/edit-task-modal";
+import { TaskDetailModal } from "@/components/tasks/task-detail-modal";
 import { RemindersModal } from "@/components/reminders/reminders-modal";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,7 @@ export default function TasksPage() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [modalInitialStatus, setModalInitialStatus] = useState<TaskStatus>("TODO");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [isRemindersOpen, setIsRemindersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -349,6 +351,7 @@ export default function TasksPage() {
                       tasks={tasks.filter((t) => t.status === column.id)}
                       onNewTaskWithStatus={(st) => handleOpenNewModal(st)}
                       onEditTask={(t) => setEditingTask(t)}
+                      onViewTask={(t) => setViewingTask(t)}
                     />
                   ))}
                 </div>
@@ -364,6 +367,7 @@ export default function TasksPage() {
                       tasks={tasks.filter((t) => t.status === column.id)}
                       onNewTaskWithStatus={(st) => handleOpenNewModal(st)}
                       onEditTask={(t) => setEditingTask(t)}
+                      onViewTask={(t) => setViewingTask(t)}
                     />
                   ))}
                 </div>
@@ -379,6 +383,7 @@ export default function TasksPage() {
                       key={task.id}
                       task={task}
                       onEdit={(t) => setEditingTask(t)}
+                      onView={(t) => setViewingTask(t)}
                     />
                   ))}
                 </div>
@@ -401,6 +406,17 @@ export default function TasksPage() {
         task={editingTask}
         isOpen={Boolean(editingTask)}
         onClose={() => setEditingTask(null)}
+      />
+
+      {/* Task Detail Modal */}
+      <TaskDetailModal
+        task={viewingTask}
+        isOpen={Boolean(viewingTask)}
+        onClose={() => setViewingTask(null)}
+        onEdit={(t) => {
+          setViewingTask(null);
+          setEditingTask(t);
+        }}
       />
 
       {/* Reminders Modal */}

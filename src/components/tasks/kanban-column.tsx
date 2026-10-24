@@ -15,6 +15,7 @@ interface Props {
   tasks: Task[];
   onNewTaskWithStatus: (status: TaskStatus) => void;
   onEditTask: (task: Task) => void;
+  onViewTask?: (task: Task) => void;
 }
 
 export function KanbanColumn({
@@ -24,6 +25,7 @@ export function KanbanColumn({
   tasks,
   onNewTaskWithStatus,
   onEditTask,
+  onViewTask,
 }: Props) {
   const patchStatus = usePatchTaskStatus();
   const [isDragOver, setIsDragOver] = useState(false);
@@ -86,7 +88,12 @@ export function KanbanColumn({
       {/* Task Cards List */}
       <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[calc(100vh-280px)] pr-1">
         {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} onEdit={onEditTask} />
+          <TaskCard
+            key={task.id}
+            task={task}
+            onEdit={onEditTask}
+            onView={onViewTask}
+          />
         ))}
 
         {tasks.length === 0 && (

@@ -8,6 +8,7 @@ import {
   MoreVertical,
   Trash2,
   Edit2,
+  Eye,
 } from "lucide-react";
 import { Task, TaskStatus } from "@/types/task";
 import { TaskPriorityBadge } from "./task-priority-badge";
@@ -21,9 +22,10 @@ import { toast } from "@/lib/toast";
 interface Props {
   task: Task;
   onEdit: (task: Task) => void;
+  onView?: (task: Task) => void;
 }
 
-export function TaskListRow({ task, onEdit }: Props) {
+export function TaskListRow({ task, onEdit, onView }: Props) {
   const patchStatus = usePatchTaskStatus();
   const deleteTask = useDeleteTask();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -116,8 +118,14 @@ export function TaskListRow({ task, onEdit }: Props) {
 
   return (
     <div
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest("button, input, select, [role='menu']")) return;
+        sound.playClick(800);
+        if (onView) onView(task);
+        else onEdit(task);
+      }}
       className={cn(
-        "group flex items-center justify-between px-4 py-2.5 bg-surface-1 border-b border-hairline hover:bg-surface-2 transition-colors duration-150 text-xs first:rounded-t-lg last:rounded-b-lg last:border-b-0",
+        "group flex items-center justify-between px-4 py-2.5 bg-surface-1 border-b border-hairline hover:bg-surface-2 transition-colors duration-150 text-xs first:rounded-t-lg last:rounded-b-lg last:border-b-0 cursor-pointer",
         isDone && "opacity-75",
         menuOpen ? "relative z-30" : "relative z-0"
       )}
@@ -211,6 +219,19 @@ export function TaskListRow({ task, onEdit }: Props) {
             onClick={(e) => e.stopPropagation()}
             className="rounded-lg bg-surface-2 border border-hairline-strong shadow-2xl py-1 text-xs select-none animate-in fade-in zoom-in-95 duration-100"
           >
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                setMenuPosition(null);
+                sound.playClick(800);
+                if (onView) onView(task);
+                else onEdit(task);
+              }}
+              className="w-full px-3 py-1.5 text-left text-ink hover:bg-surface-3 flex items-center gap-2 cursor-pointer transition-colors"
+            >
+              <Eye className="w-3 h-3 text-primary" />
+              View Details
+            </button>
             <button
               onClick={() => {
                 setMenuOpen(false);

@@ -21,7 +21,7 @@ const NAVIGATION_SHORTCUTS: ShortcutItem[] = [
   { keys: ["G", "S"], description: "Go to Snippets Vault" },
   { keys: ["G", "C"], description: "Go to Components Catalog" },
   { keys: ["G", "R"], description: "Go to Resources Hub" },
-  { keys: ["G", "G"], description: "Go to Games & Relaxation" },
+  { keys: ["G", "A"], description: "Go to Games & Arcade" },
 ];
 
 const ACTION_SHORTCUTS: ShortcutItem[] = [

@@ -35,7 +35,7 @@ const navigationItems: NavItem[] = [
   { name: "Snippets", href: "/snippets", icon: Code2, keys: ["G", "S"] },
   { name: "Components", href: "/components", icon: Component, keys: ["G", "C"] },
   { name: "Resources", href: "/resources", icon: BookOpen, keys: ["G", "R"] },
-  { name: "Games", href: "/games", icon: Gamepad2, keys: ["G", "G"] },
+  { name: "Games", href: "/games", icon: Gamepad2, keys: ["G", "A"] },
 ];
 
 export function Sidebar() {

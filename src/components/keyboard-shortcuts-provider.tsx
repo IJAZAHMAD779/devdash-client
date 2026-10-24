@@ -79,7 +79,7 @@ export function KeyboardShortcutsProvider({
             e.preventDefault();
             router.push("/resources");
             return;
-          case "g":
+          case "a":
             e.preventDefault();
             router.push("/games");
             return;

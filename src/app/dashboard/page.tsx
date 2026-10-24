@@ -183,7 +183,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
             <Link
               href="/games"
-              title="Games & Relaxation (G + G)"
+              title="Games & Relaxation (G + A)"
               className="p-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline hover:border-primary/40 text-ink-subtle hover:text-primary transition-all duration-200 group flex items-center justify-center"
               aria-label="Games"
             >

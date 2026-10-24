@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ChevronDown,
   ChevronRight,
-  FolderKanban,
   Plus,
   Search,
   SlidersHorizontal,
@@ -12,11 +11,12 @@ import {
   PanelLeftClose,
 } from "lucide-react";
 import { Project, ProjectStatus } from "@/types/project";
-import { ProjectFavicon } from "./project-favicon";
+import { ProjectIcon } from "./project-icon";
+import { StatusDot } from "./status-dot";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
-interface ProjectExplorerProps {
+export interface ProjectExplorerProps {
   projects: Project[];
   selectedProjectId: string | null;
   onSelectProject: (id: string) => void;
@@ -25,12 +25,12 @@ interface ProjectExplorerProps {
   className?: string;
 }
 
-const STATUS_ORDER: { status: ProjectStatus; label: string; dotClass: string }[] = [
-  { status: "IN_PROGRESS", label: "In Progress", dotClass: "bg-primary animate-pulse" },
-  { status: "PLANNING", label: "Planning", dotClass: "bg-blue-400" },
-  { status: "ON_HOLD", label: "On Hold", dotClass: "bg-amber-400" },
-  { status: "COMPLETED", label: "Completed", dotClass: "bg-emerald-400" },
-  { status: "ARCHIVED", label: "Archived", dotClass: "bg-ink-tertiary" },
+const STATUS_GROUPS: { status: ProjectStatus; label: string }[] = [
+  { status: "IN_PROGRESS", label: "In Progress" },
+  { status: "PLANNING", label: "Planning" },
+  { status: "ON_HOLD", label: "On Hold" },
+  { status: "COMPLETED", label: "Completed" },
+  { status: "ARCHIVED", label: "Archived" },
 ];
 
 export function ProjectExplorer({
@@ -57,7 +57,7 @@ export function ProjectExplorer({
     );
   }, [projects, filterText]);
 
-  // Group projects according to selected mode
+  // Group projects
   const groupedProjects = useMemo(() => {
     if (groupBy === "status") {
       const map: Record<ProjectStatus, Project[]> = {
@@ -76,14 +76,13 @@ export function ProjectExplorer({
         }
       }
 
-      return STATUS_ORDER.map(({ status, label, dotClass }) => ({
+      return STATUS_GROUPS.map(({ status, label }) => ({
         key: status,
         label,
-        dotClass,
         items: map[status],
       })).filter((group) => group.items.length > 0);
     } else {
-      // Group by Tech Stack
+      // Group by Primary Tech
       const map = new Map<string, Project[]>();
       const other: Project[] = [];
 
@@ -103,15 +102,13 @@ export function ProjectExplorer({
         .map(([tech, items]) => ({
           key: tech,
           label: tech,
-          dotClass: "bg-primary/70",
           items,
         }));
 
       if (other.length > 0) {
         groups.push({
           key: "General",
-          label: "General / Other",
-          dotClass: "bg-ink-tertiary",
+          label: "General",
           items: other,
         });
       }
@@ -129,88 +126,92 @@ export function ProjectExplorer({
   };
 
   return (
-    <div
+    <aside
       className={cn(
-        "w-72 lg:w-80 border-r border-hairline bg-surface-1 flex flex-col select-none shrink-0 transition-all duration-200 overflow-hidden",
+        "w-[240px] border-r border-line bg-surface-1 flex flex-col select-none shrink-0 transition-all duration-200 overflow-hidden",
         className
       )}
     >
-      {/* Explorer Header */}
-      <div className="px-3.5 py-3 border-b border-hairline flex items-center justify-between bg-surface-1/90 backdrop-blur-xs">
-        <div className="flex items-center gap-2">
-          <FolderKanban className="w-4 h-4 text-primary" />
-          <span className="text-xs font-semibold tracking-[-0.2px] text-ink uppercase">
-            Explorer
+      {/* 1. Header (clean hairline border, collapse toggle) */}
+      <div className="h-11 px-3 border-b border-line flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted">
+            EXPLORER
           </span>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-2 border border-hairline text-ink-subtle">
-            {projects.length}
+          <span className="text-[10px] font-mono text-subtle">
+            ({projects.length})
           </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           {/* Group By Toggle */}
           <button
+            type="button"
             onClick={() => {
               sound.playClick(700);
               setGroupBy((prev) => (prev === "status" ? "tech" : "status"));
             }}
             title={`Group by: ${groupBy === "status" ? "Tech Stack" : "Status"}`}
+            aria-label={`Group by: ${groupBy === "status" ? "Tech Stack" : "Status"}`}
             className={cn(
-              "p-1.5 rounded hover:bg-surface-2 text-xs transition-colors cursor-pointer",
-              groupBy === "tech" ? "text-primary" : "text-ink-tertiary hover:text-ink"
+              "p-1 rounded-[4px] hover:bg-surface-2 transition-colors cursor-pointer",
+              groupBy === "tech" ? "text-accent" : "text-subtle hover:text-text-primary"
             )}
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <SlidersHorizontal className="w-3.5 h-3.5 stroke-[1.5]" />
           </button>
 
           {/* New Project Button */}
           <button
+            type="button"
             onClick={() => {
               sound.playClick(900);
               onNewProject();
             }}
             title="Create Project"
-            className="p-1.5 rounded hover:bg-surface-2 text-ink-subtle hover:text-ink transition-colors cursor-pointer"
+            aria-label="Create Project"
+            className="p-1 rounded-[4px] hover:bg-surface-2 text-subtle hover:text-text-primary transition-colors cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-3.5 h-3.5 stroke-[1.5]" />
           </button>
 
-          {/* Collapse Sidebar Button (Desktop) */}
+          {/* Collapse Explorer Button */}
           {onToggleCollapse && (
             <button
+              type="button"
               onClick={() => {
                 sound.playClick(600);
                 onToggleCollapse();
               }}
               title="Collapse Explorer"
               aria-label="Collapse Explorer"
-              className="hidden md:flex p-1.5 rounded hover:bg-surface-2 text-ink-tertiary hover:text-ink transition-colors cursor-pointer"
+              className="p-1 rounded-[4px] hover:bg-surface-2 text-subtle hover:text-text-primary transition-colors cursor-pointer"
             >
-              <PanelLeftClose className="w-3.5 h-3.5" />
+              <PanelLeftClose className="w-3.5 h-3.5 stroke-[1.5]" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Inline Quick Filter */}
-      <div className="p-2 border-b border-hairline bg-surface-1/60">
+      {/* 2. Quiet Inline Filter (32px, 6px radius, surface-2) */}
+      <div className="p-2 border-b border-line shrink-0">
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-ink-tertiary absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-3 h-3 text-subtle absolute left-2.5 top-1/2 -translate-y-1/2 stroke-[1.5]" />
           <input
             type="text"
             placeholder="Filter explorer..."
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
-            className="w-full pl-8 pr-2.5 py-1 text-xs rounded bg-surface-2 border border-hairline text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-hairline-strong transition-all"
+            className="w-full h-7 pl-7 pr-2.5 text-xs rounded-[6px] bg-surface-2 border border-line text-text-primary placeholder:text-subtle focus:outline-none focus:border-accent transition-colors"
           />
         </div>
       </div>
 
-      {/* Tree View Body */}
-      <div className="flex-1 overflow-y-auto px-1.5 py-2 space-y-1 text-xs">
+      {/* 3. Tree View Body */}
+      <div className="flex-1 overflow-y-auto px-1.5 py-2 space-y-1 text-xs no-scrollbar">
         {groupedProjects.length === 0 ? (
-          <div className="text-center py-8 px-4 text-ink-tertiary text-xs">
-            {filterText ? "No projects match filter" : "No projects created"}
+          <div className="text-center py-8 px-2 text-subtle text-xs">
+            {filterText ? "No matching projects" : "No projects created"}
           </div>
         ) : (
           groupedProjects.map((group) => {
@@ -218,71 +219,75 @@ export function ProjectExplorer({
 
             return (
               <div key={group.key} className="space-y-0.5">
-                {/* Group Header */}
+                {/* Group Header (Mono label style) */}
                 <button
+                  type="button"
                   onClick={() => toggleGroup(group.key)}
-                  className="w-full flex items-center justify-between px-2 py-1 rounded text-ink-muted hover:text-ink hover:bg-surface-2/60 transition-colors text-left font-medium cursor-pointer"
+                  className="w-full flex items-center justify-between px-2 py-1 rounded-[4px] text-muted hover:text-text-primary hover:bg-surface-2/60 transition-colors text-left cursor-pointer"
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
                     {isGroupCollapsed ? (
-                      <ChevronRight className="w-3.5 h-3.5 text-ink-tertiary shrink-0" />
+                      <ChevronRight className="w-3 h-3 text-subtle shrink-0 stroke-[1.5]" />
                     ) : (
-                      <ChevronDown className="w-3.5 h-3.5 text-ink-tertiary shrink-0" />
+                      <ChevronDown className="w-3 h-3 text-subtle shrink-0 stroke-[1.5]" />
                     )}
-                    <span
-                      className={cn("w-1.5 h-1.5 rounded-full shrink-0", group.dotClass)}
-                    />
-                    <span className="truncate text-[11px] font-mono uppercase tracking-wider">
+                    <span className="truncate text-[11px] font-mono uppercase tracking-[0.08em] text-muted">
                       {group.label}
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-ink-tertiary">
+                  <span className="text-[10px] font-mono text-subtle">
                     {group.items.length}
                   </span>
                 </button>
 
-                {/* Project Items in Group */}
+                {/* Project Items in Group (32px rows) */}
                 {!isGroupCollapsed && (
-                  <div className="pl-2 space-y-0.5 border-l border-hairline/50 ml-3.5 my-0.5">
+                  <div className="space-y-0.5 pl-1.5 my-0.5">
                     {group.items.map((project) => {
                       const isSelected = project.id === selectedProjectId;
+                      const showDot = project.status !== "COMPLETED";
 
                       return (
                         <button
                           key={project.id}
+                          type="button"
                           onClick={() => {
                             sound.playClick(750);
                             onSelectProject(project.id);
                           }}
                           className={cn(
-                            "w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left transition-all duration-150 cursor-pointer group relative",
+                            "relative w-full h-8 flex items-center justify-between px-2 rounded-[6px] text-left transition-colors cursor-pointer group select-none",
                             isSelected
-                              ? "bg-surface-3 text-ink font-medium shadow-xs"
-                              : "text-ink-muted hover:text-ink hover:bg-surface-2/70"
+                              ? "bg-surface-2 text-text-primary font-medium"
+                              : "text-muted hover:text-text-primary hover:bg-surface-2/60"
                           )}
                         >
-                          {/* Active border bar */}
+                          {/* 2px Left Accent Bar on Active Item */}
                           {isSelected && (
-                            <span className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary rounded-r" />
+                            <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-accent rounded-r" />
                           )}
 
                           <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <ProjectFavicon
+                            <ProjectIcon
                               liveUrl={project.liveUrl}
                               repositoryUrl={project.repositoryUrl}
                               title={project.title}
-                              size={15}
+                              size="sm"
+                              tileRadius="sm"
                             />
-                            <span className="truncate text-xs tracking-[-0.1px]">
+                            <span className="truncate text-xs tracking-tight">
                               {project.title}
                             </span>
                           </div>
 
-                          {project.favorite && (
-                            <div className="flex items-center gap-1 shrink-0 ml-1.5">
-                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                            {showDot && (
+                              <StatusDot status={project.status} showLabel={false} />
+                            )}
+                            {project.favorite && (
+                              <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+                            )}
+                          </div>
                         </button>
                       );
                     })}
@@ -293,6 +298,6 @@ export function ProjectExplorer({
           })
         )}
       </div>
-    </div>
+    </aside>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Plus,
   Search,
@@ -35,6 +35,8 @@ import { EditBookmarkModal } from "./edit-bookmark-modal";
 import { ImportBookmarksModal } from "./import-bookmarks-modal";
 import { EnrichBookmarksModal } from "./enrich-bookmarks-modal";
 import { ClearNotesModal } from "./clear-notes-modal";
+import { BulkActionBar } from "./bulk-action-bar";
+import { MoveBookmarksModal } from "./move-bookmarks-modal";
 import { exportBookmarksToHtml } from "@/lib/bookmark-parser";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { sound } from "@/lib/audio";
@@ -83,8 +85,21 @@ export function BookmarksCatalog() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isEnrichModalOpen, setIsEnrichModalOpen] = useState(false);
   const [isClearNotesModalOpen, setIsClearNotesModalOpen] = useState(false);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
   const [deletingBookmark, setDeletingBookmark] = useState<Bookmark | null>(null);
+
+  // Cross-category bulk selection state (persists across category navigation)
+  const [selectedBookmarkIds, setSelectedBookmarkIds] = useState<Set<string>>(new Set());
+
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedBookmarkIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const debouncedSearch = useDebounce(searchQuery, 250);
   const [visibleCount, setVisibleCount] = useState(30);
@@ -184,6 +199,38 @@ export function BookmarksCatalog() {
       return true;
     });
   }, [allBookmarks, selectedCategory, debouncedSearch]);
+
+  // Selected counts breakdown across categories for folder badges
+  const selectedCountsByCategory = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allBookmarks?.forEach((bm) => {
+      if (selectedBookmarkIds.has(bm.id)) {
+        const cat = (bm.category || "tools").toLowerCase();
+        counts[cat] = (counts[cat] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allBookmarks, selectedBookmarkIds]);
+
+  const isAllFilteredSelected = useMemo(() => {
+    return (
+      filteredBookmarks.length > 0 &&
+      filteredBookmarks.every((b) => selectedBookmarkIds.has(b.id))
+    );
+  }, [filteredBookmarks, selectedBookmarkIds]);
+
+  const handleToggleSelectAllFiltered = useCallback(() => {
+    sound.playClick(isAllFilteredSelected ? 600 : 850);
+    setSelectedBookmarkIds((prev) => {
+      const next = new Set(prev);
+      if (isAllFilteredSelected) {
+        filteredBookmarks.forEach((b) => next.delete(b.id));
+      } else {
+        filteredBookmarks.forEach((b) => next.add(b.id));
+      }
+      return next;
+    });
+  }, [filteredBookmarks, isAllFilteredSelected]);
 
   // Progressive chunking for fast DOM performance on large bookmark sets
   const visibleBookmarks = useMemo(() => {
@@ -425,6 +472,7 @@ export function BookmarksCatalog() {
 
           {PRESET_BOOKMARK_CATEGORIES.map((preset) => {
             const count = folderCounts[preset.id] || 0;
+            const selectedInFolder = selectedCountsByCategory[preset.id] || 0;
             const isActive = selectedCategory === preset.id;
             return (
               <button
@@ -439,12 +487,18 @@ export function BookmarksCatalog() {
               >
                 <span>{preset.label}</span>
                 <span className="text-[10px] font-mono opacity-80">({count})</span>
+                {selectedInFolder > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-primary text-white text-[9px] font-mono font-bold flex items-center justify-center">
+                    {selectedInFolder}
+                  </span>
+                )}
               </button>
             );
           })}
 
           {customFolders.map((folder) => {
             const count = folderCounts[folder] || 0;
+            const selectedInFolder = selectedCountsByCategory[folder] || 0;
             const isActive = selectedCategory === folder;
             return (
               <button
@@ -459,6 +513,11 @@ export function BookmarksCatalog() {
               >
                 <span>{folder}</span>
                 <span className="text-[10px] font-mono opacity-80">({count})</span>
+                {selectedInFolder > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-primary text-white text-[9px] font-mono font-bold flex items-center justify-center">
+                    {selectedInFolder}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -578,6 +637,7 @@ export function BookmarksCatalog() {
             {/* Presets Folders */}
             {PRESET_BOOKMARK_CATEGORIES.map((cat) => {
               const count = folderCounts[cat.id] || 0;
+              const selectedInFolder = selectedCountsByCategory[cat.id] || 0;
               const isActive = selectedCategory === cat.id;
 
               return (
@@ -602,9 +662,16 @@ export function BookmarksCatalog() {
                     )}
                     <span className="truncate">{cat.label}</span>
                   </div>
-                  <span className="text-[10px] font-mono text-ink-tertiary">
-                    {count}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {selectedInFolder > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-primary text-white text-[9px] font-mono font-bold flex items-center justify-center animate-in zoom-in-75">
+                        {selectedInFolder}
+                      </span>
+                    )}
+                    <span className="text-[10px] font-mono text-ink-tertiary">
+                      {count}
+                    </span>
+                  </div>
                 </button>
               );
             })}
@@ -619,6 +686,7 @@ export function BookmarksCatalog() {
                 </div>
                 {customFolders.map((folder) => {
                   const count = folderCounts[folder] || 0;
+                  const selectedInFolder = selectedCountsByCategory[folder] || 0;
                   const isActive = selectedCategory === folder;
 
                   return (
@@ -643,9 +711,16 @@ export function BookmarksCatalog() {
                         )}
                         <span className="truncate">{folder}</span>
                       </div>
-                      <span className="text-[10px] font-mono text-ink-tertiary">
-                        {count}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {selectedInFolder > 0 && (
+                          <span className="w-4 h-4 rounded-full bg-primary text-white text-[9px] font-mono font-bold flex items-center justify-center animate-in zoom-in-75">
+                            {selectedInFolder}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-mono text-ink-tertiary">
+                          {count}
+                        </span>
+                      </div>
                     </button>
                   );
                 })}
@@ -658,7 +733,7 @@ export function BookmarksCatalog() {
         <main className="flex-1 min-h-0 flex flex-col overflow-y-auto p-4 sm:p-6 lg:p-8">
           {/* Active Folder Header info */}
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-hairline/60">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold tracking-[-0.2px] text-ink capitalize">
                 {selectedCategory === "ALL"
                   ? "All Bookmarks"
@@ -669,6 +744,35 @@ export function BookmarksCatalog() {
               <span className="text-xs font-mono text-ink-tertiary">
                 ({filteredBookmarks.length} {filteredBookmarks.length === 1 ? "link" : "links"})
               </span>
+
+              {/* Select All in View toggle */}
+              {filteredBookmarks.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleToggleSelectAllFiltered}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer ml-1 sm:ml-2",
+                    isAllFilteredSelected
+                      ? "bg-primary/10 border-primary/30 text-primary"
+                      : "bg-surface-2 border-hairline text-ink-subtle hover:text-ink"
+                  )}
+                  title={isAllFilteredSelected ? "Deselect all visible bookmarks" : "Select all visible bookmarks"}
+                >
+                  <div
+                    className={cn(
+                      "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
+                      isAllFilteredSelected
+                        ? "bg-primary border-primary text-white"
+                        : "border-hairline-strong bg-surface-1"
+                    )}
+                  >
+                    {isAllFilteredSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                  </div>
+                  <span>
+                    {isAllFilteredSelected ? "Deselect All" : `Select All (${filteredBookmarks.length})`}
+                  </span>
+                </button>
+              )}
             </div>
 
             {searchQuery && (
@@ -738,6 +842,8 @@ export function BookmarksCatalog() {
                     <BookmarkCard
                       key={bm.id}
                       bookmark={bm}
+                      isSelected={selectedBookmarkIds.has(bm.id)}
+                      onToggleSelect={handleToggleSelect}
                       onEdit={(b) => setEditingBookmark(b)}
                       onDelete={(b) => setDeletingBookmark(b)}
                     />
@@ -750,6 +856,8 @@ export function BookmarksCatalog() {
                     <BookmarkListRow
                       key={bm.id}
                       bookmark={bm}
+                      isSelected={selectedBookmarkIds.has(bm.id)}
+                      onToggleSelect={handleToggleSelect}
                       onEdit={(b) => setEditingBookmark(b)}
                     />
                   ))}
@@ -877,6 +985,23 @@ export function BookmarksCatalog() {
         confirmText="Delete Bookmark"
         variant="danger"
         isLoading={deleteBookmark.isPending}
+      />
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedBookmarkIds={selectedBookmarkIds}
+        allBookmarks={allBookmarks || []}
+        onClearSelection={() => setSelectedBookmarkIds(new Set())}
+        onOpenMoveModal={() => setIsMoveModalOpen(true)}
+      />
+
+      {/* Move Bookmarks Modal */}
+      <MoveBookmarksModal
+        isOpen={isMoveModalOpen}
+        onClose={() => setIsMoveModalOpen(false)}
+        selectedBookmarks={(allBookmarks || []).filter((b) => selectedBookmarkIds.has(b.id))}
+        customFolders={customFolders}
+        onComplete={() => setSelectedBookmarkIds(new Set())}
       />
     </div>
   );

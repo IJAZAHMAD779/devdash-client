@@ -12,6 +12,10 @@ import {
   BatchEnrichResponse,
   ClearBookmarkNotesPayload,
   ClearBookmarkNotesResponse,
+  BatchMoveBookmarksPayload,
+  BatchMoveBookmarksResponse,
+  BatchDeleteBookmarksPayload,
+  BatchDeleteBookmarksResponse,
 } from "@/types/bookmark";
 
 interface BookmarkQueryParams {
@@ -231,6 +235,83 @@ export function useClearBookmarkNotes() {
       return apiClient.post<ClearBookmarkNotesResponse>("/bookmarks/clear-notes", payload);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+      queryClient.invalidateQueries({ queryKey: ["activity-logs"] });
+    },
+  });
+}
+
+export function useBatchMoveBookmarks() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: BatchMoveBookmarksPayload) => {
+      return apiClient.post<BatchMoveBookmarksResponse>("/bookmarks/batch-move", payload);
+    },
+    onMutate: async (payload) => {
+      sound.playClick(850);
+      await queryClient.cancelQueries({ queryKey: ["bookmarks"] });
+      const previous = queryClient.getQueryData<Bookmark[]>(["bookmarks"]);
+
+      const targetIdSet = new Set(payload.bookmarkIds);
+      queryClient.setQueryData<Bookmark[]>(["bookmarks"], (old = []) =>
+        old.map((item) =>
+          targetIdSet.has(item.id)
+            ? {
+                ...item,
+                category: payload.category,
+                ...(payload.projectId !== undefined && { projectId: payload.projectId }),
+                updatedAt: new Date().toISOString(),
+              }
+            : item
+        )
+      );
+
+      return { previous };
+    },
+    onError: (err, vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["bookmarks"], context.previous);
+      }
+    },
+    onSuccess: () => {
+      sound.playSuccess();
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+      queryClient.invalidateQueries({ queryKey: ["activity-logs"] });
+    },
+  });
+}
+
+export function useBatchDeleteBookmarks() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: BatchDeleteBookmarksPayload) => {
+      return apiClient.post<BatchDeleteBookmarksResponse>("/bookmarks/batch-delete", payload);
+    },
+    onMutate: async (payload) => {
+      sound.playClick(400);
+      await queryClient.cancelQueries({ queryKey: ["bookmarks"] });
+      const previous = queryClient.getQueryData<Bookmark[]>(["bookmarks"]);
+
+      const targetIdSet = new Set(payload.bookmarkIds);
+      queryClient.setQueryData<Bookmark[]>(["bookmarks"], (old = []) =>
+        old.filter((item) => !targetIdSet.has(item.id))
+      );
+
+      return { previous };
+    },
+    onError: (err, vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["bookmarks"], context.previous);
+      }
+    },
+    onSuccess: () => {
+      sound.playSuccess();
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
       queryClient.invalidateQueries({ queryKey: ["activity-logs"] });
     },

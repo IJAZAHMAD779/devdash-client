@@ -27,6 +27,8 @@ interface BookmarkCardProps {
   bookmark: Bookmark;
   onEdit: (bookmark: Bookmark) => void;
   onDelete: (bookmark: Bookmark) => void;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string, e: React.MouseEvent) => void;
 }
 
 const getCategoryBadge = (cat: string) => {
@@ -42,7 +44,13 @@ const getCategoryBadge = (cat: string) => {
   };
 };
 
-export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardProps) {
+export function BookmarkCard({
+  bookmark: bm,
+  onEdit,
+  onDelete,
+  isSelected = false,
+  onToggleSelect,
+}: BookmarkCardProps) {
   const toggleFavorite = useToggleBookmarkFavorite();
   const enrichBookmark = useEnrichBookmark();
   const [copied, setCopied] = useState(false);
@@ -103,15 +111,39 @@ export function BookmarkCard({ bookmark: bm, onEdit, onDelete }: BookmarkCardPro
         if (hasDetails) setIsExpanded(!isExpanded);
       }}
       className={cn(
-        "rounded-xl bg-surface-1 border border-hairline hover:border-primary/40 hover:shadow-[0_0_24px_-4px_rgba(37,99,235,0.12)] transition-all duration-200 overflow-hidden flex flex-col group relative",
+        "rounded-xl bg-surface-1 border transition-all duration-200 overflow-hidden flex flex-col group relative",
+        isSelected
+          ? "border-primary/60 bg-primary/[0.03] shadow-[0_0_24px_-4px_rgba(37,99,235,0.2)] ring-1 ring-primary/40"
+          : "border-hairline hover:border-primary/40 hover:shadow-[0_0_24px_-4px_rgba(37,99,235,0.12)]",
         hasDetails && "cursor-pointer"
       )}
     >
       {/* Card Header */}
       <div className="p-3.5 sm:p-4 border-b border-hairline/80 flex items-start justify-between gap-2.5 bg-surface-1/60">
         <div className="flex-1 min-w-0">
-          {/* Domain & Category label */}
+          {/* Checkbox, Domain & Category label */}
           <div className="flex items-center gap-2 mb-2">
+            {onToggleSelect && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  sound.playClick(isSelected ? 600 : 850);
+                  onToggleSelect(bm.id, e);
+                }}
+                className={cn(
+                  "w-4 h-4 rounded border transition-all flex items-center justify-center cursor-pointer shrink-0 -ml-0.5",
+                  isSelected
+                    ? "bg-primary border-primary text-white shadow-xs"
+                    : "border-hairline-strong bg-surface-2 hover:border-primary/60 opacity-60 group-hover:opacity-100"
+                )}
+                title={isSelected ? "Deselect bookmark" : "Select bookmark"}
+                aria-checked={isSelected}
+                role="checkbox"
+              >
+                {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+              </button>
+            )}
             <BookmarkFavicon domain={domain} url={bm.url} size={16} />
             <span className="text-xs font-bold text-ink tracking-tight">
               {categoryConfig.label}

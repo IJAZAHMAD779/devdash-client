@@ -26,6 +26,8 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 interface Props {
   bookmark: Bookmark;
   onEdit: (bookmark: Bookmark) => void;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string, e: React.MouseEvent) => void;
 }
 
 const getCategoryBadge = (cat: string) => {
@@ -41,7 +43,12 @@ const getCategoryBadge = (cat: string) => {
   };
 };
 
-export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
+export function BookmarkListRow({
+  bookmark: bm,
+  onEdit,
+  isSelected = false,
+  onToggleSelect,
+}: Props) {
   const toggleFavorite = useToggleBookmarkFavorite();
   const deleteBookmark = useDeleteBookmark();
   const enrichBookmark = useEnrichBookmark();
@@ -116,10 +123,38 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
     <>
       <div
         onClick={() => setIsExpanded(!isExpanded)}
-        className="group flex items-center justify-between px-3.5 sm:px-4 py-2.5 bg-surface-1 border-b border-hairline hover:bg-surface-2/70 transition-colors duration-150 text-xs first:rounded-t-lg last:rounded-b-lg last:border-b-0 cursor-pointer"
+        className={cn(
+          "group flex items-center justify-between px-3.5 sm:px-4 py-2.5 transition-colors duration-150 text-xs border-b border-hairline first:rounded-t-lg last:rounded-b-lg last:border-b-0 cursor-pointer",
+          isSelected
+            ? "bg-primary/[0.04] border-primary/40 ring-1 ring-inset ring-primary/30"
+            : "bg-surface-1 hover:bg-surface-2/70"
+        )}
       >
-        {/* Left: Star, Favicon, Title, Domain, Project */}
-        <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
+        {/* Left: Checkbox, Star, Favicon, Title, Domain, Project */}
+        <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-4">
+          {/* Checkbox */}
+          {onToggleSelect && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                sound.playClick(isSelected ? 600 : 850);
+                onToggleSelect(bm.id, e);
+              }}
+              className={cn(
+                "w-4 h-4 rounded border transition-all flex items-center justify-center cursor-pointer shrink-0 -ml-1",
+                isSelected
+                  ? "bg-primary border-primary text-white shadow-xs"
+                  : "border-hairline-strong bg-surface-2 hover:border-primary/60 opacity-50 group-hover:opacity-100"
+              )}
+              title={isSelected ? "Deselect bookmark" : "Select bookmark"}
+              aria-checked={isSelected}
+              role="checkbox"
+            >
+              {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+            </button>
+          )}
+
           {/* Star Button */}
           <button
             type="button"

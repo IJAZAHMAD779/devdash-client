@@ -103,3 +103,22 @@ export interface ClearBookmarkNotesResponse {
   clearedCount: number;
 }
 
+export interface BatchMoveBookmarksPayload {
+  bookmarkIds: string[];
+  category: string;
+  projectId?: string | null;
+}
+
+export interface BatchMoveBookmarksResponse {
+  movedCount: number;
+  category: string;
+}
+
+export interface BatchDeleteBookmarksPayload {
+  bookmarkIds: string[];
+}
+
+export interface BatchDeleteBookmarksResponse {
+  deletedCount: number;
+}
+

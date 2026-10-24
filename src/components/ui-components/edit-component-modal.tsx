@@ -131,6 +131,10 @@ export function EditComponentModal({ component, isOpen, onClose }: Props) {
           projectId: projectId || null,
           tags,
           favorite,
+          aiAgentPrompt: component.aiAgentPrompt,
+          howToUse: component.howToUse,
+          dependencies: component.dependencies,
+          propsSchema: component.propsSchema,
         },
       });
 

@@ -8,6 +8,7 @@ import {
   Edit2,
   Copy,
   Check,
+  Blocks,
 } from "lucide-react";
 import { UIComponentItem } from "@/types/component";
 import {
@@ -193,6 +194,16 @@ export function ComponentCard({ component, onEdit, onViewCode }: Props) {
             {subtitle}
           </span>
         </div>
+
+        {component.aiAgentPrompt && (
+          <div
+            className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[10px] font-mono text-blue-400 font-medium"
+            title="AI Agent Prompt & Props available"
+          >
+            <Blocks className="w-2.5 h-2.5" />
+            <span className="hidden sm:inline">AI Prompt</span>
+          </div>
+        )}
       </div>
 
       <ConfirmModal

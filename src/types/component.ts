@@ -29,6 +29,10 @@ export interface UIComponentItem {
   previewCode: string | null;
   tags: string[];
   favorite: boolean;
+  aiAgentPrompt?: string | null;
+  howToUse?: string | null;
+  dependencies?: string[];
+  propsSchema?: ComponentPropItem[] | null;
   createdAt: string;
   updatedAt: string;
   project?: ComponentProjectRef | null;
@@ -45,6 +49,10 @@ export interface CreateComponentPayload {
   tags?: string[];
   projectId?: string | null;
   favorite?: boolean;
+  aiAgentPrompt?: string | null;
+  howToUse?: string | null;
+  dependencies?: string[];
+  propsSchema?: ComponentPropItem[] | null;
 }
 
 export interface UpdateComponentPayload {
@@ -58,6 +66,10 @@ export interface UpdateComponentPayload {
   tags?: string[];
   projectId?: string | null;
   favorite?: boolean;
+  aiAgentPrompt?: string | null;
+  howToUse?: string | null;
+  dependencies?: string[];
+  propsSchema?: ComponentPropItem[] | null;
 }
 
 export interface ComponentPropItem {

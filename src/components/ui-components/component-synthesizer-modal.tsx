@@ -138,6 +138,10 @@ export function ComponentSynthesizerModal({
         styling: result.styling,
         code: result.code,
         tags: [result.category, result.framework.toLowerCase(), result.styling.toLowerCase()],
+        aiAgentPrompt: result.aiAgentPrompt,
+        howToUse: result.howToUse,
+        dependencies: result.dependencies,
+        propsSchema: result.propsSchema,
       },
       {
         onSuccess: () => {

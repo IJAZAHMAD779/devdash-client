@@ -68,6 +68,10 @@ export function useCreateComponent() {
         previewCode: newComp.previewCode ?? null,
         tags: newComp.tags ?? [],
         favorite: newComp.favorite ?? false,
+        aiAgentPrompt: newComp.aiAgentPrompt ?? null,
+        howToUse: newComp.howToUse ?? null,
+        dependencies: newComp.dependencies ?? [],
+        propsSchema: newComp.propsSchema ?? null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

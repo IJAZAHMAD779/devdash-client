@@ -195,7 +195,7 @@ export function SchematicWireframe({ category, name, className }: SchematicWiref
             <div className="w-7 h-7 rounded-full border-2 border-surface-2 bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-[10px] text-white font-medium shadow-xs">
               U3
             </div>
-            <div className="w-7 h-7 rounded-full border-2 border-surface-2 bg-surface-3 border-hairline text-ink-tertiary text-[9px] flex items-center justify-center font-mono font-medium">
+            <div className="w-7 h-7 rounded-full border-2 border-surface-2 bg-surface-3 text-ink-tertiary text-[9px] flex items-center justify-center font-mono font-medium">
               +4
             </div>
           </div>

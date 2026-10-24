@@ -3,21 +3,18 @@
 import { useState } from "react";
 import {
   Star,
-  FolderKanban,
   MoreVertical,
   Trash2,
   Edit2,
-  Tag,
-  Code2,
-  Layers,
-  Palette,
-  ExternalLink,
+  Copy,
+  Check,
 } from "lucide-react";
-import { UIComponentItem, ComponentFramework, ComponentStyling } from "@/types/component";
+import { UIComponentItem } from "@/types/component";
 import {
   useToggleComponentFavorite,
   useDeleteComponent,
 } from "@/hooks/use-components";
+import { ComponentLivePreview } from "./component-live-preview";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -29,71 +26,33 @@ interface Props {
   onViewCode: (component: UIComponentItem) => void;
 }
 
-const FRAMEWORK_CONFIG: Record<
-  ComponentFramework,
-  { label: string; textClass: string }
-> = {
-  REACT: {
-    label: "React",
-    textClass: "text-sky-400 font-semibold",
-  },
-  NEXTJS: {
-    label: "Next.js",
-    textClass: "text-zinc-200 font-semibold",
-  },
-  VUE: {
-    label: "Vue",
-    textClass: "text-emerald-400 font-semibold",
-  },
-  SVELTE: {
-    label: "Svelte",
-    textClass: "text-orange-400 font-semibold",
-  },
-  HTML_CSS: {
-    label: "HTML/CSS",
-    textClass: "text-indigo-400 font-semibold",
-  },
-};
-
-const STYLING_CONFIG: Record<
-  ComponentStyling,
-  { label: string; textClass: string }
-> = {
-  TAILWIND: {
-    label: "Tailwind CSS",
-    textClass: "text-cyan-300",
-  },
-  CSS_MODULES: {
-    label: "CSS Modules",
-    textClass: "text-purple-300",
-  },
-  VANILLA_CSS: {
-    label: "Vanilla CSS",
-    textClass: "text-blue-300",
-  },
-  STYLED_COMPONENTS: {
-    label: "Styled Comp",
-    textClass: "text-pink-300",
-  },
-};
-
 export function ComponentCard({ component, onEdit, onViewCode }: Props) {
   const toggleFavorite = useToggleComponentFavorite();
   const deleteComponent = useDeleteComponent();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  const fwConfig =
-    FRAMEWORK_CONFIG[component.framework] || FRAMEWORK_CONFIG.REACT;
-  const styleConfig =
-    STYLING_CONFIG[component.styling] || STYLING_CONFIG.TAILWIND;
+  const [copied, setCopied] = useState(false);
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    sound.playClick(850);
     toggleFavorite.mutate({
       id: component.id,
       favorite: !component.favorite,
     });
+  };
+
+  const handleCopyCode = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    sound.playClick(900);
+    try {
+      await navigator.clipboard.writeText(component.code);
+      setCopied(true);
+      toast.success("Code copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy code");
+    }
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -113,7 +72,10 @@ export function ComponentCard({ component, onEdit, onViewCode }: Props) {
     }
   };
 
-  const lineCount = (component.code.match(/\n/g) || []).length + 1;
+  // Subtitle format: e.g. "Login template" or "React · Tailwind CSS" or category
+  const subtitle = component.category
+    ? `${component.category}`
+    : `${component.framework.toLowerCase()}`;
 
   return (
     <div
@@ -121,125 +83,116 @@ export function ComponentCard({ component, onEdit, onViewCode }: Props) {
         sound.playClick(800);
         onViewCode(component);
       }}
-      className="group relative flex flex-col justify-between p-4 rounded-xl bg-surface-1 border border-hairline hover:border-primary/50 hover:bg-surface-1/90 transition-all duration-200 cursor-pointer shadow-sm"
+      className="group relative flex flex-col rounded-2xl bg-surface-1 border border-hairline hover:border-hairline-strong hover:bg-surface-2/30 transition-all duration-200 cursor-pointer overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 select-none"
     >
-      <div>
-        {/* Top Header Row */}
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold tracking-[-0.2px] text-ink group-hover:text-primary transition-colors truncate">
-              {component.name}
-            </h3>
+      {/* Component Visual Preview Container (matching Image 2 - clean frame, no colored dots) */}
+      <div className="w-full h-48 bg-[#090a0b] border-b border-hairline/60 relative flex items-center justify-center overflow-hidden p-3 group-hover:border-hairline-strong transition-colors">
+        {/* Subtle blueprint grid overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#141517_1px,transparent_1px),linear-gradient(to_bottom,#141517_1px,transparent_1px)] bg-[size:16px_16px] opacity-30 pointer-events-none" />
 
-            {/* Framework & Styling & Category (NO pill backgrounds — clean text with dot separator) */}
-            <div className="flex items-center gap-1.5 mt-1 text-xs font-mono text-ink-subtle flex-wrap">
-              <span className={fwConfig.textClass}>{fwConfig.label}</span>
-              <span className="text-ink-tertiary">·</span>
-              <span className={styleConfig.textClass}>{styleConfig.label}</span>
-              <span className="text-ink-tertiary">·</span>
-              <span className="text-ink-tertiary capitalize">
-                {component.category || "general"}
-              </span>
-            </div>
-          </div>
+        {/* Live Preview Embed */}
+        <ComponentLivePreview
+          code={component.code}
+          name={component.name}
+          mode="thumbnail"
+          className="w-full h-full"
+        />
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={handleFavoriteClick}
+        {/* Hover Quick Action Buttons */}
+        <div
+          className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Quick Copy Button */}
+          <button
+            onClick={handleCopyCode}
+            className="p-1.5 rounded-md bg-surface-2/90 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink transition-colors cursor-pointer shadow-xs"
+            title="Copy Code"
+          >
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+          </button>
+
+          {/* Favorite Star Button */}
+          <button
+            onClick={handleFavoriteClick}
+            className={cn(
+              "p-1.5 rounded-md bg-surface-2/90 hover:bg-surface-3 border border-hairline transition-colors cursor-pointer shadow-xs",
+              component.favorite ? "text-amber-400 opacity-100" : "text-ink-muted hover:text-ink"
+            )}
+            title={component.favorite ? "Starred" : "Star component"}
+          >
+            <Star
               className={cn(
-                "p-1.5 rounded-md hover:bg-surface-2 transition-colors cursor-pointer",
-                component.favorite ? "text-amber-400" : "text-ink-tertiary hover:text-ink"
+                "w-3.5 h-3.5",
+                component.favorite && "fill-amber-400"
               )}
-              title={component.favorite ? "Starred" : "Star component"}
+            />
+          </button>
+
+          {/* More Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="p-1.5 rounded-md bg-surface-2/90 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink transition-colors cursor-pointer shadow-xs"
+              title="Options"
             >
-              <Star
-                className={cn(
-                  "w-3.5 h-3.5 transition-transform active:scale-125 duration-150",
-                  component.favorite && "fill-amber-400"
-                )}
-              />
+              <MoreVertical className="w-3.5 h-3.5" />
             </button>
 
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(!menuOpen);
-                }}
-                className="p-1.5 rounded-md hover:bg-surface-2 text-ink-tertiary hover:text-ink transition-colors cursor-pointer"
-                title="Options"
-              >
-                <MoreVertical className="w-3.5 h-3.5" />
-              </button>
-
-              {menuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setMenuOpen(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-surface-2 border border-hairline shadow-lg py-1 z-20 text-xs animate-in fade-in zoom-in-95 duration-100">
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onEdit(component);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-ink-muted hover:text-ink hover:bg-surface-3 text-left transition-colors cursor-pointer"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-semantic-error hover:bg-semantic-error/10 text-left transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete</span>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            {menuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div className="absolute right-0 top-full mt-1.5 w-32 rounded-lg bg-surface-2 border border-hairline shadow-xl py-1 z-30 text-xs animate-in fade-in zoom-in-95 duration-100">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onEdit(component);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-ink-muted hover:text-ink hover:bg-surface-3 text-left transition-colors cursor-pointer"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-semantic-error hover:bg-semantic-error/10 text-left transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Description */}
-        {component.description && (
-          <p className="text-xs text-ink-muted line-clamp-2 mb-3 leading-relaxed">
-            {component.description}
-          </p>
+        {/* Always visible starred indicator if favored and not hovering */}
+        {component.favorite && (
+          <div className="absolute top-2.5 right-2.5 group-hover:hidden z-0">
+            <div className="p-1.5 rounded-md bg-surface-2/80 border border-hairline text-amber-400">
+              <Star className="w-3.5 h-3.5 fill-amber-400" />
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Footer Meta Row */}
-      <div className="mt-3 pt-3 border-t border-hairline/60 flex items-center justify-between text-xs text-ink-tertiary gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          {component.project ? (
-            <div className="flex items-center gap-1.5 text-ink-muted truncate">
-              <FolderKanban className="w-3 h-3 text-ink-tertiary shrink-0" />
-              <span className="truncate">{component.project.title}</span>
-            </div>
-          ) : (
-            <span className="font-mono text-[11px] text-ink-tertiary">
-              {lineCount} lines
-            </span>
-          )}
-
-          {component.tags && component.tags.length > 0 && (
-            <div className="hidden sm:flex items-center gap-1 text-[11px] font-mono text-ink-tertiary truncate">
-              <span>#{component.tags[0]}</span>
-              {component.tags.length > 1 && (
-                <span>+{component.tags.length - 1}</span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* View Code CTA Indicator */}
-        <div className="inline-flex items-center gap-1 text-[11px] font-medium text-primary group-hover:translate-x-0.5 transition-transform shrink-0">
-          <Code2 className="w-3.5 h-3.5" />
-          <span>View Code</span>
+      {/* Card Footer: Clean Title · Subtitle matching Image 2 */}
+      <div className="p-3.5 flex items-center justify-between gap-2">
+        <div className="min-w-0 flex items-center gap-1.5 text-xs truncate">
+          <span className="font-semibold text-ink group-hover:text-primary transition-colors truncate">
+            {component.name}
+          </span>
+          <span className="text-ink-tertiary select-none">·</span>
+          <span className="text-ink-muted capitalize truncate font-normal">
+            {subtitle}
+          </span>
         </div>
       </div>
 

@@ -12,6 +12,7 @@ import { toast } from "@/lib/toast";
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  initialCategory?: string;
 }
 
 const FRAMEWORKS: { id: ComponentFramework; label: string }[] = [
@@ -29,14 +30,14 @@ const STYLING_OPTIONS: { id: ComponentStyling; label: string }[] = [
   { id: "STYLED_COMPONENTS", label: "Styled Components" },
 ];
 
-export function NewComponentModal({ isOpen, onClose }: Props) {
+export function NewComponentModal({ isOpen, onClose, initialCategory }: Props) {
   const createComponent = useCreateComponent();
   const { data: projects } = useProjects();
 
   const [isClosing, setIsClosing] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("general");
+  const [category, setCategory] = useState(initialCategory || "general");
   const [framework, setFramework] = useState<ComponentFramework>("REACT");
   const [styling, setStyling] = useState<ComponentStyling>("TAILWIND");
   const [code, setCode] = useState("");
@@ -51,7 +52,7 @@ export function NewComponentModal({ isOpen, onClose }: Props) {
     if (isOpen) {
       setName("");
       setDescription("");
-      setCategory("general");
+      setCategory(initialCategory || "general");
       setFramework("REACT");
       setStyling("TAILWIND");
       setCode("");

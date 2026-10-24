@@ -4,29 +4,30 @@ import { useState, useMemo, useEffect } from "react";
 import {
   Plus,
   Search,
-  Component as ComponentIcon,
   Star,
   FolderKanban,
-  Filter,
   AlertCircle,
   RefreshCw,
-  Layers,
   Palette,
   Folder,
   LayoutGrid,
   List,
-  Code2,
-  Trash2,
-  Edit2,
-  MoreVertical,
+  ArrowLeft,
+  Layers,
+  Sparkles,
 } from "lucide-react";
-import { useUIComponents, useDeleteComponent, useToggleComponentFavorite } from "@/hooks/use-components";
+import {
+  useUIComponents,
+  useDeleteComponent,
+  useToggleComponentFavorite,
+} from "@/hooks/use-components";
 import { useProjects } from "@/hooks/use-projects";
 import {
   UIComponentItem,
   ComponentFramework,
   ComponentStyling,
 } from "@/types/component";
+import { FolderCard } from "@/components/ui-components/folder-card";
 import { ComponentCard } from "@/components/ui-components/component-card";
 import { ComponentCodeModal } from "@/components/ui-components/component-code-modal";
 import { NewComponentModal } from "@/components/ui-components/new-component-modal";
@@ -35,7 +36,6 @@ import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/lib/toast";
 
 const FRAMEWORK_TABS: { id: ComponentFramework | "ALL"; label: string }[] = [
   { id: "ALL", label: "All Frameworks" },
@@ -55,6 +55,7 @@ const STYLING_OPTIONS: { id: ComponentStyling | "ALL"; label: string }[] = [
 ];
 
 export default function ComponentsCatalogPage() {
+  const [viewLevel, setViewLevel] = useState<"folders" | "components">("folders");
   const [selectedFramework, setSelectedFramework] = useState<
     ComponentFramework | "ALL"
   >("ALL");
@@ -76,6 +77,13 @@ export default function ComponentsCatalogPage() {
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Auto-switch to components view if user searches
+  useEffect(() => {
+    if (debouncedSearch.trim()) {
+      setViewLevel("components");
+    }
+  }, [debouncedSearch]);
+
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [editingComponent, setEditingComponent] =
     useState<UIComponentItem | null>(null);
@@ -86,8 +94,9 @@ export default function ComponentsCatalogPage() {
   const deleteComponent = useDeleteComponent();
   const toggleFavorite = useToggleComponentFavorite();
 
+  // Fetch components across selected framework, styling, project, favorite, search
   const {
-    data: components,
+    data: allComponents,
     isLoading,
     isError,
     error,
@@ -95,22 +104,34 @@ export default function ComponentsCatalogPage() {
   } = useUIComponents({
     framework: selectedFramework !== "ALL" ? selectedFramework : undefined,
     styling: selectedStyling !== "ALL" ? selectedStyling : undefined,
-    category: selectedCategory !== "ALL" ? selectedCategory : undefined,
     projectId: selectedProjectId || undefined,
     favorite: onlyFavorites ? true : undefined,
     search: debouncedSearch,
   });
 
-  // Extract all categories across fetched items
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    components?.forEach((c) => {
-      if (c.category && c.category.trim()) {
-        set.add(c.category.trim());
-      }
+  // Category counts map for folder view
+  const categoryFolders = useMemo(() => {
+    const map = new Map<string, number>();
+    allComponents?.forEach((c) => {
+      const cat = c.category?.trim() || "general";
+      map.set(cat, (map.get(cat) || 0) + 1);
     });
-    return Array.from(set);
-  }, [components]);
+    return Array.from(map.entries()).map(([name, count]) => ({
+      name,
+      count,
+    }));
+  }, [allComponents]);
+
+  // Filtered components when inside a folder or viewing all
+  const displayedComponents = useMemo(() => {
+    if (!allComponents) return [];
+    if (selectedCategory === "ALL") return allComponents;
+    return allComponents.filter(
+      (c) =>
+        (c.category?.trim() || "general").toLowerCase() ===
+        selectedCategory.toLowerCase()
+    );
+  }, [allComponents, selectedCategory]);
 
   const handleToggleViewMode = (mode: "cards" | "list") => {
     sound.playClick(850);
@@ -118,6 +139,18 @@ export default function ComponentsCatalogPage() {
     if (typeof window !== "undefined") {
       localStorage.setItem("devdash_components_view_mode", mode);
     }
+  };
+
+  const handleSelectFolder = (categoryName: string) => {
+    sound.playClick(850);
+    setSelectedCategory(categoryName);
+    setViewLevel("components");
+  };
+
+  const handleBackToFolders = () => {
+    sound.playClick(800);
+    setSelectedCategory("ALL");
+    setViewLevel("folders");
   };
 
   const handleOpenNewModal = () => {
@@ -137,9 +170,9 @@ export default function ComponentsCatalogPage() {
 
   return (
     <div className="flex-1 min-h-screen bg-canvas text-ink flex flex-col">
-      {/* Top Header — unified h-14 height matching sidebar brand header */}
+      {/* Top Header */}
       <div className="h-14 px-4 sm:px-6 border-b border-hairline flex items-center justify-between gap-4 bg-surface-1/40 flex-shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
           <h1 className="text-sm sm:text-base font-semibold tracking-[-0.3px] text-ink truncate">
             UI Component Catalog
           </h1>
@@ -147,30 +180,135 @@ export default function ComponentsCatalogPage() {
 
         <button
           onClick={handleOpenNewModal}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 flex-shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 flex-shrink-0 cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>New Component</span>
         </button>
       </div>
 
-      {/* Toolbar */}
-      <div className="px-4 sm:px-6 py-2.5 border-b border-hairline bg-surface-1/40 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-        {/* Left: Search input */}
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
-          <input
-            type="text"
-            placeholder="Search component, code, tags..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink placeholder:text-ink-tertiary transition-colors"
-          />
+      {/* Breadcrumb & Navigation Subheader */}
+      <div className="px-4 sm:px-6 py-2.5 border-b border-hairline bg-surface-1/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Left: Breadcrumbs navigation */}
+        <div className="flex items-center gap-2 min-w-0">
+          {viewLevel === "components" ? (
+            <div className="flex items-center gap-2 text-xs">
+              <button
+                onClick={handleBackToFolders}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink transition-colors cursor-pointer text-xs font-medium"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>All Folders</span>
+              </button>
+              <span className="text-ink-tertiary">/</span>
+              <span className="font-semibold text-ink capitalize truncate">
+                {selectedCategory === "ALL" ? "All Components" : selectedCategory}
+              </span>
+              <span className="text-xs text-ink-tertiary font-mono">
+                ({displayedComponents.length})
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink">
+                <Folder className="w-3.5 h-3.5 text-primary" />
+                <span>Component Folders</span>
+                <span className="text-xs font-normal text-ink-muted">
+                  ({categoryFolders.length} categories)
+                </span>
+              </div>
+              <span className="text-ink-tertiary">·</span>
+              <button
+                onClick={() => {
+                  sound.playClick(850);
+                  setSelectedCategory("ALL");
+                  setViewLevel("components");
+                }}
+                className="text-xs text-primary hover:underline cursor-pointer font-medium"
+              >
+                Browse all {allComponents?.length || 0} components
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Right filters */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Styling Engine Dropdown */}
+        {/* Right: Search + View mode switch */}
+        <div className="flex items-center gap-2.5 justify-end">
+          {/* Search bar matching Image 2 */}
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
+            <input
+              type="text"
+              placeholder="Search components..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink placeholder:text-ink-tertiary transition-colors"
+            />
+          </div>
+
+          {/* Grid / List View Toggle matching Image 2 */}
+          {viewLevel === "components" && (
+            <div className="flex items-center rounded-lg bg-surface-2 p-0.5 border border-hairline shrink-0">
+              <button
+                onClick={() => handleToggleViewMode("cards")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer",
+                  viewMode === "cards"
+                    ? "bg-surface-3 text-ink shadow-xs"
+                    : "text-ink-tertiary hover:text-ink"
+                )}
+                title="Grid view"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Grid view</span>
+              </button>
+              <button
+                onClick={() => handleToggleViewMode("list")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer",
+                  viewMode === "list"
+                    ? "bg-surface-3 text-ink shadow-xs"
+                    : "text-ink-tertiary hover:text-ink"
+                )}
+                title="List view"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">List view</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Filter Options Bar */}
+      <div className="px-4 sm:px-6 py-2 border-b border-hairline bg-surface-1/10 flex flex-wrap items-center justify-between gap-2.5 overflow-x-auto no-scrollbar">
+        {/* Framework Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {FRAMEWORK_TABS.map((tab) => {
+            const isActive = selectedFramework === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  sound.playClick(850);
+                  setSelectedFramework(tab.id);
+                }}
+                className={cn(
+                  "px-2.5 py-1 rounded text-xs font-medium tracking-tight whitespace-nowrap transition-all duration-150 cursor-pointer",
+                  isActive
+                    ? "bg-surface-3 text-ink font-semibold border border-hairline"
+                    : "text-ink-muted hover:text-ink hover:bg-surface-2"
+                )}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Styling, Project, Starred Filters */}
+        <div className="flex items-center gap-2">
+          {/* Styling filter */}
           <div className="flex items-center gap-1.5">
             <Palette className="w-3.5 h-3.5 text-ink-tertiary" />
             <select
@@ -178,7 +316,7 @@ export default function ComponentsCatalogPage() {
               onChange={(e) =>
                 setSelectedStyling(e.target.value as ComponentStyling | "ALL")
               }
-              className="px-2.5 py-1.5 rounded-md bg-surface-2 border border-hairline text-xs text-ink focus:border-primary focus:outline-none transition-colors"
+              className="px-2 py-1 rounded-md bg-surface-2 border border-hairline text-xs text-ink focus:border-primary focus:outline-none transition-colors"
             >
               {STYLING_OPTIONS.map((st) => (
                 <option key={st.id} value={st.id}>
@@ -194,7 +332,7 @@ export default function ComponentsCatalogPage() {
             <select
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="px-2.5 py-1.5 rounded-md bg-surface-2 border border-hairline text-xs text-ink focus:border-primary focus:outline-none transition-colors"
+              className="px-2 py-1 rounded-md bg-surface-2 border border-hairline text-xs text-ink focus:border-primary focus:outline-none transition-colors"
             >
               <option value="">All Projects</option>
               {projects?.map((proj) => (
@@ -205,14 +343,14 @@ export default function ComponentsCatalogPage() {
             </select>
           </div>
 
-          {/* Favorites toggle */}
+          {/* Starred filter */}
           <button
             onClick={() => {
               sound.playClick(800);
               setOnlyFavorites(!onlyFavorites);
             }}
             className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-medium transition-all duration-150 cursor-pointer",
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-all duration-150 cursor-pointer",
               onlyFavorites
                 ? "bg-amber-500/15 border-amber-500/40 text-amber-300"
                 : "bg-surface-2 border-hairline text-ink-muted hover:text-ink hover:border-hairline-strong"
@@ -225,127 +363,28 @@ export default function ComponentsCatalogPage() {
                 onlyFavorites ? "fill-amber-400 text-amber-400" : "text-ink-tertiary"
               )}
             />
-            <span>Starred</span>
+            <span className="hidden sm:inline">Starred</span>
           </button>
-
-          {/* View Mode Toggle: Cards vs List */}
-          <div className="flex items-center rounded-md bg-surface-2 p-0.5 border border-hairline shrink-0">
-            <button
-              onClick={() => handleToggleViewMode("cards")}
-              className={cn(
-                "p-1.5 rounded transition-all cursor-pointer",
-                viewMode === "cards"
-                  ? "bg-surface-3 text-ink shadow-xs"
-                  : "text-ink-tertiary hover:text-ink"
-              )}
-              title="Card Grid View"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => handleToggleViewMode("list")}
-              className={cn(
-                "p-1.5 rounded transition-all cursor-pointer",
-                viewMode === "list"
-                  ? "bg-surface-3 text-ink shadow-xs"
-                  : "text-ink-tertiary hover:text-ink"
-              )}
-              title="Compact List View"
-            >
-              <List className="w-3.5 h-3.5" />
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Category Folders Bar */}
-      <div className="px-4 sm:px-6 py-2 border-b border-hairline bg-surface-1/30 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        <span className="text-[11px] font-mono text-ink-tertiary uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
-          <Folder className="w-3 h-3 text-primary" />
-          <span>Folder:</span>
-        </span>
-
-        <button
-          onClick={() => {
-            sound.playClick(850);
-            setSelectedCategory("ALL");
-          }}
-          className={cn(
-            "px-2.5 py-1 rounded text-xs font-medium tracking-tight whitespace-nowrap transition-colors cursor-pointer",
-            selectedCategory === "ALL"
-              ? "bg-primary text-white font-semibold"
-              : "bg-surface-2 text-ink-muted hover:text-ink"
-          )}
-        >
-          All Folders
-        </button>
-
-        {categories.map((cat) => {
-          const isActive = selectedCategory === cat;
-          return (
-            <button
-              key={cat}
-              onClick={() => {
-                sound.playClick(850);
-                setSelectedCategory(cat);
-              }}
-              className={cn(
-                "px-2.5 py-1 rounded text-xs font-medium tracking-tight whitespace-nowrap transition-colors cursor-pointer capitalize",
-                isActive
-                  ? "bg-primary text-white font-semibold"
-                  : "bg-surface-2 text-ink-muted hover:text-ink"
-              )}
-            >
-              {cat}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Framework Tabs Bar */}
-      <div className="px-4 sm:px-6 py-2 border-b border-hairline bg-surface-1/10 overflow-x-auto flex items-center gap-1.5 no-scrollbar">
-        {FRAMEWORK_TABS.map((tab) => {
-          const isActive = selectedFramework === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                sound.playClick(850);
-                setSelectedFramework(tab.id);
-              }}
-              className={cn(
-                "px-2.5 py-1 rounded text-xs font-medium tracking-tight whitespace-nowrap transition-all duration-150 cursor-pointer",
-                isActive
-                  ? "bg-surface-3 text-ink font-semibold border border-hairline"
-                  : "text-ink-muted hover:text-ink hover:bg-surface-2"
-              )}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Main Content */}
+      {/* Main Content Area */}
       <div className="flex-1 p-4 sm:p-6 lg:p-8">
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div
                 key={i}
-                className="rounded-xl bg-surface-1 border border-hairline p-4 space-y-3 shadow-xs"
+                className="rounded-2xl bg-surface-1 border border-hairline p-4 space-y-3 shadow-xs"
               >
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-3 w-16" />
-                </div>
-                <Skeleton className="h-3 w-2/3" />
-                <Skeleton className="h-8 w-full rounded" />
+                <Skeleton className="h-44 w-full rounded-xl" />
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-1/3" />
               </div>
             ))}
           </div>
         ) : isError ? (
-          <div className="rounded-xl border border-semantic-error/30 bg-semantic-error/5 p-8 text-center max-w-md mx-auto my-12">
+          <div className="rounded-2xl border border-semantic-error/30 bg-semantic-error/5 p-8 text-center max-w-md mx-auto my-12">
             <AlertCircle className="w-10 h-10 text-semantic-error mx-auto mb-3" />
             <h3 className="text-sm font-semibold text-ink mb-1">
               Failed to load components
@@ -355,184 +394,181 @@ export default function ComponentsCatalogPage() {
             </p>
             <button
               onClick={() => refetch()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Retry</span>
             </button>
           </div>
-        ) : components && components.length > 0 ? (
-          viewMode === "cards" ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-              {components.map((component) => (
-                <ComponentCard
-                  key={component.id}
-                  component={component}
-                  onEdit={handleEditComponent}
-                  onViewCode={handleViewCode}
+        ) : viewLevel === "folders" ? (
+          /* LEVEL 1: Folder Collection Grid matching Image 1 (NO 3 colored dots) */
+          categoryFolders.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {/* "All Components" Folder Card */}
+              <FolderCard
+                name="All Components"
+                count={allComponents?.length || 0}
+                onClick={() => {
+                  setSelectedCategory("ALL");
+                  setViewLevel("components");
+                }}
+              />
+
+              {/* Individual Category Folder Cards */}
+              {categoryFolders.map((folder) => (
+                <FolderCard
+                  key={folder.name}
+                  name={folder.name}
+                  count={folder.count}
+                  onClick={() => handleSelectFolder(folder.name)}
                 />
               ))}
             </div>
           ) : (
-            /* Compact List View */
-            <div className="rounded-xl border border-hairline bg-surface-1 divide-y divide-hairline/60 overflow-hidden">
-              {components.map((component) => (
-                <div
-                  key={component.id}
-                  onClick={() => handleViewCode(component)}
-                  className="p-3 sm:px-4 flex items-center justify-between gap-3 hover:bg-surface-2/60 transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite.mutate({
-                          id: component.id,
-                          favorite: !component.favorite,
-                        });
-                      }}
-                      className="p-1 rounded text-ink-tertiary hover:text-amber-400 transition-colors cursor-pointer shrink-0"
-                    >
-                      <Star
-                        className={cn(
-                          "w-3.5 h-3.5",
-                          component.favorite && "fill-amber-400 text-amber-400"
-                        )}
-                      />
-                    </button>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-ink group-hover:text-primary transition-colors truncate">
-                          {component.name}
-                        </span>
-                        <span className="text-[11px] font-mono text-ink-tertiary">·</span>
-                        <span className="text-[11px] font-mono text-sky-400">
-                          {component.framework}
-                        </span>
-                        <span className="text-[11px] font-mono text-ink-tertiary">·</span>
-                        <span className="text-[11px] font-mono text-cyan-300">
-                          {component.styling}
-                        </span>
-                        <span className="text-[11px] font-mono text-ink-tertiary">·</span>
-                        <span className="text-[11px] font-mono text-ink-tertiary capitalize">
-                          {component.category || "general"}
-                        </span>
-                      </div>
-                      {component.description && (
-                        <p className="text-[11px] text-ink-muted truncate mt-0.5">
-                          {component.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    {component.project && (
-                      <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-ink-tertiary">
-                        <FolderKanban className="w-3 h-3" />
-                        <span className="truncate max-w-[120px]">{component.project.title}</span>
-                      </span>
-                    )}
-
-                    <div className="flex items-center gap-1">
+            /* Empty State */
+            <div className="rounded-2xl border border-hairline bg-surface-1/40 p-12 text-center max-w-md mx-auto my-12">
+              <Folder className="w-12 h-12 text-ink-tertiary mx-auto mb-3 opacity-60" />
+              <h3 className="text-sm font-semibold text-ink mb-1">
+                No component folders yet
+              </h3>
+              <p className="text-xs text-ink-muted mb-4 leading-relaxed">
+                Start building your design system by creating your first reusable UI component.
+              </p>
+              <button
+                onClick={handleOpenNewModal}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-all shadow-sm cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Create Component</span>
+              </button>
+            </div>
+          )
+        ) : (
+          /* LEVEL 2: Component Catalog Grid matching Image 2 (NO 3 colored dots) */
+          displayedComponents.length > 0 ? (
+            viewMode === "cards" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-start">
+                {displayedComponents.map((component) => (
+                  <ComponentCard
+                    key={component.id}
+                    component={component}
+                    onEdit={handleEditComponent}
+                    onViewCode={handleViewCode}
+                  />
+                ))}
+              </div>
+            ) : (
+              /* Compact List View */
+              <div className="rounded-2xl border border-hairline bg-surface-1 divide-y divide-hairline/60 overflow-hidden">
+                {displayedComponents.map((component) => (
+                  <div
+                    key={component.id}
+                    onClick={() => handleViewCode(component)}
+                    className="p-3.5 sm:px-5 flex items-center justify-between gap-3 hover:bg-surface-2/60 transition-colors cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleViewCode(component);
+                          toggleFavorite.mutate({
+                            id: component.id,
+                            favorite: !component.favorite,
+                          });
                         }}
-                        className="p-1.5 rounded hover:bg-surface-3 text-primary text-xs font-mono inline-flex items-center gap-1 transition-colors cursor-pointer"
-                        title="View code"
+                        className="p-1 rounded text-ink-tertiary hover:text-amber-400 transition-colors cursor-pointer shrink-0"
                       >
-                        <Code2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">View Code</span>
+                        <Star
+                          className={cn(
+                            "w-3.5 h-3.5",
+                            component.favorite && "fill-amber-400 text-amber-400"
+                          )}
+                        />
                       </button>
 
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-ink group-hover:text-primary transition-colors truncate">
+                            {component.name}
+                          </span>
+                          <span className="text-ink-tertiary">·</span>
+                          <span className="text-xs text-ink-muted capitalize truncate font-normal">
+                            {component.category || "general"}
+                          </span>
+                        </div>
+                        {component.description && (
+                          <p className="text-[11px] text-ink-tertiary truncate mt-0.5">
+                            {component.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-[11px] font-mono text-ink-tertiary">
+                        {component.framework}
+                      </span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleEditComponent(component);
                         }}
-                        className="p-1.5 rounded hover:bg-surface-3 text-ink-tertiary hover:text-ink transition-colors cursor-pointer"
-                        title="Edit component"
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-3 text-ink-muted hover:text-ink transition-all text-xs"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        Edit
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )
+          ) : (
+            /* Empty state inside a folder */
+            <div className="rounded-2xl border border-hairline bg-surface-1/40 p-12 text-center max-w-md mx-auto my-12">
+              <Sparkles className="w-10 h-10 text-ink-tertiary mx-auto mb-3 opacity-60" />
+              <h3 className="text-sm font-semibold text-ink mb-1">
+                No components found
+              </h3>
+              <p className="text-xs text-ink-muted mb-4 leading-relaxed">
+                {searchQuery
+                  ? `No components matched "${searchQuery}".`
+                  : `No components found in this category.`}
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={handleBackToFolders}
+                  className="px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
+                >
+                  Back to Folders
+                </button>
+                <button
+                  onClick={handleOpenNewModal}
+                  className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-all shadow-sm cursor-pointer"
+                >
+                  Create Component
+                </button>
+              </div>
             </div>
           )
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center max-w-sm mx-auto">
-            <div className="w-12 h-12 rounded-xl bg-surface-2 border border-hairline flex items-center justify-center text-ink-muted mb-4">
-              <ComponentIcon className="w-6 h-6 text-primary/70" />
-            </div>
-            <h3 className="text-base font-semibold tracking-tight text-ink mb-1">
-              No components found
-            </h3>
-            <p className="text-xs text-ink-muted mb-6 leading-relaxed">
-              {searchQuery ||
-              selectedProjectId ||
-              selectedCategory !== "ALL" ||
-              selectedFramework !== "ALL" ||
-              selectedStyling !== "ALL" ||
-              onlyFavorites
-                ? "Try adjusting your filter options or search query to see catalog items."
-                : "Your UI catalog is empty. Save buttons, dialogs, cards, navigation bars, and inputs to reuse across apps."}
-            </p>
-            <div className="flex items-center justify-center gap-2.5">
-              {(searchQuery ||
-                selectedProjectId ||
-                selectedCategory !== "ALL" ||
-                selectedFramework !== "ALL" ||
-                selectedStyling !== "ALL" ||
-                onlyFavorites) && (
-                <button
-                  onClick={() => {
-                    sound.playClick(600);
-                    setSearchQuery("");
-                    setSelectedProjectId("");
-                    setSelectedCategory("ALL");
-                    setSelectedFramework("ALL");
-                    setSelectedStyling("ALL");
-                    setOnlyFavorites(false);
-                  }}
-                  className="px-3.5 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
-                >
-                  Clear Filters
-                </button>
-              )}
-              <button
-                onClick={handleOpenNewModal}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight shadow-sm shadow-primary/25 transition-all duration-150 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create Component</span>
-              </button>
-            </div>
-          </div>
         )}
       </div>
 
-      {/* VS Code Style Code Viewer Modal */}
+      {/* Modals */}
       <ComponentCodeModal
         component={viewingComponent}
-        isOpen={!!viewingComponent}
+        isOpen={Boolean(viewingComponent)}
         onClose={() => setViewingComponent(null)}
         onEdit={handleEditComponent}
       />
 
-      {/* Create / Edit Modals */}
       <NewComponentModal
         isOpen={isNewModalOpen}
         onClose={() => setIsNewModalOpen(false)}
+        initialCategory={selectedCategory !== "ALL" ? selectedCategory : undefined}
       />
 
       <EditComponentModal
         component={editingComponent}
-        isOpen={!!editingComponent}
+        isOpen={Boolean(editingComponent)}
         onClose={() => setEditingComponent(null)}
       />
     </div>

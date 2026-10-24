@@ -1,25 +1,30 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Play, Maximize2, Minimize2, RefreshCw } from "lucide-react";
+import { RefreshCw, Monitor, Tablet, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
   code: string;
   name: string;
+  mode?: "thumbnail" | "interactive";
   className?: string;
 }
 
-export function ComponentLivePreview({ code, name, className }: Props) {
+export function ComponentLivePreview({
+  code,
+  name,
+  mode = "interactive",
+  className,
+}: Props) {
   const [iframeKey, setIframeKey] = useState(0);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
 
   // Generate safe HTML payload with Tailwind CSS
   const srcDoc = useMemo(() => {
-    // 1. Clean JSX/React code into raw HTML elements
     let cleaned = code.trim();
 
-    // If it's wrapped in a function/const:
+    // If wrapped in a function/const:
     const returnMatch = cleaned.match(/return\s*\(\s*([\s\S]*?)\s*\);?/);
     if (returnMatch && returnMatch[1]) {
       cleaned = returnMatch[1].trim();
@@ -32,8 +37,9 @@ export function ComponentLivePreview({ code, name, className }: Props) {
     cleaned = cleaned.replace(/<>\s*/g, "").replace(/\s*<\/>/g, "");
 
     // Strip self-closing tags with inner components that might break raw HTML
-    // e.g. <Icon className="..." /> -> <span class="..."></span>
     cleaned = cleaned.replace(/<([A-Z][a-zA-Z0-9]*)\s+([^>]*?)\/>/g, '<span class="$2"></span>');
+
+    const padding = mode === "thumbnail" ? "12px" : "24px";
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -46,16 +52,18 @@ export function ComponentLivePreview({ code, name, className }: Props) {
       box-sizing: border-box;
     }
     body {
-      background-color: #0c0d0e;
+      background-color: #090a0b;
       color: #f7f8f8;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       min-height: 100vh;
       margin: 0;
-      padding: 24px;
+      padding: ${padding};
       display: flex;
       align-items: center;
       justify-content: center;
       overflow-x: hidden;
+      overflow-y: hidden;
+      user-select: none;
     }
   </style>
 </head>
@@ -65,57 +73,103 @@ export function ComponentLivePreview({ code, name, className }: Props) {
   </div>
 </body>
 </html>`;
-  }, [code]);
+  }, [code, mode]);
 
+  if (mode === "thumbnail") {
+    return (
+      <div className={cn("w-full h-full relative overflow-hidden pointer-events-none select-none", className)}>
+        <iframe
+          key={iframeKey}
+          title={`Preview of ${name}`}
+          srcDoc={srcDoc}
+          sandbox="allow-scripts"
+          className="w-full h-full border-0 bg-[#090a0b] pointer-events-none"
+        />
+      </div>
+    );
+  }
+
+  // Interactive full mode (for detail view)
   return (
     <div
       className={cn(
-        "relative rounded-lg bg-surface-1 border border-hairline overflow-hidden flex flex-col transition-all duration-200",
-        isExpanded ? "h-96" : "h-64",
+        "relative rounded-xl bg-surface-1 border border-hairline overflow-hidden flex flex-col transition-all duration-200",
         className
       )}
     >
-      {/* Top Toolbar */}
-      <div className="px-3 py-1.5 bg-surface-2/80 border-b border-hairline flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1.5 text-ink-tertiary">
-          <Play className="w-3 h-3 text-emerald-400" />
-          <span className="text-[11px] font-mono text-ink-muted">
-            Live Preview
-          </span>
+      {/* Clean Toolbar — No colored dots */}
+      <div className="px-4 py-2 bg-surface-2/70 border-b border-hairline flex items-center justify-between text-xs">
+        <div className="flex items-center gap-1.5 text-ink-muted">
+          <span className="text-xs font-medium tracking-tight">Interactive Canvas</span>
         </div>
 
-        <div className="flex items-center gap-1">
+        {/* Viewport switchers & reload */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-md bg-surface-3/80 p-0.5 border border-hairline">
+            <button
+              type="button"
+              onClick={() => setViewport("desktop")}
+              className={cn(
+                "p-1 rounded transition-colors cursor-pointer",
+                viewport === "desktop" ? "bg-primary text-white shadow-xs" : "text-ink-tertiary hover:text-ink"
+              )}
+              title="Desktop viewport (100%)"
+            >
+              <Monitor className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewport("tablet")}
+              className={cn(
+                "p-1 rounded transition-colors cursor-pointer",
+                viewport === "tablet" ? "bg-primary text-white shadow-xs" : "text-ink-tertiary hover:text-ink"
+              )}
+              title="Tablet viewport (768px)"
+            >
+              <Tablet className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewport("mobile")}
+              className={cn(
+                "p-1 rounded transition-colors cursor-pointer",
+                viewport === "mobile" ? "bg-primary text-white shadow-xs" : "text-ink-tertiary hover:text-ink"
+              )}
+              title="Mobile viewport (375px)"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           <button
             type="button"
-            onClick={() => setIframeKey((k: number) => k + 1)}
+            onClick={() => setIframeKey((k) => k + 1)}
             title="Reload sandbox preview"
-            className="p-1 rounded text-ink-tertiary hover:text-ink hover:bg-surface-3 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md text-ink-tertiary hover:text-ink hover:bg-surface-3 transition-colors cursor-pointer border border-hairline"
           >
-            <RefreshCw className="w-3 h-3" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            title={isExpanded ? "Collapse preview" : "Expand preview"}
-            className="p-1 rounded text-ink-tertiary hover:text-ink hover:bg-surface-3 transition-colors cursor-pointer"
-          >
-            {isExpanded ? (
-              <Minimize2 className="w-3 h-3" />
-            ) : (
-              <Maximize2 className="w-3 h-3" />
-            )}
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Sandboxed iframe */}
-      <iframe
-        key={iframeKey}
-        title={`Live Preview of ${name}`}
-        srcDoc={srcDoc}
-        sandbox="allow-scripts"
-        className="w-full flex-1 border-0 bg-[#0c0d0e]"
-      />
+      {/* Sandboxed iframe viewport */}
+      <div className="flex-1 bg-[#090a0b] flex items-center justify-center p-4 min-h-[360px] overflow-auto">
+        <div
+          className={cn(
+            "h-full w-full transition-all duration-200 flex items-center justify-center",
+            viewport === "tablet" && "max-w-[768px] border-x border-hairline/60 shadow-xl",
+            viewport === "mobile" && "max-w-[375px] border-x border-hairline/60 shadow-xl"
+          )}
+        >
+          <iframe
+            key={iframeKey}
+            title={`Live Preview of ${name}`}
+            srcDoc={srcDoc}
+            sandbox="allow-scripts"
+            className="w-full h-full min-h-[340px] border-0 bg-[#090a0b] rounded-lg"
+          />
+        </div>
+      </div>
     </div>
   );
 }

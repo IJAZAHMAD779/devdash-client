@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -11,6 +11,8 @@ import {
   Trophy,
   Sparkles,
   ArrowRight,
+  Maximize2,
+  Minimize2,
   Flame,
   Star,
   Brain,
@@ -249,10 +251,12 @@ function getCategoryIcon(category: string): React.ElementType {
 }
 
 export function ArcadeHub() {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [highScores, setHighScores] = useState<Record<string, number>>({});
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     setIsMuted(sounds.getMuted());
@@ -270,9 +274,46 @@ export function ArcadeHub() {
     }
   }, []);
 
+  // Listen to browser fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
   const toggleMute = () => {
     const next = sounds.toggleMute();
     setIsMuted(next);
+  };
+
+  const toggleFullscreen = async () => {
+    sounds.playClick();
+    try {
+      if (!document.fullscreenElement) {
+        if (containerRef.current?.requestFullscreen) {
+          await containerRef.current.requestFullscreen();
+        } else if ((containerRef.current as any)?.webkitRequestFullscreen) {
+          await (containerRef.current as any).webkitRequestFullscreen();
+        }
+        setIsFullscreen(true);
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any)?.webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
+        setIsFullscreen(false);
+      }
+    } catch {
+      // Fallback to CSS fullscreen overlay if browser restricts API
+      setIsFullscreen((prev) => !prev);
+    }
   };
 
   const handleOpenGame = (key: GameKey) => {
@@ -280,15 +321,23 @@ export function ArcadeHub() {
     setActiveGame(key);
   };
 
-  const handleBackToCatalog = () => {
+  const handleBackToCatalog = async () => {
     sounds.playClick();
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        // ignore
+      }
+    }
+    setIsFullscreen(false);
     setActiveGame(null);
   };
 
-  // Keyboard shortcut Esc to return to catalog
+  // Keyboard shortcut Esc to return to catalog (when not in native fullscreen, as browser handles Esc for fullscreen exit)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && activeGame !== null) {
+      if (e.key === "Escape" && activeGame !== null && !document.fullscreenElement) {
         handleBackToCatalog();
       }
     };
@@ -313,7 +362,13 @@ export function ArcadeHub() {
   ];
 
   return (
-    <div className="flex-1 min-h-screen bg-canvas text-ink flex flex-col overflow-y-auto">
+    <div
+      ref={containerRef}
+      className={cn(
+        "flex-1 min-h-screen bg-canvas text-ink flex flex-col overflow-y-auto",
+        isFullscreen && "fixed inset-0 z-50 w-screen h-screen bg-[#010102]"
+      )}
+    >
       {/* Top Header — unified h-14 height matching sidebar brand header */}
       <div className="h-14 px-4 sm:px-6 border-b border-hairline flex items-center justify-between gap-4 bg-surface-1/40 flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
@@ -351,24 +406,25 @@ export function ArcadeHub() {
 
         {/* Header Right Controls */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Quick game switcher pill when inside a game */}
+          {/* Fullscreen Toggle when playing a game */}
           {activeGame && (
-            <div className="hidden md:flex items-center gap-1 p-0.5 rounded-md bg-surface-2 border border-hairline">
-              {GAMES_LIST.map((g) => (
-                <button
-                  key={g.key}
-                  onClick={() => handleOpenGame(g.key)}
-                  className={cn(
-                    "px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer",
-                    activeGame === g.key
-                      ? "bg-surface-4 text-ink shadow-xs"
-                      : "text-ink-subtle hover:text-ink",
-                  )}
-                >
-                  {g.name}
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={toggleFullscreen}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer group"
+              title={isFullscreen ? "Exit Fullscreen (Esc)" : "Enter Fullscreen Mode"}
+            >
+              {isFullscreen ? (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5 text-primary group-hover:scale-110 transition-transform" />
+                  <span className="hidden sm:inline">Exit Fullscreen</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5 text-ink-subtle group-hover:text-ink transition-colors" />
+                  <span className="hidden sm:inline">Fullscreen</span>
+                </>
+              )}
+            </button>
           )}
 
           {/* Sound Toggle */}
@@ -555,7 +611,12 @@ export function ArcadeHub() {
         </div>
       ) : (
         /* ── Active Game Stage View ──────────────────────────────── */
-        <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 flex-1 flex flex-col justify-center items-center animate-in fade-in zoom-in-98 duration-200">
+        <main
+          className={cn(
+            "max-w-5xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 flex-1 flex flex-col justify-center items-center animate-in fade-in zoom-in-98 duration-200",
+            isFullscreen && "max-w-none p-4 sm:p-8"
+          )}
+        >
           {activeGame === "dino" && <DinoGame />}
           {activeGame === "2048" && <Game2048 />}
           {activeGame === "sudoku" && <SudokuGame />}

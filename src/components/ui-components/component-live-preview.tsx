@@ -22,11 +22,7 @@ export function ComponentLivePreview({
 
   // Generate safe HTML payload with in-browser Babel + React 18 + Lucide proxy + Tailwind
   const srcDoc = useMemo(() => {
-    // 1. Sanitize the code to be executed
-    let sanitized = code.trim();
-
-    // Escape any backticks or template literals inside sanitized code for injection into script
-    const serializedCode = JSON.stringify(sanitized);
+    const serializedCode = JSON.stringify(code.trim());
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -89,55 +85,28 @@ export function ComponentLivePreview({
         errorMessage.textContent = msg || "Component requires external modules or assets. Switch to the Code tab to view full implementation.";
       }
 
-      // Check if Babel & React loaded
-      if (typeof React === "undefined" || typeof ReactDOM === "undefined" || typeof Babel === "undefined") {
-        setTimeout(init, 300);
-        return;
-      }
-
-      init();
-
       function init() {
         if (typeof React === "undefined" || typeof ReactDOM === "undefined" || typeof Babel === "undefined") {
-          showError("Loading sandbox runtime dependencies...");
+          setTimeout(init, 100);
           return;
         }
 
         try {
           const rawCode = ${serializedCode};
 
-          // 1. Extract and map imports
-          let processed = rawCode;
-
-          // Strip standard imports
-          processed = processed.replace(/^\\s*import\\s+[^;]+;?\\s*$/gm, "");
-          processed = processed.replace(/import\\s+([\\s\\S]*?)\\s+from\\s+['"][^'"]+['"];?/g, "");
-
-          // Normalize exports
-          processed = processed.replace(/export\\s+default\\s+/g, "window.__DevDashComponent = ");
-          processed = processed.replace(/export\\s+(function|const|let|var|class)\\s+/g, "$1 ");
-
-          // 2. Compile TSX/JSX to standard JavaScript with Babel Standalone
-          const transformed = Babel.transform(processed, {
-            presets: ["react", ["typescript", { isTSX: true, allExtensions: true }]],
-            filename: "component.tsx"
-          }).code;
-
-          // 3. Setup Sandbox Execution Context
-          const {
-            useState,
-            useEffect,
-            useMemo,
-            useCallback,
-            useRef,
-            createContext,
-            useContext,
-            useReducer,
-            forwardRef
-          } = React;
-
-          // Utility cn
-          const cn = (...classes) => classes.filter(Boolean).join(" ");
+          // 1. Setup Sandbox Execution Context on window
+          window.React = React;
+          window.ReactDOM = ReactDOM;
+          window.useState = React.useState;
+          window.useEffect = React.useEffect;
+          window.useMemo = React.useMemo;
+          window.useCallback = React.useCallback;
+          window.useRef = React.useRef;
+          window.createContext = React.createContext;
+          window.useContext = React.useContext;
+          window.useReducer = React.useReducer;
+          window.forwardRef = React.forwardRef;
+          window.cn = function(...classes) { return classes.filter(Boolean).join(" "); };
 
           // Lucide icon helper
           const iconPathMap = {
@@ -177,68 +146,93 @@ export function ComponentLivePreview({
             };
           }
 
-          // Missing Component Proxy for imports like <AvatarLabelGroup />
+          Object.keys(iconPathMap).forEach(function(iconName) {
+            window[iconName] = makeIcon(iconName);
+          });
+
+          // Missing Subcomponent Proxy (e.g. AvatarLabelGroup, Tooltip, Dropdown, etc.)
           function makeProxyComponent(compName) {
             return function(props) {
               if (props && props.children) {
                 return React.createElement("div", { className: props.className || "inline-block" }, props.children);
               }
-              const label = (props && (props.title || props.name || props.alt || props.subtitle)) || compName;
+              const title = (props && (props.title || props.name || props.alt)) || compName;
+              const subtitle = props && props.subtitle;
+              const src = props && props.src;
+
+              if (src || subtitle) {
+                return React.createElement(
+                  "div",
+                  { className: (props && props.className) || "inline-flex items-center gap-3 p-3 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 shadow-md" },
+                  src ? React.createElement("img", { src: src, alt: title, className: "w-10 h-10 rounded-full object-cover border border-zinc-700 shrink-0" }) : null,
+                  React.createElement(
+                    "div",
+                    { className: "min-w-0" },
+                    React.createElement("div", { className: "font-semibold text-zinc-100 truncate" }, title),
+                    subtitle ? React.createElement("div", { className: "text-zinc-400 text-[11px] truncate font-normal" }, subtitle) : null
+                  )
+                );
+              }
+
               return React.createElement(
                 "div",
-                {
-                  className: (props && props.className) || "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-200"
-                },
-                label
+                { className: (props && props.className) || "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 shadow-sm" },
+                title
               );
             };
           }
 
-          // Build proxy environment
-          const proxyEnv = new Proxy({}, {
-            get: function(target, prop) {
-              if (prop in window) return window[prop];
-              if (prop in iconPathMap) return makeIcon(prop);
-              if (typeof prop === "string" && prop[0] === prop[0].toUpperCase()) {
-                return makeProxyComponent(prop);
-              }
-              return undefined;
-            }
+          [
+            "Avatar", "AvatarImage", "AvatarFallback", "AvatarLabelGroup",
+            "Button", "Badge", "Card", "CardHeader", "CardTitle", "CardDescription", "CardContent", "CardFooter",
+            "Input", "Label", "Dialog", "DialogTrigger", "DialogContent", "DialogHeader", "DialogTitle", "DialogDescription",
+            "DropdownMenu", "DropdownMenuTrigger", "DropdownMenuContent", "DropdownMenuItem",
+            "Tabs", "TabsList", "TabsTrigger", "TabsContent",
+            "Tooltip", "TooltipTrigger", "TooltipContent", "TooltipProvider",
+            "Skeleton", "Switch", "Select", "SelectTrigger", "SelectValue", "SelectContent", "SelectItem"
+          ].forEach(function(name) {
+            window[name] = makeProxyComponent(name);
           });
 
-          // 4. Execute the transformed code
-          const executeFn = new Function(
-            "React", "ReactDOM", "useState", "useEffect", "useMemo", "useCallback", "useRef", "createContext", "useContext", "cn", "env",
-            \`with (env) {
-              \${transformed}
-              return window.__DevDashComponent || (typeof DefaultDemo !== 'undefined' ? DefaultDemo : undefined);
-            }\`
-          );
+          // 2. Preprocess Code: Strip imports and normalize exports
+          let processed = rawCode;
+          processed = processed.replace(/^\\s*import\\s+[^;]+;?\\s*$/gm, "");
+          processed = processed.replace(/import\\s+([\\s\\S]*?)\\s+from\\s+['"][^'"]+['"];?/g, "");
+          processed = processed.replace(/export\\s+default\\s+/g, "window.__DevDashExportDefault = ");
+          processed = processed.replace(/export\\s+(function|const|let|var|class)\\s+/g, "window.");
 
-          let ComponentToRender = executeFn(
-            React, ReactDOM, useState, useEffect, useMemo, useCallback, useRef, createContext, useContext, cn, proxyEnv
-          );
+          // 3. Compile with Babel using standard presets without obsolete options
+          const transformed = Babel.transform(processed, {
+            presets: ["react", "typescript"],
+            filename: "component.tsx"
+          }).code;
 
-          // If no default export, find any declared React function
+          // 4. Execute transformed code in global scope
+          window.eval(transformed);
+
+          // 5. Discover exported component to mount
+          let ComponentToRender = window.__DevDashExportDefault;
+
           if (!ComponentToRender) {
-            // Check window or global scope for common component names
-            const match = rawCode.match(/(?:function|const|let)\\s+([A-Z][a-zA-Z0-9]*)/);
-            if (match && match[1]) {
+            // Find any declared uppercase component on window
+            const matches = Array.from(rawCode.matchAll(/(?:function|const|let)\\s+([A-Z][a-zA-Z0-9]*)/g));
+            for (let i = 0; i < matches.length; i++) {
+              const compName = matches[i][1];
               try {
-                const candidate = eval(match[1]);
-                if (typeof candidate === "function") {
-                  ComponentToRender = candidate;
+                if (typeof window[compName] === "function") {
+                  ComponentToRender = window[compName];
+                  break;
                 }
               } catch(e) {}
             }
           }
 
           if (!ComponentToRender) {
-            showError("No exported React component found in source. Check export statements.");
+            showError("Could not find a React component to mount. Please ensure the component is exported (e.g. export const MyComponent = () => ...).");
             return;
           }
 
-          // 5. Mount to DOM
+          // 6. Mount to DOM
           rootEl.innerHTML = "";
           const root = ReactDOM.createRoot(rootEl);
           root.render(React.createElement(ComponentToRender));
@@ -247,6 +241,8 @@ export function ComponentLivePreview({
           showError(err && err.message ? err.message : String(err));
         }
       }
+
+      init();
     })();
   </script>
 </body>

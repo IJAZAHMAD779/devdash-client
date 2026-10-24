@@ -14,7 +14,7 @@ import {
   useToggleComponentFavorite,
   useDeleteComponent,
 } from "@/hooks/use-components";
-import { ComponentLivePreview } from "./component-live-preview";
+import { SchematicWireframe } from "./schematic-wireframe";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -90,11 +90,10 @@ export function ComponentCard({ component, onEdit, onViewCode }: Props) {
         {/* Subtle blueprint grid overlay */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#141517_1px,transparent_1px),linear-gradient(to_bottom,#141517_1px,transparent_1px)] bg-[size:16px_16px] opacity-30 pointer-events-none" />
 
-        {/* Live Preview Embed */}
-        <ComponentLivePreview
-          code={component.code}
+        {/* Schematic Blueprint Wireframe matching Image 2 */}
+        <SchematicWireframe
+          category={component.category}
           name={component.name}
-          mode="thumbnail"
           className="w-full h-full"
         />
 

@@ -241,7 +241,7 @@ export function ComponentCodeModal({
               <ComponentLivePreview
                 code={component.code}
                 name={component.name}
-                mode="interactive"
+                category={component.category}
                 className="w-full min-h-[460px] border-hairline"
               />
             </div>

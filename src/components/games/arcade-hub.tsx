@@ -21,9 +21,10 @@ import { SnakeGame } from "./snake/snake-game";
 import { TicTacToeGame } from "./tic-tac-toe/tic-tac-toe-game";
 import { BalloonPopperGame } from "./balloon-popper/balloon-popper-game";
 import { CoinDiceGame } from "./coin-dice/coin-dice-game";
+import { BreakoutGame } from "./breakout/breakout-game";
 import { cn } from "@/lib/utils";
 
-export type GameKey = "dino" | "2048" | "sudoku" | "snake" | "tictactoe" | "balloon" | "coindice";
+export type GameKey = "dino" | "2048" | "sudoku" | "snake" | "tictactoe" | "balloon" | "coindice" | "breakout";
 
 interface GameCardItem {
   key: GameKey;
@@ -103,6 +104,16 @@ const GAMES_LIST: GameCardItem[] = [
     image: "/games/coindice.jpg",
     badge: "Decisions",
     accentColor: "from-amber-500/20 to-yellow-500/20",
+  },
+  {
+    key: "breakout",
+    name: "Neon Breakout",
+    category: "Arcade",
+    tagline: "Paddle & ball retro arcade breaking vibrant neon bricks",
+    image: "/games/breakout.jpg",
+    badge: "New",
+    accentColor: "from-cyan-500/20 to-blue-500/20",
+    storageKey: "devdash_breakout_highscore",
   },
 ];
 
@@ -360,6 +371,7 @@ export function ArcadeHub() {
           {activeGame === "tictactoe" && <TicTacToeGame />}
           {activeGame === "balloon" && <BalloonPopperGame />}
           {activeGame === "coindice" && <CoinDiceGame />}
+          {activeGame === "breakout" && <BreakoutGame />}
         </main>
       )}
     </div>

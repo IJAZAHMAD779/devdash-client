@@ -14,7 +14,7 @@ import {
   List,
   ArrowLeft,
   Layers,
-  Sparkles,
+  Blocks,
 } from "lucide-react";
 import {
   useUIComponents,
@@ -30,6 +30,7 @@ import {
 import { FolderCard } from "@/components/ui-components/folder-card";
 import { ComponentCard } from "@/components/ui-components/component-card";
 import { ComponentCodeModal } from "@/components/ui-components/component-code-modal";
+import { ComponentSynthesizerModal } from "@/components/ui-components/component-synthesizer-modal";
 import { NewComponentModal } from "@/components/ui-components/new-component-modal";
 import { EditComponentModal } from "@/components/ui-components/edit-component-modal";
 import { sound } from "@/lib/audio";
@@ -84,6 +85,7 @@ export default function ComponentsCatalogPage() {
     }
   }, [debouncedSearch]);
 
+  const [isSynthesizerOpen, setIsSynthesizerOpen] = useState(false);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [editingComponent, setEditingComponent] =
     useState<UIComponentItem | null>(null);
@@ -178,13 +180,27 @@ export default function ComponentsCatalogPage() {
           </h1>
         </div>
 
-        <button
-          onClick={handleOpenNewModal}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 flex-shrink-0 cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>New Component</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              sound.playClick(900);
+              setIsSynthesizerOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-ink text-xs font-medium border border-hairline hover:border-hairline-strong transition-all duration-150 flex-shrink-0 cursor-pointer shadow-xs"
+            title="Open AI Component Synthesizer & Architect"
+          >
+            <Blocks className="w-3.5 h-3.5 text-primary" />
+            <span>AI Synthesizer</span>
+          </button>
+
+          <button
+            onClick={handleOpenNewModal}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-primary/25 hover:shadow-primary/40 transition-all duration-150 flex-shrink-0 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Component</span>
+          </button>
+        </div>
       </div>
 
       {/* Breadcrumb & Navigation Subheader */}
@@ -524,7 +540,7 @@ export default function ComponentsCatalogPage() {
           ) : (
             /* Empty state inside a folder */
             <div className="rounded-2xl border border-hairline bg-surface-1/40 p-12 text-center max-w-md mx-auto my-12">
-              <Sparkles className="w-10 h-10 text-ink-tertiary mx-auto mb-3 opacity-60" />
+              <Blocks className="w-10 h-10 text-ink-tertiary mx-auto mb-3 opacity-60" />
               <h3 className="text-sm font-semibold text-ink mb-1">
                 No components found
               </h3>
@@ -558,6 +574,12 @@ export default function ComponentsCatalogPage() {
         isOpen={Boolean(viewingComponent)}
         onClose={() => setViewingComponent(null)}
         onEdit={handleEditComponent}
+      />
+
+      <ComponentSynthesizerModal
+        isOpen={isSynthesizerOpen}
+        onClose={() => setIsSynthesizerOpen(false)}
+        onSaved={() => refetch()}
       />
 
       <NewComponentModal

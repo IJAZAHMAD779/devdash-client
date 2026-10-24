@@ -59,3 +59,24 @@ export interface UpdateComponentPayload {
   projectId?: string | null;
   favorite?: boolean;
 }
+
+export interface ComponentPropItem {
+  prop: string;
+  type: string;
+  default?: string;
+  description: string;
+}
+
+export interface SynthesizedComponentResult {
+  name: string;
+  category: string;
+  description: string;
+  framework: ComponentFramework;
+  styling: ComponentStyling;
+  dependencies: string[];
+  propsSchema: ComponentPropItem[];
+  howToUse: string;
+  aiAgentPrompt: string;
+  code: string;
+}
+

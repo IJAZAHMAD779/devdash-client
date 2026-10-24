@@ -9,6 +9,7 @@ import {
   UpdateComponentPayload,
   ComponentFramework,
   ComponentStyling,
+  SynthesizedComponentResult,
 } from "@/types/component";
 
 interface ComponentQueryParams {
@@ -224,3 +225,39 @@ export function useDeleteComponent() {
     },
   });
 }
+
+export interface SynthesizePayload {
+  code: string;
+  targetFramework?: ComponentFramework;
+  styling?: ComponentStyling;
+}
+
+export function useSynthesizeComponent() {
+  return useMutation({
+    mutationFn: async (payload: SynthesizePayload) => {
+      return apiClient.post<SynthesizedComponentResult>(
+        "/components/ai-synthesize",
+        payload
+      );
+    },
+  });
+}
+
+export interface GeneratePayload {
+  prompt: string;
+  category?: string;
+  framework?: ComponentFramework;
+  styling?: ComponentStyling;
+}
+
+export function useGenerateComponent() {
+  return useMutation({
+    mutationFn: async (payload: GeneratePayload) => {
+      return apiClient.post<SynthesizedComponentResult>(
+        "/components/ai-generate",
+        payload
+      );
+    },
+  });
+}
+

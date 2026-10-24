@@ -21,6 +21,7 @@ import {
   X,
   Check,
   BrainCircuit,
+  Eraser,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -33,6 +34,7 @@ import { NewBookmarkModal } from "./new-bookmark-modal";
 import { EditBookmarkModal } from "./edit-bookmark-modal";
 import { ImportBookmarksModal } from "./import-bookmarks-modal";
 import { EnrichBookmarksModal } from "./enrich-bookmarks-modal";
+import { ClearNotesModal } from "./clear-notes-modal";
 import { exportBookmarksToHtml } from "@/lib/bookmark-parser";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { sound } from "@/lib/audio";
@@ -80,6 +82,7 @@ export function BookmarksCatalog() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isEnrichModalOpen, setIsEnrichModalOpen] = useState(false);
+  const [isClearNotesModalOpen, setIsClearNotesModalOpen] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
   const [deletingBookmark, setDeletingBookmark] = useState<Bookmark | null>(null);
 
@@ -114,23 +117,30 @@ export function BookmarksCatalog() {
   });
 
   // Calculate folder counts across all fetched bookmarks
-  const { totalCount, favoriteCount, folderCounts, emptyNotesCount } = useMemo(() => {
+  const { totalCount, favoriteCount, folderCounts, emptyNotesCount, notesCount } = useMemo(() => {
     let total = 0;
     let favs = 0;
     let emptyNotes = 0;
+    let hasNotes = 0;
     const counts: Record<string, number> = {};
 
     if (allBookmarks) {
       total = allBookmarks.length;
       allBookmarks.forEach((bm) => {
         if (bm.favorite) favs++;
-        if (!bm.notes || bm.notes.trim() === "" || bm.notes.startsWith("Developer bookmark for")) emptyNotes++;
+        const isEligible =
+          !bm.notes ||
+          bm.notes.trim() === "" ||
+          bm.notes.startsWith("Developer bookmark for") ||
+          bm.notes.includes("Web resource and developer utility.");
+        if (isEligible) emptyNotes++;
+        if (bm.notes && bm.notes.trim() !== "") hasNotes++;
         const cat = (bm.category || "tools").toLowerCase();
         counts[cat] = (counts[cat] || 0) + 1;
       });
     }
 
-    return { totalCount: total, favoriteCount: favs, folderCounts: counts, emptyNotesCount: emptyNotes };
+    return { totalCount: total, favoriteCount: favs, folderCounts: counts, emptyNotesCount: emptyNotes, notesCount: hasNotes };
   }, [allBookmarks]);
 
   // Discovered custom folders
@@ -350,6 +360,21 @@ export function BookmarksCatalog() {
               <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-indigo-500/20 text-indigo-200">
                 {emptyNotesCount}
               </span>
+            </button>
+          )}
+
+          {/* Remove / Clear Notes Feature */}
+          {notesCount > 0 && (
+            <button
+              onClick={() => {
+                sound.playClick(900);
+                setIsClearNotesModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-surface-2 hover:bg-red-500/10 hover:border-red-500/30 border border-hairline text-xs text-ink-muted hover:text-red-400 font-medium transition-colors cursor-pointer shrink-0"
+              title="Remove or clear notes all at once or by category"
+            >
+              <Eraser className="w-3.5 h-3.5 text-ink-tertiary" />
+              <span className="hidden sm:inline">Clear Notes</span>
             </button>
           )}
 
@@ -832,6 +857,13 @@ export function BookmarksCatalog() {
       <EnrichBookmarksModal
         isOpen={isEnrichModalOpen}
         onClose={() => setIsEnrichModalOpen(false)}
+        bookmarks={allBookmarks || []}
+        currentCategory={selectedCategory}
+      />
+
+      <ClearNotesModal
+        isOpen={isClearNotesModalOpen}
+        onClose={() => setIsClearNotesModalOpen(false)}
         bookmarks={allBookmarks || []}
         currentCategory={selectedCategory}
       />

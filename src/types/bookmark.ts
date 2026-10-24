@@ -93,3 +93,13 @@ export interface BatchEnrichResponse {
   enrichedCount: number;
   bookmarks: Bookmark[];
 }
+
+export interface ClearBookmarkNotesPayload {
+  category?: string;
+  bookmarkIds?: string[];
+}
+
+export interface ClearBookmarkNotesResponse {
+  clearedCount: number;
+}
+

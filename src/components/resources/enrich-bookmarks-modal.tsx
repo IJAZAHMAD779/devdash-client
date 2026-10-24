@@ -43,9 +43,12 @@ export function EnrichBookmarksModal({
 
   if (!isOpen) return null;
 
-  // Filter bookmarks without notes or with legacy template notes
+  // Filter bookmarks without notes or with legacy template/fallback notes
   const isEligibleForEnrichment = (bm: Bookmark) =>
-    !bm.notes || bm.notes.trim() === "" || bm.notes.startsWith("Developer bookmark for");
+    !bm.notes ||
+    bm.notes.trim() === "" ||
+    bm.notes.startsWith("Developer bookmark for") ||
+    bm.notes.includes("Web resource and developer utility.");
 
   const emptyNoteBookmarks = bookmarks.filter(isEligibleForEnrichment);
   const categoryEmptyBookmarks =

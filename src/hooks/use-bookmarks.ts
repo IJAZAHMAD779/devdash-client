@@ -10,6 +10,8 @@ import {
   BookmarkCategory,
   BatchEnrichPayload,
   BatchEnrichResponse,
+  ClearBookmarkNotesPayload,
+  ClearBookmarkNotesResponse,
 } from "@/types/bookmark";
 
 interface BookmarkQueryParams {
@@ -220,3 +222,18 @@ export function useEnrichBookmark() {
     },
   });
 }
+
+export function useClearBookmarkNotes() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: ClearBookmarkNotesPayload) => {
+      return apiClient.post<ClearBookmarkNotesResponse>("/bookmarks/clear-notes", payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+      queryClient.invalidateQueries({ queryKey: ["activity-logs"] });
+    },
+  });
+}
+

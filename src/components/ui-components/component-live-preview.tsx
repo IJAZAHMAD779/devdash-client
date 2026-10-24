@@ -34,7 +34,7 @@ export function ComponentLivePreview({
   <!-- React 18 UMD -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- Babel Standalone 7.26.4 (Stable pinned release - avoids unpkg Babel 8 alpha bug) -->
+  <!-- Babel Standalone 7.26.4 (Stable pinned release from cdnjs) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
   <style>
     *, *::before, *::after {
@@ -189,25 +189,71 @@ export function ComponentLivePreview({
             return CustomComponentsProxy;
           }
 
-          // 4. Compile with Babel 7 Standalone
-          // Using preset env with commonjs modules + react + typescript
-          const transformed = Babel.transform(rawCode, {
-            presets: [
-              ["env", { modules: "commonjs" }],
-              "react",
-              "typescript"
-            ],
+          // 4. Transform import statements to CommonJS require() calls
+          let processed = rawCode;
+
+          // Replace import * as Foo from "foo"
+          processed = processed.replace(
+            /import\\s*\\*\\s*as\\s+([\\w$]+)\\s*from\\s*['"][^'"]+['"];?/g,
+            'const $1 = require("$2");'
+          );
+
+          // Replace import Foo, { a, b as c } from "foo"
+          processed = processed.replace(
+            /import\\s+(?:([\\w$]+)\\s*,?\\s*)?(?:\\{([^}]+)\\})?\\s*from\\s*['"]([^'"]+)['"];?/g,
+            function(_, defaultImport, namedImports, moduleName) {
+              const lines = [];
+              const modVar = "_mod_" + Math.random().toString(36).slice(2, 7);
+              lines.push('const ' + modVar + ' = require("' + moduleName + '");');
+
+              if (defaultImport) {
+                lines.push('const ' + defaultImport.trim() + ' = (' + modVar + ' && ' + modVar + '.default) ? ' + modVar + '.default : ' + modVar + ';');
+              }
+
+              if (namedImports) {
+                const specs = namedImports.split(",").map(function(s) { return s.trim(); }).filter(Boolean);
+                specs.forEach(function(spec) {
+                  if (spec.includes(" as ")) {
+                    const parts = spec.split(" as ").map(function(x) { return x.trim(); });
+                    lines.push('const ' + parts[1] + ' = ' + modVar + '["' + parts[0] + '"];');
+                  } else {
+                    lines.push('const ' + spec + ' = ' + modVar + '["' + spec + '"];');
+                  }
+                });
+              }
+              return lines.join("\\n");
+            }
+          );
+
+          // Strip side-effect imports: import "styles.css"
+          processed = processed.replace(/import\\s*['"][^'"]+['"];?/g, "");
+
+          // Strip export default and export keywords
+          processed = processed.replace(/export\\s+default\\s+/g, "module.exports.default = ");
+          processed = processed.replace(/export\\s+(function|const|let|var|class)\\s+/g, "$1 ");
+
+          // Auto-export first uppercase component function if no export default
+          if (!processed.includes("module.exports.default =")) {
+            const compMatch = rawCode.match(/(?:function|const|let)\\s+([A-Z][a-zA-Z0-9]*)/);
+            if (compMatch && compMatch[1]) {
+              processed += "\\nif (typeof " + compMatch[1] + " !== 'undefined') { module.exports.default = " + compMatch[1] + "; }";
+            }
+          }
+
+          // 5. Compile with Babel 7 Standalone (JSX + TypeScript)
+          const transformed = Babel.transform(processed, {
+            presets: ["react", "typescript"],
             filename: "component.tsx"
           }).code;
 
-          // 5. Execute in isolated module environment
+          // 6. Execute in isolated module environment
           const moduleObj = { exports: {} };
           const runFn = new Function("module", "exports", "require", "React", "ReactDOM", transformed);
           runFn(moduleObj, moduleObj.exports, customRequire, React, ReactDOM);
 
-          // 6. Discover the component to mount
+          // 7. Discover the component to mount
           const exported = moduleObj.exports;
-          let ComponentToRender = exported && (exported.default || exported.__esModule && exported.default);
+          let ComponentToRender = exported && (exported.default || (exported.__esModule && exported.default));
 
           if (!ComponentToRender && typeof exported === "function") {
             ComponentToRender = exported;
@@ -223,7 +269,7 @@ export function ComponentLivePreview({
             return;
           }
 
-          // 7. Mount to DOM
+          // 8. Mount to DOM
           rootEl.innerHTML = "";
           const root = ReactDOM.createRoot(rootEl);
           root.render(React.createElement(ComponentToRender));

@@ -29,7 +29,7 @@ export function DevDashLogo({
         viewBox="0 0 32 32"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full overflow-visible transition-all duration-300 drop-shadow-[0_0_8px_rgba(37,99,235,0.2)] group-hover:drop-shadow-[0_0_14px_rgba(59,130,246,0.55)]"
+        className="w-full h-full overflow-visible transition-all duration-200"
       >
         <defs>
           {/* Top slab radiant royal gradient */}

@@ -63,6 +63,32 @@
   --toast-blur: 2px;
   --toast-scale: 0.97;
   --toast-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── Master Redesign Design Tokens ───────────────────────── */
+  --bg: #08090a;
+  --surface-1: #0d0e10;   /* panels, sidebar */
+  --surface-2: #131416;   /* hover, inputs, active nav */
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.10);
+  --text: #f4f4f5;
+  --text-2: #a1a1aa;
+  --text-3: #71717a;
+  --accent: #3b82f6;
+  --warn: #f59e0b;
+  --ok: #22c55e;
+  --danger: #ef4444;
+  --radius: 8px;          /* panels */
+  --radius-sm: 6px;       /* inputs, badges, buttons, nav items */
+}
+
+/* Dashboard Horizon Gradient Background */
+.bg-dashboard-canvas {
+  background-color: var(--bg);
+  background-image: radial-gradient(800px circle at 50% -120px, rgba(59, 130, 246, 0.04), transparent 75%);
+}
+
+.panel-subtle-glow {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 /* Base Linear Styling */

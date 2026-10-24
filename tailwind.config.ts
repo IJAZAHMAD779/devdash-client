@@ -36,6 +36,18 @@ const config: Config = {
           success: "#27a644",
           overlay: "#000000",
         },
+        line: "var(--border, rgba(255,255,255,0.06))",
+        "line-strong": "var(--border-strong, rgba(255,255,255,0.10))",
+        muted: "var(--text-2, #a1a1aa)",
+        subtle: "var(--text-3, #71717a)",
+        accent: {
+          DEFAULT: "var(--accent, #3b82f6)",
+          hover: "#2563eb",
+          subtle: "rgba(59, 130, 246, 0.12)",
+        },
+        warn: "var(--warn, #f59e0b)",
+        ok: "var(--ok, #22c55e)",
+        danger: "var(--danger, #ef4444)",
       },
       fontFamily: {
         sans: [
@@ -73,7 +85,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [require("@tailwindcss/container-queries")],
 };
 
 export default config;

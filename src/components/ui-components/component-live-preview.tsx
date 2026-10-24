@@ -3,27 +3,162 @@
 import { useMemo, useState } from "react";
 import { RefreshCw, Monitor, Tablet, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ComponentFramework } from "@/types/component";
 
 interface Props {
   code: string;
   name: string;
   category?: string;
+  framework?: ComponentFramework;
   className?: string;
+}
+
+function isHtmlCode(code: string, framework?: ComponentFramework): boolean {
+  if (framework === "HTML_CSS") return true;
+
+  const trimmed = (code || "").trim();
+  const lower = trimmed.toLowerCase();
+
+  // Explicit full HTML document
+  if (lower.startsWith("<!doctype") || lower.startsWith("<html") || lower.startsWith("<head")) {
+    return true;
+  }
+
+  // If framework is explicitly React or Next.js, default to React sandbox
+  if (framework === "REACT" || framework === "NEXTJS") {
+    return false;
+  }
+
+  // Check for React component patterns (import, export, hooks, React.)
+  const hasReactPatterns =
+    /\b(import\s+.*?from|export\s+default|export\s+const|export\s+function|useState|useEffect|useRef|useMemo|React\.)\b/.test(
+      trimmed
+    );
+
+  if (hasReactPatterns) {
+    return false;
+  }
+
+  // If it starts with standard HTML tags, styles, or comments
+  if (/^<(!DOCTYPE|[a-z0-9-]+|\?xml|!--)/i.test(trimmed)) {
+    return true;
+  }
+
+  return false;
+}
+
+function generateHtmlSrcDoc(code: string, baseOrigin: string): string {
+  const trimmed = (code || "").trim();
+  const lower = trimmed.toLowerCase();
+
+  const storagePolyfill = `
+  <script>
+    (function() {
+      function createStorageMock() {
+        var store = {};
+        return {
+          getItem: function(k) { return Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null; },
+          setItem: function(k, v) { store[k] = String(v); },
+          removeItem: function(k) { delete store[k]; },
+          clear: function() { store = {}; },
+          key: function(i) { return Object.keys(store)[i] || null; },
+          get length() { return Object.keys(store).length; }
+        };
+      }
+      var memStorage = createStorageMock();
+      try {
+        window.localStorage.getItem("devdash_test");
+      } catch (e) {
+        try {
+          Object.defineProperty(window, "localStorage", { value: memStorage, configurable: true, writable: true });
+          Object.defineProperty(window, "sessionStorage", { value: memStorage, configurable: true, writable: true });
+        } catch (_) {}
+      }
+    })();
+  </script>`;
+
+  const tailwindScript = `<script src="https://cdn.tailwindcss.com"></script>`;
+  const baseTag = `<base href="${baseOrigin}/" />`;
+
+  // Full HTML document
+  if (lower.includes("<html") || lower.includes("<!doctype")) {
+    let doc = trimmed;
+    if (/<head[^>]*>/i.test(doc)) {
+      doc = doc.replace(
+        /<head[^>]*>/i,
+        `$&${baseTag}${storagePolyfill}${doc.includes("cdn.tailwindcss.com") ? "" : tailwindScript}`
+      );
+    } else {
+      doc = `${baseTag}${storagePolyfill}${tailwindScript}${doc}`;
+    }
+    return doc;
+  }
+
+  // HTML snippet
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  ${baseTag}
+  ${tailwindScript}
+  ${storagePolyfill}
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #090a0b;
+      background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+      background-size: 24px 24px;
+      color: #f7f8f8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      padding: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+    }
+    #snippet-container {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="snippet-container">
+    ${trimmed}
+  </div>
+</body>
+</html>`;
 }
 
 export function ComponentLivePreview({
   code,
   name,
   category,
+  framework,
   className,
 }: Props) {
   const [iframeKey, setIframeKey] = useState(0);
   const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
 
-  // Generate safe HTML payload with in-browser Babel 7 + React 18 + CommonJS require runtime
+  const isHtml = useMemo(() => isHtmlCode(code, framework), [code, framework]);
+
+  // Generate safe HTML payload with native DOM or in-browser Babel 7 + React 18 runtime
   const srcDoc = useMemo(() => {
-    const serializedCode = JSON.stringify(code.trim());
     const baseOrigin = typeof window !== "undefined" ? window.location.origin : "";
+
+    if (isHtml) {
+      return generateHtmlSrcDoc(code, baseOrigin);
+    }
+
+    // Escape closing script tags to prevent breaking the wrapper script
+    const serializedCode = JSON.stringify(code.trim()).replace(/<\/script/gi, "<\\/script");
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -494,7 +629,7 @@ export function ComponentLivePreview({
   </script>
 </body>
 </html>`;
-  }, [code]);
+  }, [code, isHtml]);
 
   return (
     <div
@@ -506,9 +641,13 @@ export function ComponentLivePreview({
       {/* Clean Toolbar — No colored dots */}
       <div className="px-4 py-2 bg-surface-2/70 border-b border-hairline flex items-center justify-between text-xs">
         <div className="flex items-center gap-2 text-ink-muted">
-          <span className="text-xs font-semibold tracking-tight text-ink">Live React Sandbox</span>
+          <span className="text-xs font-semibold tracking-tight text-ink">
+            {isHtml ? "Live HTML Sandbox" : "Live React Sandbox"}
+          </span>
           <span className="text-ink-tertiary">·</span>
-          <span className="text-[11px] font-mono text-ink-tertiary">Babel + React 18</span>
+          <span className="text-[11px] font-mono text-ink-tertiary">
+            {isHtml ? "Native DOM + Tailwind" : "Babel + React 18"}
+          </span>
         </div>
 
         {/* Viewport switchers & reload */}

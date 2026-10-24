@@ -312,6 +312,7 @@ export function ComponentCodeModal({
                 code={component.code}
                 name={component.name}
                 category={component.category}
+                framework={component.framework}
                 className="w-full min-h-[480px] border-hairline"
               />
             </div>

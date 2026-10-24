@@ -438,6 +438,7 @@ export function ComponentSynthesizerModal({
                           code={result.code}
                           name={result.name}
                           category={result.category}
+                          framework={result.framework}
                           className="h-full min-h-[380px]"
                         />
                       </div>

@@ -124,7 +124,7 @@ export function BookmarksCatalog() {
       total = allBookmarks.length;
       allBookmarks.forEach((bm) => {
         if (bm.favorite) favs++;
-        if (!bm.notes || bm.notes.trim() === "") emptyNotes++;
+        if (!bm.notes || bm.notes.trim() === "" || bm.notes.startsWith("Developer bookmark for")) emptyNotes++;
         const cat = (bm.category || "tools").toLowerCase();
         counts[cat] = (counts[cat] || 0) + 1;
       });

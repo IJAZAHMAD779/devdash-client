@@ -24,15 +24,16 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   badge?: string;
+  keys: [string, string];
 }
 
 const navigationItems: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Projects", href: "/projects", icon: FolderKanban },
-  { name: "Tasks", href: "/tasks", icon: CheckSquare },
-  { name: "Snippets", href: "/snippets", icon: Code2 },
-  { name: "Components", href: "/components", icon: Component },
-  { name: "Resources", href: "/resources", icon: BookOpen },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, keys: ["G", "D"] },
+  { name: "Projects", href: "/projects", icon: FolderKanban, keys: ["G", "P"] },
+  { name: "Tasks", href: "/tasks", icon: CheckSquare, keys: ["G", "T"] },
+  { name: "Snippets", href: "/snippets", icon: Code2, keys: ["G", "S"] },
+  { name: "Components", href: "/components", icon: Component, keys: ["G", "C"] },
+  { name: "Resources", href: "/resources", icon: BookOpen, keys: ["G", "R"] },
 ];
 
 export function Sidebar() {
@@ -146,27 +147,42 @@ export function Sidebar() {
 
           if (isCollapsed) {
             return (
-              <Link
-                key={item.name}
-                href={item.badge ? "#" : item.href}
-                title={item.name}
-                className={cn(
-                  "w-full flex items-center justify-center p-2.5 rounded-md text-sm font-medium transition-colors duration-150 group",
-                  isActive
-                    ? "bg-surface-3 text-ink border border-hairline"
-                    : "text-ink-muted hover:text-ink hover:bg-surface-2",
-                  item.badge && "opacity-60 cursor-not-allowed hover:bg-transparent"
-                )}
-              >
-                <Icon
+              <div key={item.name} className="relative group/collapsed">
+                <Link
+                  href={item.badge ? "#" : item.href}
                   className={cn(
-                    "w-4 h-4 transition-colors",
+                    "w-full flex items-center justify-center p-2.5 rounded-md text-sm font-medium transition-colors duration-150 group",
                     isActive
-                      ? "text-primary"
-                      : "text-ink-subtle group-hover:text-ink"
+                      ? "bg-surface-3 text-ink border border-hairline"
+                      : "text-ink-muted hover:text-ink hover:bg-surface-2",
+                    item.badge && "opacity-60 cursor-not-allowed hover:bg-transparent"
                   )}
-                />
-              </Link>
+                  aria-label={`${item.name} (${item.keys.join(" + ")})`}
+                >
+                  <Icon
+                    className={cn(
+                      "w-4 h-4 transition-colors",
+                      isActive
+                        ? "text-primary"
+                        : "text-ink-subtle group-hover:text-ink"
+                    )}
+                  />
+                </Link>
+
+                {/* Floating Tooltip on Hover with Name + Shortcut */}
+                <div className="absolute left-full ml-2.5 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-md bg-surface-2 border border-hairline shadow-xl text-xs font-medium text-ink flex items-center gap-2 opacity-0 group-hover/collapsed:opacity-100 pointer-events-none transition-all duration-150 z-50 whitespace-nowrap">
+                  <span>{item.name}</span>
+                  <span className="flex items-center gap-0.5 text-ink-tertiary">
+                    <kbd className="text-[9px] font-mono px-1 py-0.2 rounded bg-surface-3 border border-hairline text-ink-subtle font-semibold">
+                      {item.keys[0]}
+                    </kbd>
+                    <span className="text-[9px] font-mono text-ink-tertiary">+</span>
+                    <kbd className="text-[9px] font-mono px-1 py-0.2 rounded bg-surface-3 border border-hairline text-ink-subtle font-semibold">
+                      {item.keys[1]}
+                    </kbd>
+                  </span>
+                </div>
+              </div>
             );
           }
 
@@ -182,22 +198,35 @@ export function Sidebar() {
                 item.badge && "opacity-60 cursor-not-allowed hover:bg-transparent"
               )}
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <Icon
                   className={cn(
-                    "w-4 h-4 transition-colors",
+                    "w-4 h-4 shrink-0 transition-colors",
                     isActive
                       ? "text-primary"
                       : "text-ink-subtle group-hover:text-ink"
                   )}
                 />
-                <span className="tracking-[-0.1px]">{item.name}</span>
+                <span className="tracking-[-0.1px] truncate">{item.name}</span>
               </div>
-              {item.badge && (
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-2 border border-hairline text-ink-tertiary">
-                  {item.badge}
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {item.badge && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-2 border border-hairline text-ink-tertiary">
+                    {item.badge}
+                  </span>
+                )}
+                {/* Related shortcut on hover with plus symbol */}
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-0.5 text-ink-tertiary select-none">
+                  <kbd className="text-[9px] font-mono px-1 py-0.2 rounded bg-surface-2 border border-hairline text-ink-subtle group-hover:text-ink font-semibold shadow-2xs">
+                    {item.keys[0]}
+                  </kbd>
+                  <span className="text-[9px] font-mono text-ink-tertiary">+</span>
+                  <kbd className="text-[9px] font-mono px-1 py-0.2 rounded bg-surface-2 border border-hairline text-ink-subtle group-hover:text-ink font-semibold shadow-2xs">
+                    {item.keys[1]}
+                  </kbd>
                 </span>
-              )}
+              </div>
             </Link>
           );
         })}

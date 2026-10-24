@@ -111,20 +111,14 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
 
   const categoryConfig = getCategoryBadge(bm.category);
   const domain = getHostname(bm.url);
-  const hasDetails = Boolean(bm.notes || (bm.tags && bm.tags.length > 0));
 
   return (
     <>
       <div
-        onClick={() => {
-          if (hasDetails) setIsExpanded(!isExpanded);
-        }}
-        className={cn(
-          "group flex items-center justify-between px-3.5 sm:px-4 py-2.5 bg-surface-1 border-b border-hairline hover:bg-surface-2/70 transition-colors duration-150 text-xs first:rounded-t-lg last:rounded-b-lg last:border-b-0",
-          hasDetails && "cursor-pointer"
-        )}
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="group flex items-center justify-between px-3.5 sm:px-4 py-2.5 bg-surface-1 border-b border-hairline hover:bg-surface-2/70 transition-colors duration-150 text-xs first:rounded-t-lg last:rounded-b-lg last:border-b-0 cursor-pointer"
       >
-        {/* Left: Star, Favicon, Title, Domain */}
+        {/* Left: Star, Favicon, Title, Domain, Project */}
         <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
           {/* Star Button */}
           <button
@@ -147,7 +141,7 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
           {/* Favicon */}
           <BookmarkFavicon domain={domain} url={bm.url} size={16} />
 
-          {/* Title & Notes snippet */}
+          {/* Title & Notes snippet & Project */}
           <div className="flex flex-col min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <a
@@ -162,6 +156,12 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
               >
                 {bm.title}
               </a>
+              {bm.project && (
+                <span className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-surface-3 border border-hairline font-mono text-[9px] text-ink-muted truncate max-w-[120px] shrink-0">
+                  <FolderKanban className="w-2.5 h-2.5 text-primary shrink-0" />
+                  <span className="truncate">{bm.project.title}</span>
+                </span>
+              )}
             </div>
             {!isExpanded && bm.notes && (
               <span className="text-[11px] text-ink-tertiary truncate hidden sm:block">
@@ -171,58 +171,45 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
           </div>
         </div>
 
-        {/* Middle: Category & Project */}
-        <div className="hidden sm:flex items-center gap-2.5 shrink-0 mr-4">
-          <span className="text-xs font-bold text-ink tracking-tight truncate max-w-[120px]">
+        {/* Column 2: Category (Strictly Fixed Width) */}
+        <div className="hidden sm:flex w-20 md:w-24 shrink-0 items-center justify-start">
+          <span className="text-xs font-semibold text-ink tracking-tight truncate">
             {categoryConfig.label}
           </span>
+        </div>
 
-          {bm.project && (
-            <span className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-3 border border-hairline font-mono text-[10px] text-ink-muted truncate max-w-[120px]">
-              <FolderKanban className="w-2.5 h-2.5 text-primary shrink-0" />
-              <span className="truncate">{bm.project.title}</span>
-            </span>
-          )}
-
-          {bm.tags && bm.tags.length > 0 && (
-            <span className="hidden xl:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-2 border border-hairline font-mono text-[10px] text-ink-subtle">
-              <Tag className="w-2 h-2 text-ink-tertiary" />
-              <span>{bm.tags[0]}</span>
+        {/* Column 3: Tags (Strictly Fixed Width — Placeheld if Missing) */}
+        <div className="hidden lg:flex w-28 xl:w-32 shrink-0 items-center justify-start">
+          {bm.tags && bm.tags.length > 0 ? (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-2 border border-hairline font-mono text-[10px] text-ink-subtle truncate max-w-full">
+              <Tag className="w-2 h-2 text-ink-tertiary shrink-0" />
+              <span className="truncate">{bm.tags[0]}</span>
               {bm.tags.length > 1 && (
-                <span className="text-ink-tertiary">+{bm.tags.length - 1}</span>
+                <span className="text-ink-tertiary shrink-0">+{bm.tags.length - 1}</span>
               )}
-            </span>
-          )}
-
-          {hasDetails ? (
-            <span className="text-ink-tertiary group-hover:text-ink-muted transition-colors">
-              <ChevronDown
-                className={cn(
-                  "w-3.5 h-3.5 transition-transform duration-150",
-                  isExpanded && "rotate-180"
-                )}
-              />
             </span>
           ) : (
-            <button
-              type="button"
-              onClick={handleQuickEnrich}
-              disabled={enrichBookmark.isPending}
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer py-0.5 px-2 rounded hover:bg-indigo-500/10 shrink-0"
-              title="Generate developer note with AI"
-            >
-              {enrichBookmark.isPending ? (
-                <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
-              ) : (
-                <BrainCircuit className="w-3 h-3 text-indigo-400" />
-              )}
-              <span className="hidden sm:inline">AI Note</span>
-            </button>
+            <div className="w-full h-4" aria-hidden="true" />
           )}
         </div>
 
-        {/* Right: Quick Actions */}
-        <div className="flex items-center gap-1 shrink-0 text-ink-subtle" onClick={(e) => e.stopPropagation()}>
+        {/* Column 4: Details Expand Chevron (Strictly Fixed Width) */}
+        <div className="w-6 shrink-0 flex items-center justify-center">
+          <span className="text-ink-tertiary group-hover:text-ink-muted transition-colors">
+            <ChevronDown
+              className={cn(
+                "w-3.5 h-3.5 transition-transform duration-150",
+                isExpanded && "rotate-180"
+              )}
+            />
+          </span>
+        </div>
+
+        {/* Column 5: Action Buttons (Strictly Fixed Width) */}
+        <div
+          className="w-28 shrink-0 flex items-center justify-end gap-0.5 text-ink-subtle"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Copy Link Button */}
           <button
             type="button"
@@ -264,7 +251,7 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
             <Trash2 className="w-3.5 h-3.5 text-ink-tertiary hover:text-rose-400" />
           </button>
 
-          {/* External Visit Button - diagonal arrow with no background */}
+          {/* External Visit Button */}
           <a
             href={bm.url}
             target="_blank"
@@ -283,9 +270,29 @@ export function BookmarkListRow({ bookmark: bm, onEdit }: Props) {
       </div>
 
       {/* Expandable Notes & Tags Drawer */}
-      {isExpanded && hasDetails && (
+      {isExpanded && (
         <div className="px-4 py-2.5 bg-surface-2/40 border-b border-hairline/60 text-xs text-ink-muted leading-relaxed space-y-1.5 animate-in fade-in duration-150">
-          {bm.notes && <p className="whitespace-pre-wrap">{bm.notes}</p>}
+          {bm.notes ? (
+            <p className="whitespace-pre-wrap">{bm.notes}</p>
+          ) : (
+            <div className="flex items-center justify-between py-0.5">
+              <span className="text-[11px] text-ink-tertiary">No developer notes for this bookmark.</span>
+              <button
+                type="button"
+                onClick={handleQuickEnrich}
+                disabled={enrichBookmark.isPending}
+                className="inline-flex items-center gap-1.5 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer py-1 px-2.5 rounded bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 shrink-0"
+                title="Generate developer note with AI"
+              >
+                {enrichBookmark.isPending ? (
+                  <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+                ) : (
+                  <BrainCircuit className="w-3 h-3 text-indigo-400" />
+                )}
+                <span>Generate AI Note</span>
+              </button>
+            </div>
+          )}
           {bm.tags && bm.tags.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
               <Tag className="w-2.5 h-2.5 text-ink-subtle shrink-0" />

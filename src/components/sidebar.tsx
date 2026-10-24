@@ -111,7 +111,12 @@ export function Sidebar() {
       </div>
 
       {/* Navigation Links */}
-      <div className={cn("flex-1 py-4 space-y-1 overflow-y-auto", isCollapsed ? "px-2" : "px-3")}>
+      <div
+        className={cn(
+          "flex-1 py-4 space-y-1 no-scrollbar",
+          isCollapsed ? "px-2 overflow-visible" : "px-3 overflow-y-auto overflow-x-hidden"
+        )}
+      >
         {/* Cmd+K Search Trigger */}
         {isCollapsed ? (
           <button
@@ -152,6 +157,7 @@ export function Sidebar() {
               <div key={item.name} className="relative group/collapsed">
                 <Link
                   href={item.badge ? "#" : item.href}
+                  title={`${item.name} (${item.keys.join(" + ")})`}
                   className={cn(
                     "w-full flex items-center justify-center p-2.5 rounded-md text-sm font-medium transition-colors duration-150 group",
                     isActive
@@ -172,7 +178,7 @@ export function Sidebar() {
                 </Link>
 
                 {/* Floating Tooltip on Hover with Name + Shortcut */}
-                <div className="absolute left-full ml-2.5 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-md bg-surface-2 border border-hairline shadow-xl text-xs font-medium text-ink flex items-center gap-2 opacity-0 group-hover/collapsed:opacity-100 pointer-events-none transition-all duration-150 z-50 whitespace-nowrap">
+                <div className="absolute left-full ml-2.5 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-md bg-surface-2 border border-hairline shadow-xl text-xs font-medium text-ink flex items-center gap-2 opacity-0 invisible group-hover/collapsed:opacity-100 group-hover/collapsed:visible pointer-events-none transition-all duration-150 z-50 whitespace-nowrap">
                   <span>{item.name}</span>
                   <span className="flex items-center gap-0.5 text-ink-tertiary">
                     <kbd className="text-[9px] font-mono px-1 py-0.2 rounded bg-surface-3 border border-hairline text-ink-subtle font-semibold">

@@ -24,7 +24,15 @@ import { CoinDiceGame } from "./coin-dice/coin-dice-game";
 import { BreakoutGame } from "./breakout/breakout-game";
 import { cn } from "@/lib/utils";
 
-export type GameKey = "dino" | "2048" | "sudoku" | "snake" | "tictactoe" | "balloon" | "coindice" | "breakout";
+export type GameKey =
+  | "dino"
+  | "2048"
+  | "sudoku"
+  | "snake"
+  | "tictactoe"
+  | "balloon"
+  | "coindice"
+  | "breakout";
 
 interface GameCardItem {
   key: GameKey;
@@ -168,10 +176,18 @@ export function ArcadeHub() {
   const currentGame = GAMES_LIST.find((g) => g.key === activeGame);
 
   const filteredGames = GAMES_LIST.filter(
-    (g) => selectedCategory === "ALL" || g.category === selectedCategory
+    (g) => selectedCategory === "ALL" || g.category === selectedCategory,
   );
 
-  const categories = ["ALL", "Runner", "Puzzle", "Logic", "Arcade", "Reflex", "Casual"];
+  const categories = [
+    "ALL",
+    "Runner",
+    "Puzzle",
+    "Logic",
+    "Arcade",
+    "Reflex",
+    "Casual",
+  ];
 
   return (
     <div className="flex-1 min-h-screen bg-canvas text-ink flex flex-col overflow-y-auto">
@@ -223,7 +239,7 @@ export function ArcadeHub() {
                     "px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer",
                     activeGame === g.key
                       ? "bg-surface-4 text-ink shadow-xs"
-                      : "text-ink-subtle hover:text-ink"
+                      : "text-ink-subtle hover:text-ink",
                   )}
                 >
                   {g.name}
@@ -264,7 +280,8 @@ export function ArcadeHub() {
                 Mini-Games Lounge
               </h2>
               <p className="text-xs text-ink-subtle mt-0.5">
-                Take a quick 2-minute break, relax your mind, and recharge your focus
+                Take a quick 2-minute break, relax your mind, and recharge your
+                focus
               </p>
             </div>
 
@@ -278,7 +295,7 @@ export function ArcadeHub() {
                     "px-2.5 py-1 rounded-md text-xs font-medium transition-all capitalize whitespace-nowrap cursor-pointer",
                     selectedCategory === cat
                       ? "bg-surface-3 text-ink shadow-xs font-semibold"
-                      : "text-ink-subtle hover:text-ink"
+                      : "text-ink-subtle hover:text-ink",
                   )}
                 >
                   {cat === "ALL" ? "All Games" : cat}
@@ -349,7 +366,9 @@ export function ArcadeHub() {
                     </div>
 
                     <div className="mt-3 pt-3 border-t border-hairline/60 flex items-center justify-between text-xs">
-                      <span className="text-ink-subtle font-mono text-[11px]">Instant Play</span>
+                      <span className="text-ink-subtle font-mono text-[11px]">
+                        Instant Play
+                      </span>
                       <span className="text-primary font-medium flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                         <span>Play Now</span>
                         <Play className="w-2.5 h-2.5 fill-current" />

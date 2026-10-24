@@ -335,7 +335,7 @@ export function ComponentLivePreview({
           // Replace import * as Foo from "foo"
           processed = processed.replace(
             /import\\s*\\*\\s*as\\s+([\\w$]+)\\s*from\\s*['"]([^'"]+)['"];?/g,
-            'const $1 = require("$2");'
+            'var $1 = require("$2");'
           );
 
           // Replace import Foo, { a, b as c } from "foo"
@@ -344,10 +344,10 @@ export function ComponentLivePreview({
             function(_, defaultImport, namedImports, moduleName) {
               var lines = [];
               var modVar = "_mod_" + Math.random().toString(36).slice(2, 7);
-              lines.push('const ' + modVar + ' = require("' + moduleName + '");');
+              lines.push('var ' + modVar + ' = require("' + moduleName + '");');
 
               if (defaultImport) {
-                lines.push('const ' + defaultImport.trim() + ' = (' + modVar + ' && ' + modVar + '.default) ? ' + modVar + '.default : ' + modVar + ';');
+                lines.push('var ' + defaultImport.trim() + ' = (' + modVar + ' && ' + modVar + '.default) ? ' + modVar + '.default : ' + modVar + ';');
               }
 
               if (namedImports) {
@@ -356,9 +356,9 @@ export function ComponentLivePreview({
                   spec = spec.replace(/^type\\s+/, "");
                   if (spec.includes(" as ")) {
                     var parts = spec.split(" as ").map(function(x) { return x.trim(); });
-                    lines.push('const ' + parts[1] + ' = ' + modVar + '["' + parts[0] + '"];');
+                    lines.push('var ' + parts[1] + ' = ' + modVar + '["' + parts[0] + '"];');
                   } else {
-                    lines.push('const ' + spec + ' = ' + modVar + '["' + spec + '"];');
+                    lines.push('var ' + spec + ' = ' + modVar + '["' + spec + '"];');
                   }
                 });
               }
@@ -412,19 +412,15 @@ export function ComponentLivePreview({
             filename: "component.tsx"
           }).code;
 
-          // 7. Execute in isolated module environment with shadowed localStorage/sessionStorage
+          // 7. Execute in isolated module environment (React and globals resolve from window)
           var moduleObj = { exports: {} };
           var runFn = new Function(
             "module",
             "exports",
             "require",
-            "React",
-            "ReactDOM",
-            "localStorage",
-            "sessionStorage",
             transformed
           );
-          runFn(moduleObj, moduleObj.exports, customRequire, React, ReactDOM, memStorage, memStorage);
+          runFn(moduleObj, moduleObj.exports, customRequire);
 
           // 8. Discover the component to mount
           var exported = moduleObj.exports;

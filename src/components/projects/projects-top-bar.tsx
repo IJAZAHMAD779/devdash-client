@@ -7,7 +7,6 @@ import {
   LayoutGrid,
   Plus,
   Search,
-  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProjectStatus } from "@/types/project";
@@ -34,7 +33,6 @@ export interface ProjectsTopBarProps {
   selectedStatus: ProjectStatus | "ALL";
   onStatusChange: (status: ProjectStatus | "ALL") => void;
   statusCounts: StatusCountMap;
-  isRateLimited?: boolean;
   className?: string;
 }
 
@@ -57,7 +55,6 @@ export function ProjectsTopBar({
   selectedStatus,
   onStatusChange,
   statusCounts,
-  isRateLimited,
   className,
 }: ProjectsTopBarProps) {
   return (
@@ -198,14 +195,6 @@ export function ProjectsTopBar({
           })}
         </div>
       </div>
-
-      {/* Quiet Telemetry Rate-Limit Notice if no cached telemetry available */}
-      {isRateLimited && totalCount > 0 && (
-        <div className="px-4 sm:px-6 py-1 bg-surface-2/60 border-t border-line text-[11px] font-mono text-muted flex items-center gap-1.5">
-          <AlertCircle className="w-3 h-3 text-warn shrink-0" />
-          <span>GitHub API unauthenticated rate limit reached. Displaying cached repository telemetry.</span>
-        </div>
-      )}
     </header>
   );
 }

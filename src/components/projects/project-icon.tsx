@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 export interface ProjectIconProps {
+  src?: string | null;
   liveUrl?: string | null;
   repositoryUrl?: string | null;
   title?: string;
@@ -19,6 +20,7 @@ const SIZE_MAP = {
 };
 
 export function ProjectIcon({
+  src,
   liveUrl,
   repositoryUrl,
   title = "Project",
@@ -28,33 +30,61 @@ export function ProjectIcon({
 }: ProjectIconProps) {
   const [candidateIndex, setCandidateIndex] = useState(0);
 
-  // Extract hostname domain from liveUrl or repositoryUrl
-  const resolvedDomain = useMemo(() => {
+  // Safely extract origin, path, and domain from liveUrl or repositoryUrl
+  const { baseUrl, origin, domain } = useMemo(() => {
     const target = liveUrl || repositoryUrl;
-    if (!target) return null;
+    if (!target) return { baseUrl: null, origin: null, domain: null };
     try {
       const formatted =
         target.startsWith("http://") || target.startsWith("https://")
           ? target
           : `https://${target}`;
-      return new URL(formatted).hostname.replace(/^www\./, "");
+      const parsed = new URL(formatted);
+      const cleanPath = parsed.pathname.replace(/\/+$/, "");
+      const base = cleanPath ? `${parsed.origin}${cleanPath}` : null;
+      return {
+        baseUrl: base,
+        origin: parsed.origin,
+        domain: parsed.hostname.replace(/^www\./, ""),
+      };
     } catch {
-      return null;
+      return { baseUrl: null, origin: null, domain: null };
     }
   }, [liveUrl, repositoryUrl]);
 
-  // Build candidate favicons: Google S2 (sz=64 for crisp retina display) + DuckDuckGo
+  // Build candidate favicons: direct site vectors & icons first, DuckDuckGo service, then monogram fallback
   const candidates = useMemo(() => {
-    if (!resolvedDomain) return [];
-    return [
-      `https://www.google.com/s2/favicons?domain=${encodeURIComponent(resolvedDomain)}&sz=64`,
-      `https://icons.duckduckgo.com/ip3/${resolvedDomain}.ico`,
-    ];
-  }, [resolvedDomain]);
+    const list: string[] = [];
+
+    if (src && src.trim()) {
+      list.push(src.trim());
+    }
+
+    // 1. Direct path from project's own URL (e.g., /icon.svg, /favicon.svg, /favicon.ico)
+    if (baseUrl) {
+      list.push(`${baseUrl}/icon.svg`);
+      list.push(`${baseUrl}/favicon.svg`);
+      list.push(`${baseUrl}/favicon.ico`);
+    }
+
+    if (origin) {
+      list.push(`${origin}/icon.svg`);
+      list.push(`${origin}/favicon.svg`);
+      list.push(`${origin}/favicon.ico`);
+    }
+
+    // 2. DuckDuckGo service (returns crisp 32x32 ico, and returns 404 when not found so error handler fires)
+    if (domain) {
+      list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+    }
+
+    // Deduplicate
+    return Array.from(new Set(list));
+  }, [src, baseUrl, origin, domain]);
 
   useEffect(() => {
     setCandidateIndex(0);
-  }, [liveUrl, repositoryUrl, resolvedDomain]);
+  }, [src, liveUrl, repositoryUrl, domain]);
 
   const handleImageError = () => {
     setCandidateIndex((prev) => prev + 1);
@@ -66,7 +96,7 @@ export function ProjectIcon({
   const radiusClass = tileRadius === "sm" ? "rounded-[4px]" : "rounded-[6px]";
 
   // Fallback: Crisp Monogram on surface-2 tile
-  if (isExhausted || !resolvedDomain) {
+  if (isExhausted || candidates.length === 0 || !domain) {
     return (
       <div
         className={cn(

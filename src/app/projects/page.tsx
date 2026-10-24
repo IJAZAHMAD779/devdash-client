@@ -9,7 +9,6 @@ import {
   useToggleFavorite,
 } from "@/hooks/use-projects";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useIsTelemetryRateLimited } from "@/hooks/use-repo-telemetry";
 import { Project, ProjectStatus } from "@/types/project";
 import { ProjectCard } from "@/components/projects/project-card";
 import { ProjectExplorer } from "@/components/projects/project-explorer";
@@ -45,8 +44,6 @@ function ProjectsPageInner() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
-
-  const isRateLimited = useIsTelemetryRateLimited();
 
   // Load explorer collapse state with smart default: if content width < 900px, collapse by default
   useEffect(() => {
@@ -200,7 +197,6 @@ function ProjectsPageInner() {
         selectedStatus={selectedStatus}
         onStatusChange={setSelectedStatus}
         statusCounts={statusCounts}
-        isRateLimited={isRateLimited}
       />
 
       {/* Main Content Area */}

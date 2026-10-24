@@ -19,6 +19,7 @@ import {
   Calendar,
   AlertTriangle,
   Layers,
+  Gamepad2,
 } from "lucide-react";
 import { useProjects } from "@/hooks/use-projects";
 import { useTasks, usePatchTaskStatus, useCreateTask } from "@/hooks/use-tasks";
@@ -180,6 +181,14 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+            <Link
+              href="/games"
+              title="Games & Relaxation (G + G)"
+              className="p-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline hover:border-primary/40 text-ink-subtle hover:text-primary transition-all duration-200 group flex items-center justify-center"
+              aria-label="Games"
+            >
+              <Gamepad2 className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+            </Link>
             <Link
               href="/projects"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors"

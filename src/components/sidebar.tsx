@@ -14,6 +14,7 @@ import {
   LogIn,
   PanelLeftClose,
   PanelLeftOpen,
+  Gamepad2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserButton, useUser } from "@clerk/nextjs";
@@ -34,6 +35,7 @@ const navigationItems: NavItem[] = [
   { name: "Snippets", href: "/snippets", icon: Code2, keys: ["G", "S"] },
   { name: "Components", href: "/components", icon: Component, keys: ["G", "C"] },
   { name: "Resources", href: "/resources", icon: BookOpen, keys: ["G", "R"] },
+  { name: "Games", href: "/games", icon: Gamepad2, keys: ["G", "G"] },
 ];
 
 export function Sidebar() {

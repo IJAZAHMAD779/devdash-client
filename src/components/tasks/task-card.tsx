@@ -1,63 +1,67 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useRef, useEffect } from "react";
 import {
-  Calendar,
-  FolderKanban,
   MoreVertical,
   Trash2,
   Edit2,
-  ArrowRight,
-  Eye,
+  FolderKanban,
 } from "lucide-react";
 import { Task, TaskStatus } from "@/types/task";
-import { TaskPriorityBadge } from "./task-priority-badge";
 import { TaskCheckbox } from "./task-checkbox";
+import { PriorityLabel } from "./priority-label";
+import { ReminderLabel } from "./reminder-label";
+import { stripMarkdown } from "./task-utils";
 import { usePatchTaskStatus, useDeleteTask } from "@/hooks/use-tasks";
 import { sound } from "@/lib/audio";
-import { formatDate, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { toast } from "@/lib/toast";
 
-interface Props {
+interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
   onView?: (task: Task) => void;
 }
 
-const ALL_STATUSES: { id: TaskStatus; label: string }[] = [
-  { id: "TODO", label: "To Do" },
-  { id: "IN_PROGRESS", label: "In Progress" },
-  { id: "IN_REVIEW", label: "In Review" },
-  { id: "DONE", label: "Done" },
-];
-
-export function TaskCard({ task, onEdit, onView }: Props) {
+export function TaskCard({ task, onEdit, onView }: TaskCardProps) {
   const patchStatus = usePatchTaskStatus();
   const deleteTask = useDeleteTask();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  // Close context menu on scroll or resize
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handleClose = () => {
-      setMenuOpen(false);
-      setMenuPosition(null);
-    };
-    window.addEventListener("scroll", handleClose, true);
-    window.addEventListener("resize", handleClose);
-    return () => {
-      window.removeEventListener("scroll", handleClose, true);
-      window.removeEventListener("resize", handleClose);
-    };
-  }, [menuOpen]);
-
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const isDone = task.status === "DONE";
+  const strippedDescription = stripMarkdown(task.description);
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", handleClick);
+    return () => window.removeEventListener("pointerdown", handleClick);
+  }, [menuOpen]);
+
+  // Exact HTML5 Drag handler preserved
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("text/plain", task.id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // If clicking an interactive button, checkbox or menu, ignore
+    if ((e.target as HTMLElement).closest("button, input, [role='button'], [role='menu']")) return;
+    sound.playClick(800);
+    if (onView) {
+      onView(task);
+    } else {
+      onEdit(task);
+    }
+  };
 
   const handleCheckboxToggle = (newChecked: boolean) => {
     patchStatus.mutate(
@@ -68,7 +72,7 @@ export function TaskCard({ task, onEdit, onView }: Props) {
       {
         onSuccess: () => {
           if (newChecked) {
-            toast.success("Task completed!", {
+            toast.success("Task completed", {
               description: `"${task.title}" marked as done.`,
             });
           }
@@ -77,239 +81,177 @@ export function TaskCard({ task, onEdit, onView }: Props) {
     );
   };
 
-  const handleStatusChange = (newStatus: TaskStatus) => {
-    setMenuOpen(false);
-    setMenuPosition(null);
-    patchStatus.mutate({
-      id: task.id,
-      status: newStatus,
+  const handleDelete = () => {
+    deleteTask.mutate(task.id, {
+      onSuccess: () => {
+        toast.success("Task deleted", {
+          description: `"${task.title}" has been removed.`,
+        });
+        setShowDeleteConfirm(false);
+      },
     });
   };
 
-  const handleToggleMenu = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    sound.playClick();
-    if (menuOpen) {
-      setMenuOpen(false);
-      setMenuPosition(null);
-    } else if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const menuHeight = 180;
-      const menuWidth = 144;
-      const openUpwards =
-        rect.bottom + menuHeight > window.innerHeight && rect.top > menuHeight;
-      const top = openUpwards ? rect.top - menuHeight - 4 : rect.bottom + 4;
-      let left = rect.right - menuWidth;
-      if (left < 8) left = 8;
-      if (left + menuWidth > window.innerWidth - 8) {
-        left = window.innerWidth - menuWidth - 8;
-      }
-      setMenuPosition({ top, left });
-      setMenuOpen(true);
-    }
-  };
+  // If Done: Single dimmed line with strikethrough, hover reveals project
+  if (isDone) {
+    return (
+      <>
+        <div
+          draggable
+          onDragStart={handleDragStart}
+          onClick={handleCardClick}
+          className="group relative p-2.5 rounded-[8px] bg-surface-1/40 border border-line hover:border-line-strong hover:bg-surface-2 transition-colors cursor-pointer select-none"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="shrink-0">
+              <TaskCheckbox checked={true} onToggle={handleCheckboxToggle} />
+            </div>
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setMenuOpen(false);
-    setMenuPosition(null);
-    setShowDeleteConfirm(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    try {
-      await deleteTask.mutateAsync(task.id);
-      toast.success("Task deleted", {
-        description: `"${task.title}" has been removed.`,
-      });
-    } catch {
-      toast.error("Failed to delete task");
-    }
-  };
-
-  const handleDragStart = (e: React.DragEvent) => {
-    e.dataTransfer.setData("text/plain", task.id);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleCardClick = (e: React.MouseEvent) => {
-    // If clicking an interactive button, checkbox or menu, ignore
-    if ((e.target as HTMLElement).closest("button, input, [role='menu']")) return;
-    sound.playClick(800);
-    if (onView) {
-      onView(task);
-    } else {
-      onEdit(task);
-    }
-  };
-
-  return (
-    <div
-      draggable
-      onDragStart={handleDragStart}
-      onClick={handleCardClick}
-      className={cn(
-        "group relative p-3.5 rounded-lg bg-surface-1 border border-hairline hover:border-primary/50 hover:shadow-[0_0_20px_-4px_rgba(37,99,235,0.15)] hover:bg-surface-2/70 transition-all duration-150 cursor-pointer shadow-sm select-none",
-        isDone && "opacity-75"
-      )}
-    >
-      <div className="flex items-start gap-2.5">
-        {/* Animated Checkbox */}
-        <div className="pt-0.5">
-          <TaskCheckbox checked={isDone} onToggle={handleCheckboxToggle} />
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <span
-              className={cn(
-                "text-xs font-medium tracking-[-0.2px] text-ink leading-snug line-clamp-2",
-                isDone && "line-through text-ink-tertiary"
-              )}
-            >
+            <span className="flex-1 min-w-0 text-xs text-subtle line-through truncate font-normal">
               {task.title}
             </span>
 
-            {/* Context Menu Trigger */}
-            <div className="relative flex-shrink-0">
-              <button
-                ref={buttonRef}
-                type="button"
-                onClick={handleToggleMenu}
-                className={cn(
-                  "p-1 rounded hover:bg-surface-3 text-ink-subtle hover:text-ink transition-all cursor-pointer",
-                  menuOpen
-                    ? "opacity-100 bg-surface-3 text-ink"
-                    : "opacity-0 group-hover:opacity-100"
-                )}
-              >
-                <MoreVertical className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            {task.project && (
+              <span className="hidden group-hover:inline-block text-[10px] font-mono text-subtle shrink-0 truncate max-w-[100px]">
+                {task.project.title}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <ConfirmModal
+          isOpen={showDeleteConfirm}
+          title="Delete Task"
+          description={`Are you sure you want to delete "${task.title}"? This cannot be undone.`}
+          confirmText="Delete Task"
+          variant="danger"
+          isLoading={deleteTask.isPending}
+          onConfirm={handleDelete}
+          onClose={() => setShowDeleteConfirm(false)}
+        />
+      </>
+    );
+  }
+
+  // Active Card: 8px radius, 12px padding, title + 1 line stripped description + meta line
+  return (
+    <>
+      <div
+        draggable
+        onDragStart={handleDragStart}
+        onClick={handleCardClick}
+        className="group relative p-3 rounded-[8px] bg-surface-1 border border-line hover:border-line-strong hover:bg-surface-2 transition-colors cursor-pointer select-none shadow-xs"
+      >
+        <div className="flex items-start gap-2.5">
+          {/* Subtle 16px checkbox visible on hover/focus-within and mobile */}
+          <div className="shrink-0 pt-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
+            <TaskCheckbox checked={false} onToggle={handleCheckboxToggle} />
           </div>
 
-          {task.description && (
-            <p className="text-[11px] text-ink-subtle line-clamp-2 mt-1 leading-normal">
-              {task.description}
-            </p>
-          )}
+          {/* Main Card Content */}
+          <div className="flex-1 min-w-0 space-y-1">
+            {/* Title (14px, medium weight, max 2 lines) */}
+            <div className="flex items-start justify-between gap-1.5">
+              <h4 className="text-[13px] sm:text-sm font-medium text-text-primary leading-snug line-clamp-2">
+                {task.title}
+              </h4>
 
-          {/* Footer Metadata: Priority, Project, Due Date */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2 border-t border-hairline/40 text-[10px] text-ink-subtle">
-            <TaskPriorityBadge priority={task.priority} />
+              {/* Context Menu Trigger */}
+              <div ref={menuRef} className="relative shrink-0 -mr-1 -mt-0.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    sound.playClick(600);
+                    setMenuOpen((prev) => !prev);
+                  }}
+                  title="More actions"
+                  className={cn(
+                    "p-1 rounded-[4px] text-subtle hover:text-text-primary hover:bg-surface-3 transition-colors cursor-pointer opacity-0 group-hover:opacity-100",
+                    menuOpen && "opacity-100 bg-surface-3 text-text-primary"
+                  )}
+                >
+                  <MoreVertical className="w-3.5 h-3.5" />
+                </button>
 
-            {task.project && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-3 border border-hairline font-mono text-ink-muted truncate max-w-[120px]">
-                <FolderKanban className="w-2.5 h-2.5 text-primary" />
-                <span className="truncate">{task.project.title}</span>
-              </span>
+                {menuOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-6 z-50 w-32 rounded-[6px] bg-surface-1 border border-line-strong shadow-xl py-1 text-xs font-mono animate-in fade-in zoom-in-95 duration-100 select-none"
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sound.playClick(700);
+                        setMenuOpen(false);
+                        onEdit(task);
+                      }}
+                      className="w-full px-2.5 py-1.5 text-left text-muted hover:text-text-primary hover:bg-surface-2 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Edit2 className="w-3 h-3 text-subtle" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sound.playClick(600);
+                        setMenuOpen(false);
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="w-full px-2.5 py-1.5 text-left text-danger hover:bg-danger/10 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3 text-danger" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Optional Description (1 line stripped markdown) */}
+            {strippedDescription && (
+              <p className="text-xs text-subtle line-clamp-1">
+                {strippedDescription}
+              </p>
             )}
 
-            {task.dueDate && (
-              <span
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-mono text-ink-subtle ml-auto"
-                title={`Due ${formatDate(task.dueDate)}`}
-              >
-                <Calendar className="w-2.5 h-2.5 text-ink-tertiary" />
-                {formatDate(task.dueDate)}
-              </span>
-            )}
+            {/* Meta Line (Mono 11px, text-3: Priority, Project, Reminder) */}
+            <div className="pt-1.5 flex items-center gap-2.5 text-[11px] font-mono text-subtle flex-wrap">
+              <PriorityLabel priority={task.priority} />
+
+              {task.project && (
+                <>
+                  <span className="text-line-strong">•</span>
+                  <span className="truncate max-w-[120px] text-muted font-normal">
+                    {task.project.title}
+                  </span>
+                </>
+              )}
+
+              {task.dueDate && (
+                <>
+                  <span className="text-line-strong">•</span>
+                  <ReminderLabel date={task.dueDate} />
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Portal-based floating context menu: never clipped by Kanban column overflow */}
-      {menuOpen && menuPosition && typeof document !== "undefined" && createPortal(
-        <>
-          <div
-            className="fixed inset-0 z-[9998]"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen(false);
-              setMenuPosition(null);
-            }}
-          />
-          <div
-            style={{
-              position: "fixed",
-              top: `${menuPosition.top}px`,
-              left: `${menuPosition.left}px`,
-              width: "144px",
-              zIndex: 9999,
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="rounded-md bg-surface-2 border border-hairline-strong shadow-2xl py-1 text-xs select-none animate-in fade-in zoom-in-95 duration-100"
-          >
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                setMenuPosition(null);
-                sound.playClick(800);
-                if (onView) {
-                  onView(task);
-                } else {
-                  onEdit(task);
-                }
-              }}
-              className="w-full px-3 py-1.5 text-left text-ink hover:bg-surface-3 flex items-center gap-2 cursor-pointer transition-colors"
-            >
-              <Eye className="w-3 h-3 text-primary" />
-              View Details
-            </button>
-
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                setMenuPosition(null);
-                onEdit(task);
-              }}
-              className="w-full px-3 py-1.5 text-left text-ink hover:bg-surface-3 flex items-center gap-2 cursor-pointer transition-colors"
-            >
-              <Edit2 className="w-3 h-3 text-ink-subtle" />
-              Edit
-            </button>
-
-            <div className="border-t border-hairline my-1 px-3 py-1 text-[10px] font-mono uppercase text-ink-tertiary">
-              Move To:
-            </div>
-            {ALL_STATUSES.filter((s) => s.id !== task.status).map(
-              (statusItem) => (
-                <button
-                  key={statusItem.id}
-                  onClick={() => handleStatusChange(statusItem.id)}
-                  className="w-full px-3 py-1 text-left text-ink-muted hover:text-ink hover:bg-surface-3 flex items-center justify-between text-[11px] cursor-pointer transition-colors"
-                >
-                  <span>{statusItem.label}</span>
-                  <ArrowRight className="w-2.5 h-2.5 text-ink-tertiary" />
-                </button>
-              )
-            )}
-
-            <div className="border-t border-hairline my-1" />
-            <button
-              onClick={handleDelete}
-              className="w-full px-3 py-1.5 text-left text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 cursor-pointer transition-colors"
-            >
-              <Trash2 className="w-3 h-3" />
-              Delete
-            </button>
-          </div>
-        </>,
-        document.body
-      )}
-
+      {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleConfirmDelete}
         title="Delete Task"
-        description={`Are you sure you want to delete task "${task.title}"? This action cannot be undone.`}
+        description={`Are you sure you want to delete "${task.title}"? This cannot be undone.`}
         confirmText="Delete Task"
         variant="danger"
         isLoading={deleteTask.isPending}
+        onConfirm={handleDelete}
+        onClose={() => setShowDeleteConfirm(false)}
       />
-    </div>
+    </>
   );
 }
-

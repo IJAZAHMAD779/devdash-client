@@ -224,10 +224,10 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 4px;
-  border: 1px solid #34343a;
+  border: 1px solid var(--border-strong, #34343a);
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;
@@ -236,11 +236,11 @@ body {
     border-color 150ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .t-check:hover {
-  border-color: #2563eb;
+  border-color: var(--accent, #3b82f6);
 }
 .t-check[aria-checked="true"] {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: var(--accent, #3b82f6);
+  border-color: var(--accent, #3b82f6);
 }
 .t-check svg {
   width: 10px;

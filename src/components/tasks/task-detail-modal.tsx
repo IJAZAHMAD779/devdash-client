@@ -1,83 +1,135 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
-  Edit2,
+  MoreHorizontal,
   Trash2,
   Calendar,
-  FolderKanban,
-  Clock,
-  Copy,
   Check,
+  Edit3,
 } from "lucide-react";
-import { Task, TaskStatus } from "@/types/task";
-import { TaskPriorityBadge } from "./task-priority-badge";
+import { Task, TaskStatus, Priority } from "@/types/task";
 import { TaskCheckbox } from "./task-checkbox";
-import { usePatchTaskStatus, useDeleteTask } from "@/hooks/use-tasks";
+import { StatusDot, STATUS_CONFIG, ALL_TASK_STATUSES } from "./status-dot";
+import { PriorityLabel, ALL_PRIORITIES } from "./priority-label";
+import { ReminderLabel } from "./reminder-label";
+import { PropertyPopover } from "./property-popover";
+import { MarkdownContent } from "./markdown-content";
+import { usePatchTaskStatus, useUpdateTask, useDeleteTask } from "@/hooks/use-tasks";
+import { useProjects } from "@/hooks/use-projects";
 import { sound } from "@/lib/audio";
 import { formatDate, cn } from "@/lib/utils";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { toast } from "@/lib/toast";
 
-interface Props {
+interface TaskDetailModalProps {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
   onEdit?: (task: Task) => void;
 }
 
-const STATUS_CONFIG: Record<
-  TaskStatus,
-  { label: string; dotColor: string; badgeClass: string }
-> = {
-  TODO: {
-    label: "To Do",
-    dotColor: "bg-blue-400",
-    badgeClass: "bg-blue-500/10 border-blue-500/25 text-blue-400",
-  },
-  IN_PROGRESS: {
-    label: "In Progress",
-    dotColor: "bg-primary animate-pulse",
-    badgeClass: "bg-primary/10 border-primary/25 text-primary",
-  },
-  IN_REVIEW: {
-    label: "In Review",
-    dotColor: "bg-amber-400",
-    badgeClass: "bg-amber-500/10 border-amber-500/25 text-amber-400",
-  },
-  DONE: {
-    label: "Done",
-    dotColor: "bg-semantic-success",
-    badgeClass: "bg-emerald-500/10 border-emerald-500/25 text-emerald-400",
-  },
-};
-
-const ALL_STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"];
-
-export function TaskDetailModal({ task, isOpen, onClose, onEdit }: Props) {
+export function TaskDetailModal({
+  task,
+  isOpen,
+  onClose,
+}: TaskDetailModalProps) {
   const patchStatus = usePatchTaskStatus();
+  const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const { data: projects } = useProjects();
 
-  // Keyboard shortcut Esc to close
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState("");
+
+  const [showSavedFeedback, setShowSavedFeedback] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const descTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Sync state when task changes
+  useEffect(() => {
+    if (task && isOpen) {
+      setEditedTitle(task.title);
+      setEditedDescription(task.description || "");
+      setIsEditingTitle(false);
+      setIsEditingDescription(false);
+      setMenuOpen(false);
+    }
+  }, [task, isOpen]);
+
+  // Focus title input when edit mode starts
+  useEffect(() => {
+    if (isEditingTitle) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }
+  }, [isEditingTitle]);
+
+  // Focus description textarea when edit mode starts
+  useEffect(() => {
+    if (isEditingDescription) {
+      descTextareaRef.current?.focus();
+    }
+  }, [isEditingDescription]);
+
+  // Keyboard shortcut: Esc to close, 'E' to edit description when not in an input
   useEffect(() => {
     if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement?.tagName || "").toLowerCase();
+      const isInput =
+        activeTag === "input" || activeTag === "textarea" || (document.activeElement as HTMLElement)?.isContentEditable;
+
       if (e.key === "Escape") {
-        sound.playClick(600);
-        onClose();
+        if (isEditingTitle) {
+          setIsEditingTitle(false);
+          setEditedTitle(task?.title || "");
+        } else if (isEditingDescription) {
+          setIsEditingDescription(false);
+          setEditedDescription(task?.description || "");
+        } else {
+          sound.playClick(600);
+          onClose();
+        }
+      } else if (!isInput && (e.key === "e" || e.key === "E") && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setIsEditingDescription(true);
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, isEditingTitle, isEditingDescription, task, onClose]);
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", handleClick);
+    return () => window.removeEventListener("pointerdown", handleClick);
+  }, [menuOpen]);
 
   if (!isOpen || !task) return null;
 
   const isDone = task.status === "DONE";
-  const currentStatusConfig = STATUS_CONFIG[task.status];
+
+  const triggerSavedFeedback = () => {
+    setShowSavedFeedback(true);
+    setTimeout(() => setShowSavedFeedback(false), 1500);
+  };
 
   const handleCheckboxToggle = (newChecked: boolean) => {
     patchStatus.mutate(
@@ -87,8 +139,9 @@ export function TaskDetailModal({ task, isOpen, onClose, onEdit }: Props) {
       },
       {
         onSuccess: () => {
+          triggerSavedFeedback();
           if (newChecked) {
-            toast.success("Task completed!", {
+            toast.success("Task completed", {
               description: `"${task.title}" marked as done.`,
             });
           }
@@ -97,33 +150,71 @@ export function TaskDetailModal({ task, isOpen, onClose, onEdit }: Props) {
     );
   };
 
-  const handleStatusChange = (newStatus: TaskStatus) => {
-    sound.playClick(800);
-    patchStatus.mutate(
-      {
+  const handleSaveTitle = async () => {
+    if (!editedTitle.trim() || editedTitle.trim() === task.title) {
+      setIsEditingTitle(false);
+      setEditedTitle(task.title);
+      return;
+    }
+
+    try {
+      await updateTask.mutateAsync({
         id: task.id,
-        status: newStatus,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Status updated", {
-            description: `Moved to ${STATUS_CONFIG[newStatus].label}.`,
-          });
-        },
-      }
+        payload: { title: editedTitle.trim() },
+      });
+      setIsEditingTitle(false);
+      triggerSavedFeedback();
+    } catch {
+      toast.error("Failed to update title");
+    }
+  };
+
+  const handleSaveDescription = async () => {
+    const trimmed = editedDescription.trim();
+    if (trimmed === (task.description || "").trim()) {
+      setIsEditingDescription(false);
+      return;
+    }
+
+    try {
+      await updateTask.mutateAsync({
+        id: task.id,
+        payload: { description: trimmed || null },
+      });
+      setIsEditingDescription(false);
+      triggerSavedFeedback();
+    } catch {
+      toast.error("Failed to update description");
+    }
+  };
+
+  const handleStatusChange = (newStatus: TaskStatus) => {
+    patchStatus.mutate(
+      { id: task.id, status: newStatus },
+      { onSuccess: triggerSavedFeedback }
     );
   };
 
-  const handleCopyTitle = async () => {
-    sound.playClick(900);
-    try {
-      await navigator.clipboard.writeText(task.title);
-      setCopied(true);
-      toast.success("Task title copied to clipboard");
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy title");
-    }
+  const handlePriorityChange = (newPriority: Priority) => {
+    updateTask.mutate(
+      { id: task.id, payload: { priority: newPriority } },
+      { onSuccess: triggerSavedFeedback }
+    );
+  };
+
+  const handleProjectChange = (newProjectId: string) => {
+    updateTask.mutate(
+      { id: task.id, payload: { projectId: newProjectId || null } },
+      { onSuccess: triggerSavedFeedback }
+    );
+  };
+
+  const handleReminderChange = (newDateStr: string) => {
+    const formatted = newDateStr ? new Date(newDateStr).toISOString() : null;
+    updateTask.mutate(
+      { id: task.id, payload: { dueDate: formatted } },
+      { onSuccess: triggerSavedFeedback }
+    );
   };
 
   const handleDelete = () => {
@@ -138,11 +229,33 @@ export function TaskDetailModal({ task, isOpen, onClose, onEdit }: Props) {
     });
   };
 
+  // Popover options
+  const statusOptions = ALL_TASK_STATUSES.map((st) => ({
+    value: st,
+    label: STATUS_CONFIG[st].label,
+    icon: <StatusDot status={st} />,
+  }));
+
+  const priorityOptions = ALL_PRIORITIES.map((p) => ({
+    value: p,
+    label: p === "URGENT" ? "Urgent" : p === "HIGH" ? "High" : p === "MEDIUM" ? "Medium" : "Low",
+    icon: <PriorityLabel priority={p} showLabel={false} />,
+  }));
+
+  const projectOptions = [
+    { value: "", label: "No project" },
+    ...(projects || []).map((p) => ({
+      value: p.id,
+      label: p.title,
+    })),
+  ];
+
   return (
     <>
       <div
         role="dialog"
         aria-modal="true"
+        aria-labelledby="task-detail-title"
         className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150 select-none"
         onClick={(e) => {
           if (e.target === e.currentTarget) {
@@ -152,54 +265,58 @@ export function TaskDetailModal({ task, isOpen, onClose, onEdit }: Props) {
         }}
       >
         <div
-          className="w-full max-w-2xl max-h-[90vh] rounded-2xl bg-canvas border border-hairline-strong shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150 select-text"
+          className="w-full max-w-[720px] max-h-[88vh] rounded-[8px] bg-surface-1 border border-line-strong shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150 select-text"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header Bar */}
-          <div className="px-5 py-3.5 bg-surface-1 border-b border-hairline flex items-center justify-between gap-3 shrink-0">
-            <div className="flex flex-wrap items-center gap-2 min-w-0">
-              {/* Status Badge */}
-              <div
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
-                  currentStatusConfig.badgeClass
-                )}
-              >
-                <span
-                  className={cn("w-1.5 h-1.5 rounded-full shrink-0", currentStatusConfig.dotColor)}
-                />
-                <span>{currentStatusConfig.label}</span>
-              </div>
-
-              {/* Priority Badge */}
-              <TaskPriorityBadge priority={task.priority} />
-
-              {/* Project Badge */}
-              {task.project && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-2 border border-hairline text-xs font-mono text-ink-muted">
-                  <FolderKanban className="w-3 h-3 text-primary shrink-0" />
-                  <span className="truncate max-w-[160px]">{task.project.title}</span>
+          {/* Top Bar: Saved status indicator, Context Menu, Close Button */}
+          <div className="h-11 px-4 sm:px-5 border-b border-line flex items-center justify-between shrink-0 select-none">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-subtle tracking-[0.08em] uppercase">
+                Task
+              </span>
+              {showSavedFeedback && (
+                <span className="text-[11px] font-mono text-ok flex items-center gap-1 animate-in fade-in duration-100">
+                  <Check className="w-3 h-3" /> Saved
                 </span>
               )}
             </div>
 
-            {/* Header Action Buttons */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              {onEdit && (
+            <div className="flex items-center gap-1.5">
+              {/* Context "⋯" Menu (with Delete inside) */}
+              <div ref={menuRef} className="relative">
                 <button
                   type="button"
-                  onClick={() => {
-                    sound.playClick(850);
-                    onEdit(task);
-                  }}
-                  title="Edit Task"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
+                  onClick={() => setMenuOpen((prev) => !prev)}
+                  title="More actions"
+                  className={cn(
+                    "p-1.5 rounded-[4px] text-subtle hover:text-text-primary hover:bg-surface-2 transition-colors cursor-pointer",
+                    menuOpen && "bg-surface-2 text-text-primary"
+                  )}
                 >
-                  <Edit2 className="w-3.5 h-3.5 text-primary" />
-                  <span className="hidden sm:inline">Edit</span>
+                  <MoreHorizontal className="w-4 h-4" />
                 </button>
-              )}
 
+                {menuOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-8 z-50 w-36 rounded-[6px] bg-surface-1 border border-line-strong shadow-2xl py-1 text-xs font-mono animate-in fade-in zoom-in-95 duration-100 select-none"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="w-full px-2.5 py-1.5 text-left text-danger hover:bg-danger/10 flex items-center gap-2 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-danger" />
+                      <span>Delete task</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Close Button */}
               <button
                 type="button"
                 onClick={() => {
@@ -207,167 +324,219 @@ export function TaskDetailModal({ task, isOpen, onClose, onEdit }: Props) {
                   onClose();
                 }}
                 title="Close (Esc)"
-                className="p-1.5 rounded-md hover:bg-surface-2 text-ink-subtle hover:text-ink transition-colors cursor-pointer"
+                className="p-1.5 rounded-[4px] text-subtle hover:text-text-primary hover:bg-surface-2 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Scrollable Body Content */}
-          <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1">
-            {/* Title Section with Checkbox */}
-            <div className="flex items-start gap-3">
-              <div className="pt-1 shrink-0">
-                <TaskCheckbox checked={isDone} onToggle={handleCheckboxToggle} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-3 group">
-                  <h2
-                    className={cn(
-                      "text-lg sm:text-xl font-bold tracking-tight text-ink leading-snug break-words",
-                      isDone && "line-through text-ink-tertiary"
-                    )}
-                  >
-                    {task.title}
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={handleCopyTitle}
-                    title="Copy title"
-                    className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-surface-2 text-ink-subtle hover:text-ink transition-all shrink-0 cursor-pointer"
-                  >
-                    {copied ? (
-                      <Check className="w-3.5 h-3.5 text-semantic-success" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
+          {/* Body: Two-Pane Property Rail Layout */}
+          <div className="flex-1 overflow-y-auto flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-line">
+            {/* Left Main Content Pane */}
+            <div className="flex-1 p-5 sm:p-6 space-y-5 min-w-0">
+              {/* Title Section with Checkbox */}
+              <div className="flex items-start gap-3">
+                <div className="pt-1 shrink-0">
+                  <TaskCheckbox checked={isDone} onToggle={handleCheckboxToggle} />
                 </div>
-              </div>
-            </div>
-
-            {/* Quick Status Pill Switcher */}
-            <div>
-              <label className="text-[11px] font-mono uppercase tracking-wider text-ink-tertiary block mb-2">
-                Update Status
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {ALL_STATUSES.map((st) => {
-                  const cfg = STATUS_CONFIG[st];
-                  const isCurrent = task.status === st;
-                  return (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => handleStatusChange(st)}
+                <div className="flex-1 min-w-0">
+                  {isEditingTitle ? (
+                    <input
+                      ref={titleInputRef}
+                      type="text"
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      onBlur={handleSaveTitle}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveTitle();
+                        if (e.key === "Escape") {
+                          setIsEditingTitle(false);
+                          setEditedTitle(task.title);
+                        }
+                      }}
+                      className="w-full text-base sm:text-lg font-semibold tracking-[-0.3px] text-text-primary bg-surface-2 border border-line-strong rounded-[4px] px-2 py-1 focus:outline-none focus:border-accent"
+                    />
+                  ) : (
+                    <h2
+                      id="task-detail-title"
+                      onClick={() => setIsEditingTitle(true)}
+                      title="Click to edit title"
                       className={cn(
-                        "py-1.5 px-2.5 rounded-lg text-xs font-medium border flex items-center justify-center gap-1.5 transition-all cursor-pointer",
-                        isCurrent
-                          ? `${cfg.badgeClass} ring-1 ring-current font-semibold shadow-xs`
-                          : "bg-surface-2/70 hover:bg-surface-3 border-hairline text-ink-subtle hover:text-ink"
+                        "text-base sm:text-lg font-semibold tracking-[-0.3px] text-text-primary leading-snug break-words hover:bg-surface-2/60 rounded px-1 -mx-1 py-0.5 transition-colors cursor-text",
+                        isDone && "line-through text-subtle"
                       )}
                     >
-                      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", cfg.dotColor)} />
-                      <span>{cfg.label}</span>
+                      {task.title}
+                    </h2>
+                  )}
+                </div>
+              </div>
+
+              {/* Description Section with Markdown & Inline Edit */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between pb-1 mb-2 border-b border-line">
+                  <span className="text-[11px] font-mono uppercase tracking-[0.08em] text-subtle">
+                    Description
+                  </span>
+                  {!isEditingDescription && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingDescription(true)}
+                      className="text-[11px] font-mono text-subtle hover:text-text-primary flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      <span>Edit (E)</span>
                     </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Full Task Description */}
-            <div>
-              <label className="text-[11px] font-mono uppercase tracking-wider text-ink-tertiary block mb-2">
-                Description & Notes
-              </label>
-              {task.description ? (
-                <div className="rounded-xl bg-surface-1/70 border border-hairline p-4 sm:p-5 text-xs sm:text-sm text-ink-muted leading-relaxed whitespace-pre-wrap font-sans break-words select-text">
-                  {task.description}
+                  )}
                 </div>
-              ) : (
-                <div className="rounded-xl bg-surface-1/40 border border-dashed border-hairline/70 p-6 text-center text-xs text-ink-tertiary font-mono">
-                  No additional notes or description provided for this task.
+
+                {isEditingDescription ? (
+                  <div className="space-y-2">
+                    <textarea
+                      ref={descTextareaRef}
+                      rows={6}
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      placeholder="Add markdown description..."
+                      className="w-full p-3 rounded-[6px] bg-surface-2 border border-line-strong text-text-primary text-xs font-mono leading-relaxed focus:outline-none focus:border-accent transition-colors resize-y"
+                    />
+                    <div className="flex items-center justify-between text-[11px] font-mono text-subtle">
+                      <span>Markdown supported</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditingDescription(false);
+                            setEditedDescription(task.description || "");
+                          }}
+                          className="px-2 py-1 rounded hover:bg-surface-2 text-subtle hover:text-text-primary transition-colors cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveDescription}
+                          className="px-2.5 py-1 rounded bg-surface-3 hover:bg-surface-4 border border-line-strong text-text-primary font-medium transition-colors cursor-pointer"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => setIsEditingDescription(true)}
+                    className="hover:bg-surface-2/30 rounded p-1 -m-1 transition-colors cursor-text min-h-[60px]"
+                    title="Click or press E to edit description"
+                  >
+                    <MarkdownContent content={task.description} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Property Rail Pane (200px width on desktop, 2-col on mobile) */}
+            <div className="w-full md:w-[220px] p-4 sm:p-5 shrink-0 bg-surface-1/40 flex flex-col justify-between">
+              <div className="space-y-3.5 divide-y divide-line/60">
+                {/* Status Row */}
+                <div className="pt-2 first:pt-0">
+                  <span className="block text-[11px] font-mono uppercase tracking-[0.08em] text-subtle mb-1">
+                    Status
+                  </span>
+                  <PropertyPopover<TaskStatus>
+                    value={task.status}
+                    onChange={handleStatusChange}
+                    options={statusOptions}
+                    renderTrigger={(selected) => (
+                      <button
+                        type="button"
+                        className="w-full inline-flex items-center gap-2 py-1 px-1.5 rounded-[4px] hover:bg-surface-2 text-xs font-mono text-text-primary transition-colors text-left"
+                      >
+                        <StatusDot status={task.status} />
+                        <span className="truncate">{STATUS_CONFIG[task.status].label}</span>
+                      </button>
+                    )}
+                  />
                 </div>
-              )}
-            </div>
 
-            {/* Metadata Info Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-hairline/60">
-              {/* Due Date Card */}
-              <div className="rounded-lg bg-surface-2/60 border border-hairline p-3">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-ink-tertiary flex items-center gap-1.5 mb-1">
-                  <Calendar className="w-3 h-3 text-ink-tertiary" />
-                  <span>Due Date</span>
-                </span>
-                <p className="text-xs font-medium text-ink">
-                  {task.dueDate ? formatDate(task.dueDate) : "No due date set"}
-                </p>
+                {/* Priority Row */}
+                <div className="pt-3">
+                  <span className="block text-[11px] font-mono uppercase tracking-[0.08em] text-subtle mb-1">
+                    Priority
+                  </span>
+                  <PropertyPopover<Priority>
+                    value={task.priority}
+                    onChange={handlePriorityChange}
+                    options={priorityOptions}
+                    renderTrigger={() => (
+                      <button
+                        type="button"
+                        className="w-full inline-flex items-center gap-2 py-1 px-1.5 rounded-[4px] hover:bg-surface-2 text-xs font-mono text-text-primary transition-colors text-left"
+                      >
+                        <PriorityLabel priority={task.priority} />
+                      </button>
+                    )}
+                  />
+                </div>
+
+                {/* Project Row */}
+                <div className="pt-3">
+                  <span className="block text-[11px] font-mono uppercase tracking-[0.08em] text-subtle mb-1">
+                    Project
+                  </span>
+                  <PropertyPopover
+                    value={task.projectId || ""}
+                    onChange={handleProjectChange}
+                    options={projectOptions}
+                    renderTrigger={() => (
+                      <button
+                        type="button"
+                        className="w-full inline-flex items-center gap-2 py-1 px-1.5 rounded-[4px] hover:bg-surface-2 text-xs font-mono text-text-primary transition-colors text-left truncate"
+                      >
+                        <span className="truncate">
+                          {task.project?.title || "No project"}
+                        </span>
+                      </button>
+                    )}
+                  />
+                </div>
+
+                {/* Reminder Row (Relabeled from Due Date) */}
+                <div className="pt-3">
+                  <span className="block text-[11px] font-mono uppercase tracking-[0.08em] text-subtle mb-1">
+                    Reminder
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="date"
+                      value={task.dueDate ? task.dueDate.split("T")[0] : ""}
+                      onChange={(e) => handleReminderChange(e.target.value)}
+                      className="w-full px-2 py-1 rounded-[4px] bg-surface-2 border border-line text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
+                    />
+                    {task.dueDate && (
+                      <button
+                        type="button"
+                        onClick={() => handleReminderChange("")}
+                        title="Clear reminder"
+                        className="p-1 rounded text-subtle hover:text-text-primary hover:bg-surface-2 text-xs"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Created Row (Read-only) */}
+                <div className="pt-3">
+                  <span className="block text-[11px] font-mono uppercase tracking-[0.08em] text-subtle mb-1">
+                    Created
+                  </span>
+                  <span className="block text-xs font-mono text-muted px-1.5 py-1">
+                    {formatDate(task.createdAt)}
+                  </span>
+                </div>
               </div>
-
-              {/* Created On Card */}
-              <div className="rounded-lg bg-surface-2/60 border border-hairline p-3">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-ink-tertiary flex items-center gap-1.5 mb-1">
-                  <Clock className="w-3 h-3 text-ink-tertiary" />
-                  <span>Created</span>
-                </span>
-                <p className="text-xs font-medium text-ink">
-                  {formatDate(task.createdAt)}
-                </p>
-              </div>
-
-              {/* Project Card */}
-              <div className="rounded-lg bg-surface-2/60 border border-hairline p-3">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-ink-tertiary flex items-center gap-1.5 mb-1">
-                  <FolderKanban className="w-3 h-3 text-ink-tertiary" />
-                  <span>Project</span>
-                </span>
-                <p className="text-xs font-medium text-ink truncate">
-                  {task.project?.title || "Independent Task"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Modal Footer Bar */}
-          <div className="px-5 py-3.5 bg-surface-1 border-t border-hairline flex items-center justify-between gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                sound.playClick(600);
-                setShowDeleteConfirm(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 text-xs font-medium text-rose-400 transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete Task</span>
-            </button>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  sound.playClick(600);
-                  onClose();
-                }}
-                className="px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-
-              {onEdit && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    sound.playClick(850);
-                    onEdit(task);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium shadow-sm shadow-primary/20 transition-all cursor-pointer"
-                >
-                  <Edit2 className="w-3 h-3" />
-                  <span>Edit Details</span>
-                </button>
-              )}
             </div>
           </div>
         </div>

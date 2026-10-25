@@ -192,7 +192,7 @@ export function EditTaskModal({ task, isOpen, onClose }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="font-mono text-ink-muted">Due Date</label>
+            <label className="font-mono text-ink-muted">Reminder</label>
             <input
               type="date"
               value={dueDate}

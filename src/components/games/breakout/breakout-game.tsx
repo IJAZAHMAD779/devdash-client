@@ -122,13 +122,22 @@ export function BreakoutGame() {
     mouseAttached: true,
   });
 
-  // Load High Score on Mount
+  // Load High Score and listen to sound changes on Mount
   useEffect(() => {
     setIsMuted(sounds.getMuted());
+    const handleSoundChange = () => {
+      setIsMuted(sounds.getMuted());
+    };
+    window.addEventListener("devdash_sound_change", handleSoundChange);
+
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) setHighScore(parseInt(saved, 10));
     }
+
+    return () => {
+      window.removeEventListener("devdash_sound_change", handleSoundChange);
+    };
   }, []);
 
   // Save High Score helper
@@ -833,6 +842,7 @@ export function BreakoutGame() {
   const toggleMute = () => {
     const next = sounds.toggleMute();
     setIsMuted(next);
+    window.dispatchEvent(new CustomEvent("devdash_sound_change"));
   };
 
   return (

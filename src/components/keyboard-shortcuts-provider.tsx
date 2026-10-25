@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { QuickCreateModal } from "./quick-create-modal";
 import { ShortcutsHelpModal } from "./shortcuts-help-modal";
 
@@ -11,6 +11,7 @@ export function KeyboardShortcutsProvider({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
@@ -20,6 +21,11 @@ export function KeyboardShortcutsProvider({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 0. Disable all global shortcuts on any games routes so gameplay inputs are never intercepted
+      if (pathname?.startsWith("/games")) {
+        return;
+      }
+
       // 1. Ignore if user is currently typing in an input, textarea, or contentEditable element
       const target = e.target as HTMLElement | null;
       if (
@@ -109,7 +115,7 @@ export function KeyboardShortcutsProvider({
       window.removeEventListener("keydown", handleKeyDown);
       if (gTimeoutRef.current) clearTimeout(gTimeoutRef.current);
     };
-  }, [router]);
+  }, [router, pathname]);
 
   return (
     <>

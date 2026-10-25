@@ -589,6 +589,7 @@ export function BookmarksCatalog() {
           <div className="relative shrink-0" ref={moreMenuRef}>
             <button
               type="button"
+              onMouseEnter={() => import("./import-bookmarks-modal")}
               onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
               className="h-9 w-9 rounded-[6px] text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer flex items-center justify-center border border-hairline/60"
               title="More actions"
@@ -640,6 +641,8 @@ export function BookmarksCatalog() {
           {/* Add Bookmark: Only accent-filled button on toolbar */}
           <button
             type="button"
+            onMouseEnter={() => import("./new-bookmark-modal")}
+            onFocus={() => import("./new-bookmark-modal")}
             onClick={() => {
               sound.playClick(900);
               setIsNewModalOpen(true);

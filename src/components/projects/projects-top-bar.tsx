@@ -134,6 +134,8 @@ export function ProjectsTopBar({
           {/* New Project (Single accent-filled button, 6px radius, no glow) */}
           <button
             type="button"
+            onMouseEnter={() => import("@/components/projects/new-project-modal")}
+            onFocus={() => import("@/components/projects/new-project-modal")}
             onClick={onNewProject}
             className="h-8 px-3 rounded-[6px] bg-accent hover:bg-accent-hover text-white text-xs font-medium tracking-tight transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
           >

@@ -157,6 +157,8 @@ export function SnippetsTopBar({
           {/* New Snippet: Accent-filled button with quiet N hint */}
           <button
             type="button"
+            onMouseEnter={() => import("@/components/snippets/new-snippet-modal")}
+            onFocus={() => import("@/components/snippets/new-snippet-modal")}
             onClick={() => {
               sound.playClick(900);
               onNewSnippet();

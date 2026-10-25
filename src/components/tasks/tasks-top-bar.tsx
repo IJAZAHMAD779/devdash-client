@@ -172,6 +172,8 @@ export function TasksTopBar({
           {/* Reminders Ghost Button (Plain mono count, neutral bell) */}
           <button
             type="button"
+            onMouseEnter={() => import("@/components/reminders/reminders-modal")}
+            onFocus={() => import("@/components/reminders/reminders-modal")}
             onClick={() => {
               sound.playClick(800);
               onOpenReminders();
@@ -189,6 +191,8 @@ export function TasksTopBar({
           {/* New Task Button (The ONLY accent-filled primary button) */}
           <button
             type="button"
+            onMouseEnter={() => import("@/components/tasks/new-task-modal")}
+            onFocus={() => import("@/components/tasks/new-task-modal")}
             onClick={onNewTask}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-accent hover:bg-accent-hover text-white text-xs font-medium tracking-[-0.1px] shadow-sm shadow-accent/20 transition-all cursor-pointer"
             title="Create Task (N)"

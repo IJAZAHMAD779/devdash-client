@@ -198,6 +198,8 @@ export default function ResourcesPage() {
         {/* Right side: Weekly Digest as a ghost button with a neutral icon */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
+            onMouseEnter={() => import("@/components/resources/digest-modal")}
+            onFocus={() => import("@/components/resources/digest-modal")}
             onClick={() => {
               sound.playClick(900);
               setIsDigestModalOpen(true);

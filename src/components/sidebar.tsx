@@ -237,25 +237,30 @@ export function Sidebar() {
       <div
         className={cn(
           "border-t border-line bg-surface-1 shrink-0 flex flex-col gap-2 transition-all duration-200",
-          isCollapsed ? "p-2 items-center" : "p-3"
+          isCollapsed ? "p-2 items-center" : "px-3 py-2.5"
         )}
       >
-        <div className={cn("flex items-center justify-between w-full", isCollapsed && "flex-col gap-2 justify-center")}>
+        <div className={cn("flex items-center justify-between w-full gap-2", isCollapsed && "flex-col gap-2 justify-center")}>
           {isSignedIn ? (
-            <div className={cn("flex items-center gap-2.5 min-w-0", isCollapsed && "justify-center")}>
-              <UserButton
-                appearance={{
-                  elements: {
-                    userButtonAvatarBox: "w-7 h-7 border border-line rounded-[6px]",
-                  },
-                }}
-              />
+            <div className={cn("flex items-center gap-2.5 min-w-0", isCollapsed ? "justify-center flex-none" : "flex-1 min-w-0")}>
+              <div className="shrink-0 flex items-center justify-center">
+                <UserButton
+                  appearance={{
+                    elements: {
+                      userButtonAvatarBox: "w-7 h-7 border border-line rounded-[6px]",
+                    },
+                  }}
+                />
+              </div>
               {!isCollapsed && (
-                <div className="flex flex-col text-left min-w-0">
-                  <span className="text-[13px] font-medium text-text-primary truncate max-w-[120px]">
+                <div className="flex flex-col text-left min-w-0 flex-1">
+                  <span
+                    className="text-xs font-medium text-text-primary truncate block w-full"
+                    title={user?.fullName || user?.primaryEmailAddress?.emailAddress || "Developer"}
+                  >
                     {user?.fullName || user?.primaryEmailAddress?.emailAddress || "Developer"}
                   </span>
-                  <span className="text-[10px] font-mono text-muted">
+                  <span className="text-[10px] font-mono text-muted whitespace-nowrap block">
                     Signed In
                   </span>
                 </div>
@@ -287,7 +292,7 @@ export function Sidebar() {
             onClick={handleOpenAi}
             title="DevDash AI Copilot (⌘J)"
             aria-label="DevDash AI Copilot"
-            className="p-1.5 rounded-[6px] text-muted hover:text-text-primary hover:bg-surface-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            className="p-1.5 rounded-[6px] text-muted hover:text-text-primary hover:bg-surface-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent shrink-0"
           >
             <Bot className="w-4 h-4 stroke-[1.5]" />
           </button>

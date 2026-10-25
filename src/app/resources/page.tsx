@@ -12,8 +12,13 @@ import { useBookmarks } from "@/hooks/use-bookmarks";
 import { Note } from "@/types/note";
 import { NotesList } from "@/components/resources/notes-list";
 import { NotesEditor } from "@/components/resources/notes-editor";
+import dynamic from "next/dynamic";
 import { BookmarksCatalog } from "@/components/resources/bookmarks-catalog";
-import { DigestModal } from "@/components/resources/digest-modal";
+
+const DigestModal = dynamic(
+  () => import("@/components/resources/digest-modal").then((m) => m.DigestModal),
+  { ssr: false }
+);
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -193,6 +198,8 @@ export default function ResourcesPage() {
         {/* Right side: Weekly Digest as a ghost button with a neutral icon */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
+            onMouseEnter={() => import("@/components/resources/digest-modal")}
+            onFocus={() => import("@/components/resources/digest-modal")}
             onClick={() => {
               sound.playClick(900);
               setIsDigestModalOpen(true);

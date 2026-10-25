@@ -6,13 +6,27 @@ import { useTasks } from "@/hooks/use-tasks";
 import { useProjects } from "@/hooks/use-projects";
 import { useReminders } from "@/hooks/use-reminders";
 import { Task, TaskStatus, Priority } from "@/types/task";
+import dynamic from "next/dynamic";
 import { KanbanColumn } from "@/components/tasks/kanban-column";
 import { TaskListView } from "@/components/tasks/task-list-view";
 import { TasksTopBar } from "@/components/tasks/tasks-top-bar";
-import { NewTaskModal } from "@/components/tasks/new-task-modal";
-import { EditTaskModal } from "@/components/tasks/edit-task-modal";
-import { TaskDetailModal } from "@/components/tasks/task-detail-modal";
-import { RemindersModal } from "@/components/reminders/reminders-modal";
+
+const NewTaskModal = dynamic(
+  () => import("@/components/tasks/new-task-modal").then((m) => m.NewTaskModal),
+  { ssr: false }
+);
+const EditTaskModal = dynamic(
+  () => import("@/components/tasks/edit-task-modal").then((m) => m.EditTaskModal),
+  { ssr: false }
+);
+const TaskDetailModal = dynamic(
+  () => import("@/components/tasks/task-detail-modal").then((m) => m.TaskDetailModal),
+  { ssr: false }
+);
+const RemindersModal = dynamic(
+  () => import("@/components/reminders/reminders-modal").then((m) => m.RemindersModal),
+  { ssr: false }
+);
 import { EmptyState } from "@/components/tasks/empty-state";
 import { sound } from "@/lib/audio";
 import { useDebounce } from "@/hooks/use-debounce";

@@ -15,12 +15,26 @@ import {
   ComponentFolderItem,
 } from "@/components/ui-components/component-folder-rail";
 import { ComponentFolderStrip } from "@/components/ui-components/component-folder-strip";
+import dynamic from "next/dynamic";
 import { ComponentCard } from "@/components/ui-components/component-card";
 import { ComponentListView } from "@/components/ui-components/component-list-view";
-import { ComponentCodeModal } from "@/components/ui-components/component-code-modal";
-import { ComponentSynthesizerModal } from "@/components/ui-components/component-synthesizer-modal";
-import { NewComponentModal } from "@/components/ui-components/new-component-modal";
-import { EditComponentModal } from "@/components/ui-components/edit-component-modal";
+
+const ComponentCodeModal = dynamic(
+  () => import("@/components/ui-components/component-code-modal").then((m) => m.ComponentCodeModal),
+  { ssr: false }
+);
+const ComponentSynthesizerModal = dynamic(
+  () => import("@/components/ui-components/component-synthesizer-modal").then((m) => m.ComponentSynthesizerModal),
+  { ssr: false }
+);
+const NewComponentModal = dynamic(
+  () => import("@/components/ui-components/new-component-modal").then((m) => m.NewComponentModal),
+  { ssr: false }
+);
+const EditComponentModal = dynamic(
+  () => import("@/components/ui-components/edit-component-modal").then((m) => m.EditComponentModal),
+  { ssr: false }
+);
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";

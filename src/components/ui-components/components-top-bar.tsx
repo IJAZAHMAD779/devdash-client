@@ -208,6 +208,8 @@ export function ComponentsTopBar({
           {/* AI Synthesizer: Ghost button, neutral icon, no blue tint */}
           <button
             type="button"
+            onMouseEnter={() => import("@/components/ui-components/component-synthesizer-modal")}
+            onFocus={() => import("@/components/ui-components/component-synthesizer-modal")}
             onClick={() => {
               sound.playClick(900);
               onOpenSynthesizer();
@@ -222,6 +224,8 @@ export function ComponentsTopBar({
           {/* New Component: Only accent-filled button with quiet N hint */}
           <button
             type="button"
+            onMouseEnter={() => import("@/components/ui-components/new-component-modal")}
+            onFocus={() => import("@/components/ui-components/new-component-modal")}
             onClick={() => {
               sound.playClick(900);
               onNewComponent();

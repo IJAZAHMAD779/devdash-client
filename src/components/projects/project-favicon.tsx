@@ -147,6 +147,7 @@ export function ProjectFavicon({
         onError={handleImageError}
         className="object-contain w-full h-full select-none"
         loading="lazy"
+        decoding="async"
         referrerPolicy="no-referrer"
       />
     </div>

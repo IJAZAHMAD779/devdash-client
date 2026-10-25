@@ -18,10 +18,9 @@ import { Bookmark, PRESET_BOOKMARK_CATEGORIES } from "@/types/bookmark";
 import { useToggleBookmarkFavorite, useEnrichBookmark } from "@/hooks/use-bookmarks";
 import { BookmarkFavicon } from "./bookmark-favicon";
 import { sound } from "@/lib/audio";
-import { cn } from "@/lib/utils";
+import { cn, stripMarkdown } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { decodeEntities } from "@/lib/decode-entities";
-import { stripMarkdown } from "@/components/tasks/task-utils";
 
 interface BookmarkListRowProps {
   bookmark: Bookmark;

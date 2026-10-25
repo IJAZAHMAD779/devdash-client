@@ -5,7 +5,6 @@ import {
   X,
   Eraser,
   Loader2,
-  AlertTriangle,
   Folder,
   Layers,
   CheckCircle2,
@@ -90,24 +89,24 @@ export function ClearNotesModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="clear-notes-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-150 select-none"
     >
       <div
-        className="w-full max-w-md bg-surface-1 border border-hairline-strong rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-in zoom-in-95 duration-150"
+        className="w-full max-w-md bg-surface-1 border border-hairline-strong rounded-[8px] shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="h-14 px-5 border-b border-hairline flex items-center justify-between bg-surface-1 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 shrink-0">
+            <div className="w-8 h-8 rounded-[6px] bg-surface-2 border border-hairline flex items-center justify-center text-danger shrink-0">
               <Eraser className="w-4 h-4" />
             </div>
             <div>
               <h2 id="clear-notes-modal-title" className="text-sm font-semibold text-ink">
-                Remove Bookmark Notes
+                Clear Notes from Bookmarks
               </h2>
-              <p className="text-[11px] text-ink-muted">
-                Clear developer summaries all at once or by category
+              <p className="text-[11px] text-ink-subtle">
+                Removes description and note text without deleting bookmarks
               </p>
             </div>
           </div>
@@ -115,7 +114,7 @@ export function ClearNotesModal({
           <button
             onClick={handleClose}
             disabled={clearMutation.isPending}
-            className="p-1.5 rounded-md text-ink-tertiary hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
+            className="p-1.5 rounded-[6px] text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
             title="Close"
           >
             <X className="w-4 h-4" />
@@ -126,15 +125,14 @@ export function ClearNotesModal({
         <div className="p-5 space-y-4 overflow-y-auto">
           {clearedResult !== null ? (
             <div className="space-y-3">
-              <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="p-3.5 rounded-[6px] bg-surface-2 border border-hairline flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-ok shrink-0 mt-0.5" />
                 <div className="text-xs">
-                  <p className="font-semibold text-emerald-300">
-                    Notes cleared on {clearedResult} bookmark{clearedResult === 1 ? "" : "s"}!
+                  <p className="font-semibold text-ink">
+                    Notes cleared on {clearedResult} {clearedResult === 1 ? "bookmark" : "bookmarks"}!
                   </p>
-                  <p className="text-emerald-400/80 mt-1 leading-relaxed">
-                    Their developer notes have been reset to blank. You can re-generate new notes at
-                    any time using the Auto-Note button.
+                  <p className="text-ink-muted mt-1 leading-relaxed text-[11px]">
+                    Description and developer notes have been reset to empty. You can generate new AI notes at any time using the AI Note button.
                   </p>
                 </div>
               </div>
@@ -143,7 +141,7 @@ export function ClearNotesModal({
             <>
               {/* Scope Selection */}
               <div className="space-y-2">
-                <label className="block text-xs font-medium text-ink-muted">
+                <label className="block text-xs font-mono uppercase tracking-[0.08em] text-ink-subtle">
                   Choose Scope to Clear
                 </label>
 
@@ -155,17 +153,17 @@ export function ClearNotesModal({
                       setScopeMode("ALL");
                     }}
                     className={cn(
-                      "p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between gap-2",
+                      "p-3 rounded-[6px] border text-left transition-all cursor-pointer flex flex-col justify-between gap-2",
                       scopeMode === "ALL"
-                        ? "bg-red-500/10 border-red-500/40 text-ink shadow-xs"
-                        : "bg-surface-2 border-hairline text-ink-muted hover:text-ink hover:bg-surface-3"
+                        ? "bg-surface-2 border-hairline-strong text-ink shadow-xs"
+                        : "bg-surface-1 border-hairline text-ink-muted hover:text-ink hover:bg-surface-2"
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-red-400" />
+                      <Layers className="w-4 h-4 text-ink-subtle" />
                       <span className="text-xs font-semibold">All Bookmarks</span>
                     </div>
-                    <span className="text-[11px] font-mono text-ink-tertiary">
+                    <span className="text-[11px] font-mono text-ink-subtle">
                       {bookmarksWithNotes.length} with notes
                     </span>
                   </button>
@@ -177,41 +175,41 @@ export function ClearNotesModal({
                       setScopeMode("CATEGORY");
                     }}
                     className={cn(
-                      "p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between gap-2",
+                      "p-3 rounded-[6px] border text-left transition-all cursor-pointer flex flex-col justify-between gap-2",
                       scopeMode === "CATEGORY"
-                        ? "bg-red-500/10 border-red-500/40 text-ink shadow-xs"
-                        : "bg-surface-2 border-hairline text-ink-muted hover:text-ink hover:bg-surface-3"
+                        ? "bg-surface-2 border-hairline-strong text-ink shadow-xs"
+                        : "bg-surface-1 border-hairline text-ink-muted hover:text-ink hover:bg-surface-2"
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <Folder className="w-4 h-4 text-red-400" />
-                      <span className="text-xs font-semibold">By Category</span>
+                      <Folder className="w-4 h-4 text-ink-subtle" />
+                      <span className="text-xs font-semibold">By Folder</span>
                     </div>
-                    <span className="text-[11px] font-mono text-ink-tertiary">
-                      Select folder below
+                    <span className="text-[11px] font-mono text-ink-subtle">
+                      {categoryNotesCount} with notes
                     </span>
                   </button>
                 </div>
               </div>
 
-              {/* Category Selector (if in CATEGORY mode) */}
+              {/* Category Picker (if category mode active) */}
               {scopeMode === "CATEGORY" && (
                 <div className="space-y-1.5 animate-in fade-in duration-100">
-                  <label className="block text-xs font-medium text-ink-muted">
-                    Target Category / Folder
+                  <label className="block text-xs font-mono uppercase tracking-[0.08em] text-ink-subtle">
+                    Select Target Folder
                   </label>
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full h-9 px-3 rounded-md bg-surface-2 border border-hairline text-xs text-ink focus:outline-hidden focus:border-red-500 transition-colors cursor-pointer"
+                    className="w-full px-3 py-2 rounded-[6px] bg-surface-2 border border-hairline text-xs text-ink focus:border-accent focus:outline-none"
                   >
                     {PRESET_BOOKMARK_CATEGORIES.map((cat) => {
                       const count = bookmarksWithNotes.filter(
-                        (b) => (b.category || "tools").toLowerCase() === cat.id
+                        (b) => (b.category || "tools").toLowerCase() === cat.id.toLowerCase()
                       ).length;
                       return (
                         <option key={cat.id} value={cat.id}>
-                          {cat.label} ({count} with notes)
+                          {cat.label} ({count} notes)
                         </option>
                       );
                     })}
@@ -219,14 +217,16 @@ export function ClearNotesModal({
                 </div>
               )}
 
-              {/* Warning Banner */}
-              <div className="p-3 rounded-lg bg-surface-2/80 border border-hairline flex items-start gap-2.5 text-[11px] text-ink-muted leading-relaxed">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <p>
-                  This action will erase the existing notes on{" "}
-                  <strong className="text-ink">{targetCount} bookmark{targetCount === 1 ? "" : "s"}</strong>.
-                  Bookmarks themselves and their URLs will not be deleted. You can re-run Auto-Note
-                  afterwards to generate fresh, accurate notes.
+              {/* Scope summary callout */}
+              <div className="p-3 rounded-[6px] bg-surface-2 border border-hairline text-xs space-y-1">
+                <div className="flex items-center justify-between text-ink-muted font-medium">
+                  <span>Scope affected:</span>
+                  <span className="font-mono text-ink">
+                    {targetCount} {targetCount === 1 ? "bookmark" : "bookmarks"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-ink-subtle leading-tight">
+                  This will remove description/notes text. Bookmarks, tags, favorites, and project links are not deleted.
                 </p>
               </div>
             </>
@@ -234,32 +234,32 @@ export function ClearNotesModal({
         </div>
 
         {/* Footer */}
-        <div className="h-14 px-5 border-t border-hairline flex items-center justify-between bg-surface-1 shrink-0">
+        <div className="p-4 border-t border-hairline bg-surface-1 flex items-center justify-between shrink-0">
           <button
+            type="button"
             onClick={handleClose}
             disabled={clearMutation.isPending}
-            className="px-3.5 py-1.5 rounded-md border border-hairline text-xs font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 rounded-[6px] bg-surface-2 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink text-xs font-medium transition-colors cursor-pointer"
           >
             {clearedResult !== null ? "Done" : "Cancel"}
           </button>
 
           {clearedResult === null && (
             <button
+              type="button"
               onClick={handleClearNotes}
               disabled={targetCount === 0 || clearMutation.isPending}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-xs font-medium tracking-tight shadow-sm shadow-red-600/25 transition-all duration-150 cursor-pointer disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-[6px] bg-danger hover:bg-danger/90 text-white text-xs font-medium transition-all duration-150 cursor-pointer disabled:opacity-50"
             >
               {clearMutation.isPending ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Clearing Notes...</span>
+                  <span>Clearing…</span>
                 </>
               ) : (
                 <>
                   <Eraser className="w-3.5 h-3.5" />
-                  <span>
-                    Clear Notes ({targetCount})
-                  </span>
+                  <span>Clear Notes ({targetCount})</span>
                 </>
               )}
             </button>

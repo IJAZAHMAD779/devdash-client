@@ -45,3 +45,21 @@ export function getSnippetGridTemplate(vis: SnippetColumnsVisibility): string {
   cols.push("88px", "88px");
   return cols.join(" ");
 }
+
+export interface BookmarkColumnsVisibility {
+  showCategory: boolean;
+  hasTags: boolean;
+}
+
+export function getBookmarkGridTemplate(vis: BookmarkColumnsVisibility): string {
+  // select 24px | star 32px | name minmax(240px, 1fr) | category 112px | tags 168px | actions 120px
+  const cols = ["24px", "32px", "minmax(240px, 1fr)"];
+  if (vis.showCategory) {
+    cols.push("112px");
+  }
+  if (vis.hasTags) {
+    cols.push("168px");
+  }
+  cols.push("120px");
+  return cols.join(" ");
+}

@@ -1,48 +1,48 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
-  Plus,
-  Search,
-  ExternalLink,
-  Bookmark as BookmarkIcon,
-  FolderKanban,
-  Tag,
-  Folder,
-  FolderOpen,
-  FolderPlus,
-  Star,
   LayoutGrid,
   List,
+  Plus,
+  Search,
+  Star,
+  FolderKanban,
+  PanelLeft,
+  X,
   Upload,
   Download,
+  Eraser,
+  FolderPlus,
+  Folder,
+  FolderOpen,
+  Bookmark as BookmarkIcon,
+  ChevronDown,
+  ChevronRight,
+  MoreHorizontal,
+  Check,
   AlertCircle,
   RefreshCw,
-  X,
-  Check,
-  BrainCircuit,
-  Eraser,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from "lucide-react";
 import { Bookmark, PRESET_BOOKMARK_CATEGORIES } from "@/types/bookmark";
 import { useBookmarks, useDeleteBookmark } from "@/hooks/use-bookmarks";
 import { useProjects } from "@/hooks/use-projects";
+import { useDebounce } from "@/hooks/use-debounce";
+import { sound } from "@/lib/audio";
+import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
+import { exportBookmarksToHtml } from "@/lib/bookmark-parser";
+import { getBookmarkGridTemplate } from "@/lib/list-columns";
+
 import { BookmarkCard } from "./bookmark-card";
 import { BookmarkListRow } from "./bookmark-list-row";
+import { BulkActionBar } from "./bulk-action-bar";
 import { NewBookmarkModal } from "./new-bookmark-modal";
 import { EditBookmarkModal } from "./edit-bookmark-modal";
 import { ImportBookmarksModal } from "./import-bookmarks-modal";
-import { EnrichBookmarksModal } from "./enrich-bookmarks-modal";
 import { ClearNotesModal } from "./clear-notes-modal";
-import { BulkActionBar } from "./bulk-action-bar";
 import { MoveBookmarksModal } from "./move-bookmarks-modal";
-import { exportBookmarksToHtml } from "@/lib/bookmark-parser";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { sound } from "@/lib/audio";
-import { cn } from "@/lib/utils";
-import { useDebounce } from "@/hooks/use-debounce";
-import { toast } from "@/lib/toast";
 
 export function BookmarksCatalog() {
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
@@ -56,6 +56,38 @@ export function BookmarksCatalog() {
     return "grid";
   });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isEmptyFoldersOpen, setIsEmptyFoldersOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("devdash_bookmarks_empty_folders_expanded") === "true";
+    }
+    return false;
+  });
+
+  // Cross-category bulk selection state
+  const [selectedBookmarkIds, setSelectedBookmarkIds] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+
+  // Custom user-created folders
+  const [userCreatedFolders, setUserCreatedFolders] = useState<string[]>([]);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+
+  // Modals state
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isClearNotesModalOpen, setIsClearNotesModalOpen] = useState(false);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
+  const [deletingBookmark, setDeletingBookmark] = useState<Bookmark | null>(null);
+
+  // Popover menus state
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isProjectFilterOpen, setIsProjectFilterOpen] = useState(false);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const projectFilterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -75,31 +107,19 @@ export function BookmarksCatalog() {
     });
   };
 
-  // Custom user-created folders for quick workflow
-  const [userCreatedFolders, setUserCreatedFolders] = useState<string[]>([]);
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-
-  // Modals state
-  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [isEnrichModalOpen, setIsEnrichModalOpen] = useState(false);
-  const [isClearNotesModalOpen, setIsClearNotesModalOpen] = useState(false);
-  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
-  const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
-  const [deletingBookmark, setDeletingBookmark] = useState<Bookmark | null>(null);
-
-  // Cross-category bulk selection state (persists across category navigation)
-  const [selectedBookmarkIds, setSelectedBookmarkIds] = useState<Set<string>>(new Set());
-
-  const handleToggleSelect = useCallback((id: string) => {
-    setSelectedBookmarkIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+  const handleToggleEmptyFolders = () => {
+    sound.playClick(700);
+    setIsEmptyFoldersOpen((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          "devdash_bookmarks_empty_folders_expanded",
+          String(next)
+        );
+      }
       return next;
     });
-  }, []);
+  };
 
   const debouncedSearch = useDebounce(searchQuery, 250);
   const [visibleCount, setVisibleCount] = useState(30);
@@ -117,6 +137,62 @@ export function BookmarksCatalog() {
     }
   };
 
+  // Close menus on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setIsMoreMenuOpen(false);
+      }
+      if (
+        projectFilterRef.current &&
+        !projectFilterRef.current.contains(e.target as Node)
+      ) {
+        setIsProjectFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  // Keyboard shortcuts: "/", "N", "G", "L", "Esc"
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.key === "/") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        sound.playClick(900);
+        setIsNewModalOpen(true);
+      } else if (e.key === "g" || e.key === "G") {
+        e.preventDefault();
+        handleToggleViewMode("grid");
+      } else if (e.key === "l" || e.key === "L") {
+        e.preventDefault();
+        handleToggleViewMode("list");
+      } else if (e.key === "Escape") {
+        if (selectedBookmarkIds.size > 0 || isSelectionMode) {
+          setSelectedBookmarkIds(new Set());
+          setIsSelectionMode(false);
+        }
+        setIsMoreMenuOpen(false);
+        setIsProjectFilterOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedBookmarkIds, isSelectionMode]);
+
   const { data: projects } = useProjects();
   const deleteBookmark = useDeleteBookmark();
 
@@ -132,30 +208,21 @@ export function BookmarksCatalog() {
   });
 
   // Calculate folder counts across all fetched bookmarks
-  const { totalCount, favoriteCount, folderCounts, emptyNotesCount, notesCount } = useMemo(() => {
+  const { totalCount, favoriteCount, folderCounts } = useMemo(() => {
     let total = 0;
     let favs = 0;
-    let emptyNotes = 0;
-    let hasNotes = 0;
     const counts: Record<string, number> = {};
 
     if (allBookmarks) {
       total = allBookmarks.length;
       allBookmarks.forEach((bm) => {
         if (bm.favorite) favs++;
-        const isEligible =
-          !bm.notes ||
-          bm.notes.trim() === "" ||
-          bm.notes.startsWith("Developer bookmark for") ||
-          bm.notes.includes("Web resource and developer utility.");
-        if (isEligible) emptyNotes++;
-        if (bm.notes && bm.notes.trim() !== "") hasNotes++;
         const cat = (bm.category || "tools").toLowerCase();
         counts[cat] = (counts[cat] || 0) + 1;
       });
     }
 
-    return { totalCount: total, favoriteCount: favs, folderCounts: counts, emptyNotesCount: emptyNotes, notesCount: hasNotes };
+    return { totalCount: total, favoriteCount: favs, folderCounts: counts };
   }, [allBookmarks]);
 
   // Discovered custom folders
@@ -170,6 +237,40 @@ export function BookmarksCatalog() {
     });
     return Array.from(customSet);
   }, [allBookmarks, userCreatedFolders]);
+
+  // Split folders into non-empty (>0) and empty (==0)
+  const { nonEmptyFolders, emptyFolders } = useMemo(() => {
+    const allKnown = [
+      ...PRESET_BOOKMARK_CATEGORIES.map((p) => ({ id: p.id, label: p.label })),
+      ...customFolders.map((c) => ({
+        id: c,
+        label: c.charAt(0).toUpperCase() + c.slice(1),
+      })),
+    ];
+
+    const nonEmpty: { id: string; label: string; count: number }[] = [];
+    const empty: { id: string; label: string; count: number }[] = [];
+
+    allKnown.forEach((f) => {
+      const count = folderCounts[f.id] || 0;
+      if (count > 0) {
+        nonEmpty.push({ ...f, count });
+      } else {
+        empty.push({ ...f, count: 0 });
+      }
+    });
+
+    // Sort non-empty by count (descending) then name
+    nonEmpty.sort((a, b) => {
+      if (b.count === a.count) return a.label.localeCompare(b.label);
+      return b.count - a.count;
+    });
+
+    // Sort empty by name
+    empty.sort((a, b) => a.label.localeCompare(b.label));
+
+    return { nonEmptyFolders: nonEmpty, emptyFolders: empty };
+  }, [folderCounts, customFolders]);
 
   // Filtered bookmarks based on active folder/category and debounced search
   const filteredBookmarks = useMemo(() => {
@@ -200,17 +301,15 @@ export function BookmarksCatalog() {
     });
   }, [allBookmarks, selectedCategory, debouncedSearch]);
 
-  // Selected counts breakdown across categories for folder badges
-  const selectedCountsByCategory = useMemo(() => {
-    const counts: Record<string, number> = {};
-    allBookmarks?.forEach((bm) => {
-      if (selectedBookmarkIds.has(bm.id)) {
-        const cat = (bm.category || "tools").toLowerCase();
-        counts[cat] = (counts[cat] || 0) + 1;
-      }
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedBookmarkIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      if (next.size === 0) setIsSelectionMode(false);
+      return next;
     });
-    return counts;
-  }, [allBookmarks, selectedBookmarkIds]);
+  }, []);
 
   const isAllFilteredSelected = useMemo(() => {
     return (
@@ -225,14 +324,16 @@ export function BookmarksCatalog() {
       const next = new Set(prev);
       if (isAllFilteredSelected) {
         filteredBookmarks.forEach((b) => next.delete(b.id));
+        setIsSelectionMode(false);
       } else {
         filteredBookmarks.forEach((b) => next.add(b.id));
+        setIsSelectionMode(true);
       }
       return next;
     });
   }, [filteredBookmarks, isAllFilteredSelected]);
 
-  // Progressive chunking for fast DOM performance on large bookmark sets
+  // Progressive chunking (30 at a time)
   const visibleBookmarks = useMemo(() => {
     return filteredBookmarks.slice(0, visibleCount);
   }, [filteredBookmarks, visibleCount]);
@@ -269,12 +370,14 @@ export function BookmarksCatalog() {
     toast.success("Export successful", {
       description: `Downloaded ${listToExport.length} bookmarks in standard HTML format.`,
     });
+    setIsMoreMenuOpen(false);
   };
 
   const handleConfirmDelete = async () => {
     if (!deletingBookmark) return;
     try {
       await deleteBookmark.mutateAsync(deletingBookmark.id);
+      sound.playSuccess();
       toast.success("Bookmark deleted", {
         description: `"${deletingBookmark.title}" removed.`,
       });
@@ -284,299 +387,349 @@ export function BookmarksCatalog() {
     }
   };
 
-  return (
-    <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
-      {/* Top Filter & Actions Toolbar */}
-      <div className="px-4 sm:px-8 py-3 border-b border-hairline bg-surface-1/40 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 shrink-0">
-        {/* Left: Expand Folders Button + Search input */}
-        <div className="flex items-center gap-2 flex-1 max-w-lg">
-          {isSidebarCollapsed && (
-            <button
-              onClick={handleToggleSidebar}
-              title="Expand Folders Sidebar"
-              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer shrink-0"
-            >
-              <PanelLeftOpen className="w-3.5 h-3.5 text-primary" />
-              <span>Folders</span>
-            </button>
-          )}
+  // List view column visibility & shared template
+  const showCategoryColumn =
+    selectedCategory === "ALL" ||
+    selectedCategory === "FAVORITES" ||
+    !!debouncedSearch.trim();
 
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-tertiary" />
+  const hasAnyTagsInVisible = useMemo(() => {
+    return visibleBookmarks.some((b) => b.tags && b.tags.length > 0);
+  }, [visibleBookmarks]);
+
+  const listGridTemplate = useMemo(() => {
+    return getBookmarkGridTemplate({
+      showCategory: showCategoryColumn,
+      hasTags: hasAnyTagsInVisible,
+    });
+  }, [showCategoryColumn, hasAnyTagsInVisible]);
+
+  const activeCategoryTitle =
+    selectedCategory === "ALL"
+      ? "All Bookmarks"
+      : selectedCategory === "FAVORITES"
+      ? "Starred"
+      : nonEmptyFolders.find((f) => f.id === selectedCategory)?.label ||
+        emptyFolders.find((f) => f.id === selectedCategory)?.label ||
+        selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1);
+
+  const selectedProject = projects?.find((p) => p.id === selectedProjectId);
+
+  return (
+    <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden select-none">
+      {/* Hidden file input for import mounted OUTSIDE popover so it persists */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".html,.htm"
+        className="hidden"
+        onChange={() => setIsImportModalOpen(true)}
+      />
+
+      {/* Toolbar: One Row, 36px Controls (h-9), wraps on narrow screens */}
+      <div className="h-14 px-4 sm:px-6 border-b border-hairline bg-surface-1/40 flex items-center justify-between gap-3 shrink-0 flex-wrap sm:flex-nowrap">
+        {/* Left: Folders toggle + Search input */}
+        <div className="flex items-center gap-2 flex-1 min-w-[220px] max-w-lg">
+          {/* One Folders toggle button */}
+          <button
+            type="button"
+            onClick={handleToggleSidebar}
+            title={isSidebarCollapsed ? "Show folders" : "Hide folders"}
+            aria-label={isSidebarCollapsed ? "Show folders" : "Hide folders"}
+            className={cn(
+              "h-9 w-9 rounded-[6px] text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer flex items-center justify-center shrink-0 border border-hairline/60",
+              !isSidebarCollapsed && "bg-surface-2 text-ink border-hairline"
+            )}
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+
+          {/* Search wrapper with fixed h-9 and / shortcut hint */}
+          <div className="relative flex-1 h-9 min-h-9 flex items-center">
+            <Search className="absolute left-2.5 w-3.5 h-3.5 text-ink-subtle pointer-events-none" />
             <input
+              ref={searchInputRef}
               type="text"
-              placeholder="Search bookmarks by title, url, tags, or notes..."
+              placeholder="Search bookmarks…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-1.5 rounded-md bg-surface-2 border border-hairline text-xs text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none transition-colors"
+              className="w-full h-full pl-8 pr-7 rounded-[6px] bg-surface-2 border border-hairline text-xs text-ink placeholder:text-ink-subtle focus:border-accent focus:outline-none transition-colors"
             />
-            {searchQuery && (
+            {searchQuery ? (
               <button
+                type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-ink-tertiary hover:text-ink rounded cursor-pointer"
+                className="absolute right-2 p-0.5 text-ink-subtle hover:text-ink rounded cursor-pointer"
               >
                 <X className="w-3 h-3" />
               </button>
+            ) : (
+              <kbd className="absolute right-2 text-[10px] font-mono text-ink-subtle pointer-events-none">
+                /
+              </kbd>
             )}
           </div>
         </div>
 
-        {/* Right: Project Filter, View Mode, Import/Export & Add */}
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
-          {/* Project Filter */}
-          <div className="flex items-center gap-1.5">
-            <FolderKanban className="w-3.5 h-3.5 text-ink-tertiary shrink-0" />
-            <select
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="px-2.5 py-1.5 rounded-md bg-surface-2 border border-hairline text-xs text-ink focus:border-primary focus:outline-none max-w-[140px] truncate"
+        {/* Right: Project Filter, Grid/List toggle, "⋯" Menu, Add Bookmark */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Project Filter Popover */}
+          <div className="relative" ref={projectFilterRef}>
+            <button
+              type="button"
+              onClick={() => setIsProjectFilterOpen(!isProjectFilterOpen)}
+              className={cn(
+                "h-9 px-2.5 rounded-[6px] text-xs font-mono transition-colors cursor-pointer border flex items-center gap-1.5",
+                selectedProjectId
+                  ? "bg-surface-2 text-ink border-hairline"
+                  : "bg-surface-2/60 text-ink-muted hover:text-ink hover:bg-surface-2 border-hairline/60"
+              )}
+              title="Filter by project"
             >
-              <option value="">All Projects</option>
-              {projects?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title}
-                </option>
-              ))}
-            </select>
+              <FolderKanban className="w-3.5 h-3.5 text-ink-subtle shrink-0" />
+              <span className="truncate max-w-[120px]">
+                {selectedProject ? selectedProject.title : "Projects"}
+              </span>
+              {selectedProjectId && (
+                <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+              )}
+            </button>
+
+            {isProjectFilterOpen && (
+              <div className="absolute right-0 top-full mt-1 w-52 rounded-[8px] bg-surface-1 border border-hairline-strong shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedProjectId("");
+                    setIsProjectFilterOpen(false);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-surface-2 cursor-pointer text-ink-muted hover:text-ink font-mono"
+                >
+                  <span>All Projects</span>
+                  {!selectedProjectId && (
+                    <Check className="w-3.5 h-3.5 text-accent" />
+                  )}
+                </button>
+                {projects?.map((p) => {
+                  const isCur = p.id === selectedProjectId;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedProjectId(p.id);
+                        setIsProjectFilterOpen(false);
+                      }}
+                      className="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-surface-2 cursor-pointer text-ink-muted hover:text-ink truncate"
+                    >
+                      <span className="truncate">{p.title}</span>
+                      {isCur && (
+                        <Check className="w-3.5 h-3.5 text-accent shrink-0 ml-1.5" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* View Mode Toggle: Grid vs List */}
-          <div className="flex items-center rounded-md bg-surface-2 p-0.5 border border-hairline shrink-0">
+          {/* Grid | List View Toggle */}
+          <div className="h-9 inline-flex items-center rounded-[6px] bg-surface-2 p-0.5 border border-hairline shrink-0">
             <button
+              type="button"
               onClick={() => handleToggleViewMode("grid")}
               className={cn(
-                "p-1.5 rounded transition-all cursor-pointer",
+                "h-full px-2 rounded-[4px] transition-all cursor-pointer flex items-center justify-center",
                 viewMode === "grid"
                   ? "bg-surface-3 text-ink shadow-xs"
-                  : "text-ink-tertiary hover:text-ink"
+                  : "text-ink-subtle hover:text-ink"
               )}
-              title="Card Grid View"
+              title="Grid view (G)"
+              aria-label="Grid view (G)"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
             <button
+              type="button"
               onClick={() => handleToggleViewMode("list")}
               className={cn(
-                "p-1.5 rounded transition-all cursor-pointer",
+                "h-full px-2 rounded-[4px] transition-all cursor-pointer flex items-center justify-center",
                 viewMode === "list"
                   ? "bg-surface-3 text-ink shadow-xs"
-                  : "text-ink-tertiary hover:text-ink"
+                  : "text-ink-subtle hover:text-ink"
               )}
-              title="Compact List View"
+              title="List view (L)"
+              aria-label="List view (L)"
             >
               <List className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Import & Export Netscape HTML buttons */}
-          <div className="flex items-center gap-1 shrink-0">
+          {/* "⋯" Menu: Import, Export, Clear Notes */}
+          <div className="relative shrink-0" ref={moreMenuRef}>
             <button
-              onClick={() => {
-                sound.playClick(900);
-                setIsImportModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs text-ink-muted hover:text-ink font-medium transition-colors cursor-pointer"
-              title="Import Chrome / Browser HTML Bookmarks"
+              type="button"
+              onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+              className="h-9 w-9 rounded-[6px] text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer flex items-center justify-center border border-hairline/60"
+              title="More actions"
+              aria-label="More actions"
             >
-              <Upload className="w-3.5 h-3.5 text-ink-tertiary" />
-              <span className="hidden sm:inline">Import</span>
+              <MoreHorizontal className="w-4 h-4" />
             </button>
 
-            <button
-              onClick={handleExport}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs text-ink-muted hover:text-ink font-medium transition-colors cursor-pointer"
-              title="Export Bookmarks as HTML"
-            >
-              <Download className="w-3.5 h-3.5 text-ink-tertiary" />
-              <span className="hidden sm:inline">Export</span>
-            </button>
+            {isMoreMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-44 rounded-[8px] bg-surface-1 border border-hairline-strong shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    setIsImportModalOpen(true);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 text-ink-muted hover:text-ink hover:bg-surface-2 text-left cursor-pointer transition-colors"
+                >
+                  <Upload className="w-3.5 h-3.5 text-ink-subtle" />
+                  <span>Import HTML…</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExport}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 text-ink-muted hover:text-ink hover:bg-surface-2 text-left cursor-pointer transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5 text-ink-subtle" />
+                  <span>Export HTML</span>
+                </button>
+
+                <div className="my-1 border-t border-hairline" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    setIsClearNotesModalOpen(true);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 text-danger hover:bg-danger/10 text-left cursor-pointer transition-colors"
+                >
+                  <Eraser className="w-3.5 h-3.5" />
+                  <span>Clear notes…</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* AI Auto-Note Batch Generation */}
-          {emptyNotesCount > 0 && (
-            <button
-              onClick={() => {
-                sound.playClick(900);
-                setIsEnrichModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-xs text-indigo-300 font-medium transition-colors cursor-pointer shrink-0"
-              title={`Auto-generate developer notes with AI for ${emptyNotesCount} bookmarks`}
-            >
-              <BrainCircuit className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="hidden sm:inline">Auto-Note</span>
-              <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-indigo-500/20 text-indigo-200">
-                {emptyNotesCount}
-              </span>
-            </button>
-          )}
-
-          {/* Remove / Clear Notes Feature */}
-          {notesCount > 0 && (
-            <button
-              onClick={() => {
-                sound.playClick(900);
-                setIsClearNotesModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-surface-2 hover:bg-red-500/10 hover:border-red-500/30 border border-hairline text-xs text-ink-muted hover:text-red-400 font-medium transition-colors cursor-pointer shrink-0"
-              title="Remove or clear notes all at once or by category"
-            >
-              <Eraser className="w-3.5 h-3.5 text-ink-tertiary" />
-              <span className="hidden sm:inline">Clear Notes</span>
-            </button>
-          )}
-
-          {/* Add Bookmark CTA */}
+          {/* Add Bookmark: Only accent-filled button on toolbar */}
           <button
+            type="button"
             onClick={() => {
               sound.playClick(900);
               setIsNewModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight shadow-sm shadow-primary/25 transition-all duration-150 cursor-pointer shrink-0"
+            className="h-9 px-3 rounded-[6px] bg-accent hover:bg-accent-hover text-white text-xs font-medium tracking-tight shadow-sm inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+            title="Add bookmark (N)"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Bookmark</span>
+            <kbd className="hidden sm:inline text-[10px] font-mono opacity-80">N</kbd>
           </button>
         </div>
       </div>
 
-      {/* Main Container: Sidebar + Content */}
+      {/* Main Workspace Body */}
       <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
-        {/* Mobile Horizontal Category Strip */}
-        <div className="md:hidden px-4 py-2 border-b border-hairline bg-surface-1/30 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+        {/* Horizontal Category Strip on narrower displays (<900px) */}
+        <div className="lg:hidden px-4 py-2 border-b border-hairline bg-surface-1/30 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
           <button
+            type="button"
             onClick={() => setSelectedCategory("ALL")}
             className={cn(
-              "px-3 py-1 rounded text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5",
+              "h-7 px-2.5 rounded-[4px] text-xs font-mono transition-colors flex items-center gap-1.5 shrink-0",
               selectedCategory === "ALL"
-                ? "bg-primary text-white font-semibold"
-                : "bg-surface-2 text-ink-muted hover:text-ink"
+                ? "bg-surface-2 text-ink font-semibold border border-hairline"
+                : "text-ink-subtle hover:text-ink"
             )}
           >
             <span>All</span>
-            <span className="text-[10px] font-mono opacity-80">({totalCount})</span>
+            <span className="text-[10px] text-ink-subtle">{totalCount}</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setSelectedCategory("FAVORITES")}
             className={cn(
-              "px-3 py-1 rounded text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5",
+              "h-7 px-2.5 rounded-[4px] text-xs font-mono transition-colors flex items-center gap-1.5 shrink-0",
               selectedCategory === "FAVORITES"
-                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold"
-                : "bg-surface-2 text-ink-muted hover:text-ink"
+                ? "bg-surface-2 text-warn font-semibold border border-hairline"
+                : "text-ink-subtle hover:text-warn"
             )}
           >
-            <Star className="w-3 h-3 fill-current text-amber-400" />
+            <Star className="w-3 h-3 fill-current" />
             <span>Starred</span>
-            <span className="text-[10px] font-mono opacity-80">({favoriteCount})</span>
+            <span className="text-[10px] text-ink-subtle">{favoriteCount}</span>
           </button>
 
-          {PRESET_BOOKMARK_CATEGORIES.map((preset) => {
-            const count = folderCounts[preset.id] || 0;
-            const selectedInFolder = selectedCountsByCategory[preset.id] || 0;
-            const isActive = selectedCategory === preset.id;
-            return (
-              <button
-                key={preset.id}
-                onClick={() => setSelectedCategory(preset.id)}
-                className={cn(
-                  "px-3 py-1 rounded text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5",
-                  isActive
-                    ? "bg-primary text-white font-semibold"
-                    : "bg-surface-2 text-ink-muted hover:text-ink"
-                )}
-              >
-                <span>{preset.label}</span>
-                <span className="text-[10px] font-mono opacity-80">({count})</span>
-                {selectedInFolder > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-primary text-white text-[9px] font-mono font-bold flex items-center justify-center">
-                    {selectedInFolder}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-
-          {customFolders.map((folder) => {
-            const count = folderCounts[folder] || 0;
-            const selectedInFolder = selectedCountsByCategory[folder] || 0;
-            const isActive = selectedCategory === folder;
-            return (
-              <button
-                key={folder}
-                onClick={() => setSelectedCategory(folder)}
-                className={cn(
-                  "px-3 py-1 rounded text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5",
-                  isActive
-                    ? "bg-primary text-white font-semibold"
-                    : "bg-surface-2 text-ink-muted hover:text-ink"
-                )}
-              >
-                <span>{folder}</span>
-                <span className="text-[10px] font-mono opacity-80">({count})</span>
-                {selectedInFolder > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-primary text-white text-[9px] font-mono font-bold flex items-center justify-center">
-                    {selectedInFolder}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {nonEmptyFolders.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setSelectedCategory(f.id)}
+              className={cn(
+                "h-7 px-2.5 rounded-[4px] text-xs font-mono transition-colors flex items-center gap-1.5 shrink-0",
+                selectedCategory === f.id
+                  ? "bg-surface-2 text-ink font-semibold border border-hairline"
+                  : "text-ink-subtle hover:text-ink"
+              )}
+            >
+              <span>{f.label}</span>
+              <span className="text-[10px] text-ink-subtle">{f.count}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Desktop Folder Navigation Sidebar */}
+        {/* Desktop Folder Navigation Rail (>=900px) */}
         <aside
           className={cn(
-            "w-56 shrink-0 border-r border-hairline bg-surface-1/30 flex-col p-3 overflow-y-auto",
-            isSidebarCollapsed ? "hidden" : "hidden md:flex"
+            "w-56 shrink-0 border-r border-hairline bg-surface-1/30 flex flex-col p-3 overflow-y-auto",
+            isSidebarCollapsed ? "hidden" : "hidden lg:flex"
           )}
         >
-          {/* Header */}
+          {/* Header: VAULT FOLDERS + New Folder button */}
           <div className="flex items-center justify-between px-2 py-1 mb-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-ink-tertiary">
+            <span className="text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle font-semibold">
               Vault Folders
             </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setIsCreatingFolder(!isCreatingFolder)}
-                className="p-1 rounded text-ink-tertiary hover:text-primary hover:bg-surface-2 transition-colors cursor-pointer"
-                title="Create New Folder"
-              >
-                <FolderPlus className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={handleToggleSidebar}
-                className="p-1 rounded text-ink-tertiary hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
-                title="Collapse Folders Sidebar"
-                aria-label="Collapse Folders Sidebar"
-              >
-                <PanelLeftClose className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsCreatingFolder(!isCreatingFolder)}
+              className="p-1 rounded-[4px] text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
+              title="Create new folder"
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           {/* Inline Folder Creator */}
           {isCreatingFolder && (
-            <form onSubmit={handleCreateFolder} className="mb-2.5 px-1">
-              <div className="flex items-center gap-1 bg-surface-2 border border-primary/50 rounded-md p-1">
+            <form onSubmit={handleCreateFolder} className="mb-2 px-1">
+              <div className="flex items-center gap-1 bg-surface-2 border border-accent/50 rounded-[6px] p-1">
                 <input
                   type="text"
-                  placeholder="folder-name..."
+                  placeholder="folder-name…"
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   autoFocus
-                  className="w-full bg-transparent px-1.5 py-0.5 text-xs text-ink placeholder:text-ink-tertiary focus:outline-none font-mono"
+                  className="w-full bg-transparent px-1.5 py-0.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none font-mono"
                 />
                 <button
                   type="submit"
                   disabled={!newFolderName.trim()}
-                  className="p-1 rounded bg-primary text-white hover:bg-primary-hover disabled:opacity-50 transition-colors cursor-pointer"
+                  className="p-1 rounded-[4px] bg-accent text-white hover:bg-accent-hover disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   <Check className="w-3 h-3" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsCreatingFolder(false)}
-                  className="p-1 text-ink-muted hover:text-ink rounded cursor-pointer"
+                  className="p-1 text-ink-subtle hover:text-ink rounded cursor-pointer"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -588,228 +741,217 @@ export function BookmarksCatalog() {
           <div className="space-y-0.5 flex-1">
             {/* All Bookmarks */}
             <button
+              type="button"
               onClick={() => {
                 sound.playClick(850);
                 setSelectedCategory("ALL");
               }}
               className={cn(
-                "w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+                "relative w-full flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-xs transition-colors cursor-pointer",
                 selectedCategory === "ALL"
-                  ? "bg-surface-2 text-ink font-semibold border border-hairline"
-                  : "text-ink-muted hover:text-ink hover:bg-surface-2/60 border border-transparent"
+                  ? "bg-surface-2 text-ink font-medium"
+                  : "text-ink-muted hover:text-ink hover:bg-surface-2/50"
               )}
             >
+              {selectedCategory === "ALL" && (
+                <span className="absolute inset-y-0 left-0 w-0.5 bg-accent rounded-l" />
+              )}
               <div className="flex items-center gap-2 truncate">
-                <BookmarkIcon className={cn("w-3.5 h-3.5", selectedCategory === "ALL" ? "text-primary" : "text-ink-tertiary")} />
+                <BookmarkIcon className="w-3.5 h-3.5 text-ink-subtle shrink-0" />
                 <span className="truncate">All Bookmarks</span>
               </div>
-              <span className="text-[10px] font-mono text-ink-tertiary">
+              <span className="text-[11px] font-mono text-ink-subtle">
                 {totalCount}
               </span>
             </button>
 
-            {/* Starred / Favorites */}
+            {/* Starred */}
             <button
+              type="button"
               onClick={() => {
                 sound.playClick(850);
                 setSelectedCategory("FAVORITES");
               }}
               className={cn(
-                "w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+                "relative w-full flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-xs transition-colors cursor-pointer",
                 selectedCategory === "FAVORITES"
-                  ? "bg-amber-500/10 text-amber-300 font-semibold border border-amber-500/25"
-                  : "text-ink-muted hover:text-ink hover:bg-surface-2/60 border border-transparent"
+                  ? "bg-surface-2 text-ink font-medium"
+                  : "text-ink-muted hover:text-ink hover:bg-surface-2/50"
               )}
             >
+              {selectedCategory === "FAVORITES" && (
+                <span className="absolute inset-y-0 left-0 w-0.5 bg-accent rounded-l" />
+              )}
               <div className="flex items-center gap-2 truncate">
-                <Star className={cn("w-3.5 h-3.5", selectedCategory === "FAVORITES" ? "text-amber-400 fill-amber-400" : "text-ink-tertiary")} />
+                <Star className="w-3.5 h-3.5 text-warn fill-warn shrink-0" />
                 <span className="truncate">Starred</span>
               </div>
-              <span className="text-[10px] font-mono text-ink-tertiary">
+              <span className="text-[11px] font-mono text-ink-subtle">
                 {favoriteCount}
               </span>
             </button>
 
-            <div className="pt-2 pb-1">
-              <div className="h-px bg-hairline/80 mx-2" />
+            <div className="py-1">
+              <div className="h-px bg-hairline mx-1" />
             </div>
 
-            {/* Presets Folders */}
-            {PRESET_BOOKMARK_CATEGORIES.map((cat) => {
-              const count = folderCounts[cat.id] || 0;
-              const selectedInFolder = selectedCountsByCategory[cat.id] || 0;
-              const isActive = selectedCategory === cat.id;
-
+            {/* Active / Non-empty folders sorted by count then name */}
+            {nonEmptyFolders.map((f) => {
+              const isActive = selectedCategory === f.id;
               return (
                 <button
-                  key={cat.id}
+                  key={f.id}
+                  type="button"
                   onClick={() => {
                     sound.playClick(850);
-                    setSelectedCategory(cat.id);
+                    setSelectedCategory(f.id);
                   }}
                   className={cn(
-                    "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+                    "relative w-full flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-xs transition-colors cursor-pointer",
                     isActive
-                      ? "bg-surface-2 text-ink font-semibold border border-hairline"
-                      : "text-ink-muted hover:text-ink hover:bg-surface-2/60 border border-transparent"
+                      ? "bg-surface-2 text-ink font-medium"
+                      : "text-ink-muted hover:text-ink hover:bg-surface-2/50"
                   )}
                 >
+                  {isActive && (
+                    <span className="absolute inset-y-0 left-0 w-0.5 bg-accent rounded-l" />
+                  )}
                   <div className="flex items-center gap-2 truncate">
                     {isActive ? (
-                      <FolderOpen className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <FolderOpen className="w-3.5 h-3.5 text-accent shrink-0" />
                     ) : (
-                      <Folder className="w-3.5 h-3.5 text-ink-tertiary shrink-0" />
+                      <Folder className="w-3.5 h-3.5 text-ink-subtle shrink-0" />
                     )}
-                    <span className="truncate">{cat.label}</span>
+                    <span className="truncate">{f.label}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    {selectedInFolder > 0 && (
-                      <span className="w-4 h-4 rounded-full bg-primary text-white text-[9px] font-mono font-bold flex items-center justify-center animate-in zoom-in-75">
-                        {selectedInFolder}
-                      </span>
-                    )}
-                    <span className="text-[10px] font-mono text-ink-tertiary">
-                      {count}
-                    </span>
-                  </div>
+                  <span className="text-[11px] font-mono text-ink-subtle">
+                    {f.count}
+                  </span>
                 </button>
               );
             })}
 
-            {/* Discovered & User Custom Folders */}
-            {customFolders.length > 0 && (
-              <>
-                <div className="pt-2 pb-1">
-                  <span className="px-2 text-[10px] font-mono uppercase tracking-wider text-ink-tertiary">
-                    Custom Folders
-                  </span>
-                </div>
-                {customFolders.map((folder) => {
-                  const count = folderCounts[folder] || 0;
-                  const selectedInFolder = selectedCountsByCategory[folder] || 0;
-                  const isActive = selectedCategory === folder;
+            {/* Collapsed-by-default Empty Folders Group */}
+            {emptyFolders.length > 0 && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleToggleEmptyFolders}
+                  className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle hover:text-ink transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-1.5">
+                    {isEmptyFoldersOpen ? (
+                      <ChevronDown className="w-3 h-3 text-ink-subtle" />
+                    ) : (
+                      <ChevronRight className="w-3 h-3 text-ink-subtle" />
+                    )}
+                    <span>Empty ({emptyFolders.length})</span>
+                  </div>
+                </button>
 
-                  return (
-                    <button
-                      key={folder}
-                      onClick={() => {
-                        sound.playClick(850);
-                        setSelectedCategory(folder);
-                      }}
-                      className={cn(
-                        "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer capitalize",
-                        isActive
-                          ? "bg-surface-2 text-ink font-semibold border border-hairline"
-                          : "text-ink-muted hover:text-ink hover:bg-surface-2/60 border border-transparent"
-                      )}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        {isActive ? (
-                          <FolderOpen className="w-3.5 h-3.5 text-primary shrink-0" />
-                        ) : (
-                          <Folder className="w-3.5 h-3.5 text-ink-tertiary shrink-0" />
-                        )}
-                        <span className="truncate">{folder}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {selectedInFolder > 0 && (
-                          <span className="w-4 h-4 rounded-full bg-primary text-white text-[9px] font-mono font-bold flex items-center justify-center animate-in zoom-in-75">
-                            {selectedInFolder}
+                {isEmptyFoldersOpen && (
+                  <div className="space-y-0.5 pt-1 pl-1">
+                    {emptyFolders.map((f) => {
+                      const isActive = selectedCategory === f.id;
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => {
+                            sound.playClick(850);
+                            setSelectedCategory(f.id);
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between px-2 py-1 rounded-[4px] text-xs transition-colors cursor-pointer",
+                            isActive
+                              ? "bg-surface-2 text-ink font-medium"
+                              : "text-ink-subtle hover:text-ink hover:bg-surface-2/40"
+                          )}
+                        >
+                          <span className="truncate">{f.label}</span>
+                          <span className="text-[10px] font-mono text-ink-subtle">
+                            0
                           </span>
-                        )}
-                        <span className="text-[10px] font-mono text-ink-tertiary">
-                          {count}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </aside>
 
-        {/* Content Canvas */}
+        {/* Main Content Area */}
         <main className="flex-1 min-h-0 flex flex-col overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {/* Active Folder Header info */}
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-hairline/60">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold tracking-[-0.2px] text-ink capitalize">
-                {selectedCategory === "ALL"
-                  ? "All Bookmarks"
-                  : selectedCategory === "FAVORITES"
-                  ? "Starred Favorites"
-                  : selectedCategory}
-              </span>
-              <span className="text-xs font-mono text-ink-tertiary">
-                ({filteredBookmarks.length} {filteredBookmarks.length === 1 ? "link" : "links"})
+          {/* List Heading: Folder Name · Count (left), Select action (right) */}
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-hairline shrink-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold tracking-[-0.2px] text-ink">
+                {activeCategoryTitle}
+              </h2>
+              <span className="text-xs font-mono text-ink-subtle">
+                · {filteredBookmarks.length}
               </span>
 
-              {/* Select All in View toggle */}
-              {filteredBookmarks.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleToggleSelectAllFiltered}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer ml-1 sm:ml-2",
-                    isAllFilteredSelected
-                      ? "bg-primary/10 border-primary/30 text-primary"
-                      : "bg-surface-2 border-hairline text-ink-subtle hover:text-ink"
-                  )}
-                  title={isAllFilteredSelected ? "Deselect all visible bookmarks" : "Select all visible bookmarks"}
-                >
-                  <div
-                    className={cn(
-                      "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
-                      isAllFilteredSelected
-                        ? "bg-primary border-primary text-white"
-                        : "border-hairline-strong bg-surface-1"
-                    )}
-                  >
-                    {isAllFilteredSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                  </div>
-                  <span>
-                    {isAllFilteredSelected ? "Deselect All" : `Select All (${filteredBookmarks.length})`}
+              {searchQuery && (
+                <div className="flex items-center gap-1 text-xs text-ink-subtle ml-2">
+                  <span>matching</span>
+                  <span className="font-mono text-ink bg-surface-2 px-1.5 py-0.5 rounded border border-hairline">
+                    &ldquo;{searchQuery}&rdquo;
                   </span>
-                </button>
+                </div>
               )}
             </div>
 
-            {searchQuery && (
-              <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-                <span>Filtered by:</span>
-                <span className="font-mono text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
-                  &ldquo;{searchQuery}&rdquo;
-                </span>
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="text-ink-tertiary hover:text-ink ml-1 cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
+            {/* Right: "Select" trigger to enter selection mode */}
+            {filteredBookmarks.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick(800);
+                  if (selectedBookmarkIds.size > 0 || isSelectionMode) {
+                    setSelectedBookmarkIds(new Set());
+                    setIsSelectionMode(false);
+                  } else {
+                    setIsSelectionMode(true);
+                  }
+                }}
+                className={cn(
+                  "text-xs font-medium px-2 py-1 rounded-[4px] transition-colors cursor-pointer",
+                  isSelectionMode || selectedBookmarkIds.size > 0
+                    ? "text-accent bg-accent/10"
+                    : "text-ink-muted hover:text-ink hover:bg-surface-2"
+                )}
+              >
+                {isSelectionMode || selectedBookmarkIds.size > 0
+                  ? "Done"
+                  : "Select"}
+              </button>
             )}
           </div>
 
-          {/* Loading state */}
+          {/* Loading, Error or Content */}
           {isLoading ? (
             viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div
                     key={i}
-                    className="rounded-xl bg-surface-1 border border-hairline p-5 space-y-3 animate-pulse"
+                    className="h-24 rounded-[8px] bg-surface-1 border border-hairline p-3 space-y-2 animate-pulse"
                   >
                     <div className="h-4 bg-surface-2 rounded w-2/3" />
-                    <div className="h-3 bg-surface-2 rounded w-1/2" />
-                    <div className="h-10 bg-surface-2 rounded" />
+                    <div className="h-3 bg-surface-2 rounded w-1/3" />
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-hairline bg-surface-1 divide-y divide-hairline">
+              <div className="rounded-[8px] border border-hairline bg-surface-1 divide-y divide-hairline">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="p-3.5 flex items-center justify-between gap-4 animate-pulse">
+                  <div
+                    key={i}
+                    className="h-[52px] px-3.5 flex items-center justify-between gap-4 animate-pulse"
+                  >
                     <div className="h-4 bg-surface-2 rounded w-1/3" />
                     <div className="h-4 bg-surface-2 rounded w-24" />
                   </div>
@@ -817,17 +959,18 @@ export function BookmarksCatalog() {
               </div>
             )
           ) : isError ? (
-            <div className="rounded-xl border border-semantic-error/30 bg-semantic-error/5 p-8 text-center max-w-md mx-auto my-12">
-              <AlertCircle className="w-10 h-10 text-semantic-error mx-auto mb-3" />
+            <div className="rounded-[8px] border border-danger/30 bg-surface-1 p-8 text-center max-w-md mx-auto my-12">
+              <AlertCircle className="w-8 h-8 text-danger mx-auto mb-2" />
               <h3 className="text-sm font-semibold text-ink mb-1">
                 Failed to load bookmarks
               </h3>
-              <p className="text-xs text-ink-muted mb-4">
+              <p className="text-xs text-ink-subtle mb-4">
                 {(error as Error)?.message || "Network error"}
               </p>
               <button
+                type="button"
                 onClick={() => refetch()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Retry</span>
@@ -836,104 +979,109 @@ export function BookmarksCatalog() {
           ) : filteredBookmarks.length > 0 ? (
             <div className="space-y-6">
               {viewMode === "grid" ? (
-                /* Grid view */
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+                /* Card Grid View (compact ~96-104px cards) */
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
                   {visibleBookmarks.map((bm) => (
                     <BookmarkCard
                       key={bm.id}
                       bookmark={bm}
                       isSelected={selectedBookmarkIds.has(bm.id)}
                       onToggleSelect={handleToggleSelect}
+                      selectionMode={isSelectionMode || selectedBookmarkIds.size > 0}
+                      showCategory={showCategoryColumn}
                       onEdit={(b) => setEditingBookmark(b)}
                       onDelete={(b) => setDeletingBookmark(b)}
                     />
                   ))}
                 </div>
               ) : (
-                /* Compact List view */
-                <div className="rounded-xl border border-hairline bg-surface-1 divide-y divide-hairline shadow-sm overflow-hidden">
+                /* List View (52px rows with shared template) */
+                <div className="rounded-[8px] border border-hairline bg-surface-1 overflow-hidden">
+                  {/* Shared List View Header */}
+                  <div
+                    className="w-full h-8 px-3.5 border-b border-hairline bg-surface-1/80 grid items-center gap-3 text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle select-none"
+                    style={{ gridTemplateColumns: listGridTemplate }}
+                  >
+                    <div />
+                    <div />
+                    <div>Name</div>
+                    {showCategoryColumn && <div>Folder</div>}
+                    {hasAnyTagsInVisible && <div>Tags</div>}
+                    <div className="text-right">Actions</div>
+                  </div>
+
+                  {/* 52px Data Rows */}
                   {visibleBookmarks.map((bm) => (
                     <BookmarkListRow
                       key={bm.id}
                       bookmark={bm}
                       isSelected={selectedBookmarkIds.has(bm.id)}
                       onToggleSelect={handleToggleSelect}
+                      selectionMode={isSelectionMode || selectedBookmarkIds.size > 0}
+                      showCategory={showCategoryColumn}
+                      hasAnyTags={hasAnyTagsInVisible}
+                      gridTemplate={listGridTemplate}
                       onEdit={(b) => setEditingBookmark(b)}
+                      onDelete={(b) => setDeletingBookmark(b)}
                     />
                   ))}
                 </div>
               )}
 
-              {/* Progressive Load More Trigger */}
+              {/* Progressive Load More Row */}
               {visibleCount < filteredBookmarks.length && (
-                <div className="pt-4 pb-2 flex flex-col items-center justify-center gap-2">
-                  <p className="text-xs font-mono text-ink-tertiary">
-                    Showing {visibleBookmarks.length} of {filteredBookmarks.length} bookmarks
-                  </p>
+                <div className="pt-3 pb-2 flex items-center justify-center gap-2 text-xs text-ink-subtle select-none">
+                  <span>
+                    Showing {visibleBookmarks.length} of {filteredBookmarks.length}
+                  </span>
+                  <span>·</span>
                   <button
                     type="button"
                     onClick={() => {
                       sound.playClick(750);
                       setVisibleCount((prev) => prev + 30);
                     }}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink transition-colors cursor-pointer"
+                    className="font-medium text-ink hover:text-accent hover:underline cursor-pointer"
                   >
-                    <span>Load More Bookmarks</span>
-                    <span className="font-mono text-[10px] text-ink-tertiary">
-                      (+{Math.min(30, filteredBookmarks.length - visibleBookmarks.length)})
-                    </span>
+                    Load {Math.min(30, filteredBookmarks.length - visibleBookmarks.length)} more
                   </button>
                 </div>
               )}
             </div>
           ) : (
             /* Empty state */
-            <div className="py-20 text-center max-w-md mx-auto">
-              <div className="w-12 h-12 rounded-xl bg-surface-2 border border-hairline flex items-center justify-center text-ink-muted mb-4 mx-auto">
-                <BookmarkIcon className="w-6 h-6 text-primary/70" />
-              </div>
-              <h3 className="text-base font-semibold tracking-tight text-ink mb-1">
-                No bookmarks found
-              </h3>
-              <p className="text-xs text-ink-muted mb-6 leading-relaxed">
+            <div className="py-16 text-center max-w-sm mx-auto select-none">
+              <p className="text-xs text-ink-subtle mb-4">
                 {searchQuery || selectedCategory !== "ALL" || selectedProjectId
-                  ? "Try resetting your search query or selecting a different folder."
-                  : "Organize docs, tools, design assets, and cheat sheets for instant 1-click access."}
+                  ? "No matching bookmarks found."
+                  : "No bookmarks saved in your vault."}
               </p>
-              <div className="flex items-center justify-center gap-2.5 flex-wrap">
-                {(searchQuery || selectedCategory !== "ALL" || selectedProjectId) && (
+              <div className="flex items-center justify-center gap-2">
+                {(searchQuery || selectedCategory !== "ALL" || selectedProjectId) ? (
                   <button
+                    type="button"
                     onClick={() => {
                       sound.playClick(600);
                       setSearchQuery("");
                       setSelectedCategory("ALL");
                       setSelectedProjectId("");
                     }}
-                    className="px-3.5 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
+                    className="px-3 py-1.5 rounded-[6px] bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
                   >
-                    Clear Filters
+                    Clear filters
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sound.playClick(900);
+                      setIsNewModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-[6px] bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    Add bookmark
                   </button>
                 )}
-                <button
-                  onClick={() => {
-                    sound.playClick(900);
-                    setIsImportModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs font-medium transition-colors cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5 text-primary" />
-                  <span>Import HTML</span>
-                </button>
-                <button
-                  onClick={() => {
-                    sound.playClick(900);
-                    setIsNewModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight shadow-sm shadow-primary/25 transition-all duration-150 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Bookmark</span>
-                </button>
               </div>
             </div>
           )}
@@ -962,13 +1110,6 @@ export function BookmarksCatalog() {
         onClose={() => setIsImportModalOpen(false)}
       />
 
-      <EnrichBookmarksModal
-        isOpen={isEnrichModalOpen}
-        onClose={() => setIsEnrichModalOpen(false)}
-        bookmarks={allBookmarks || []}
-        currentCategory={selectedCategory}
-      />
-
       <ClearNotesModal
         isOpen={isClearNotesModalOpen}
         onClose={() => setIsClearNotesModalOpen(false)}
@@ -991,17 +1132,28 @@ export function BookmarksCatalog() {
       <BulkActionBar
         selectedBookmarkIds={selectedBookmarkIds}
         allBookmarks={allBookmarks || []}
-        onClearSelection={() => setSelectedBookmarkIds(new Set())}
+        onClearSelection={() => {
+          setSelectedBookmarkIds(new Set());
+          setIsSelectionMode(false);
+        }}
         onOpenMoveModal={() => setIsMoveModalOpen(true)}
+        onSelectAll={handleToggleSelectAllFiltered}
+        isAllSelected={isAllFilteredSelected}
+        totalFilteredCount={filteredBookmarks.length}
       />
 
       {/* Move Bookmarks Modal */}
       <MoveBookmarksModal
         isOpen={isMoveModalOpen}
         onClose={() => setIsMoveModalOpen(false)}
-        selectedBookmarks={(allBookmarks || []).filter((b) => selectedBookmarkIds.has(b.id))}
+        selectedBookmarks={(allBookmarks || []).filter((b) =>
+          selectedBookmarkIds.has(b.id)
+        )}
         customFolders={customFolders}
-        onComplete={() => setSelectedBookmarkIds(new Set())}
+        onComplete={() => {
+          setSelectedBookmarkIds(new Set());
+          setIsSelectionMode(false);
+        }}
       />
     </div>
   );

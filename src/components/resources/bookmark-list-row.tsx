@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Star,
   ArrowUpRight,
@@ -8,75 +8,72 @@ import {
   Check,
   Edit2,
   Trash2,
-  FolderKanban,
-  Tag,
-  Globe,
   ChevronDown,
   BrainCircuit,
   Loader2,
+  MoreHorizontal,
+  FolderKanban,
 } from "lucide-react";
 import { Bookmark, PRESET_BOOKMARK_CATEGORIES } from "@/types/bookmark";
-import { useToggleBookmarkFavorite, useDeleteBookmark, useEnrichBookmark } from "@/hooks/use-bookmarks";
+import { useToggleBookmarkFavorite, useEnrichBookmark } from "@/hooks/use-bookmarks";
 import { BookmarkFavicon } from "./bookmark-favicon";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
-import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { decodeEntities } from "@/lib/decode-entities";
+import { stripMarkdown } from "@/components/tasks/task-utils";
 
-interface Props {
+interface BookmarkListRowProps {
   bookmark: Bookmark;
   onEdit: (bookmark: Bookmark) => void;
+  onDelete: (bookmark: Bookmark) => void;
   isSelected?: boolean;
   onToggleSelect?: (id: string, e: React.MouseEvent) => void;
+  selectionMode?: boolean;
+  showCategory?: boolean;
+  hasAnyTags?: boolean;
+  gridTemplate?: string;
 }
 
-const getCategoryBadge = (cat: string) => {
+const getCategoryLabel = (cat: string) => {
   const normalized = (cat || "tools").toLowerCase();
   const preset = PRESET_BOOKMARK_CATEGORIES.find((p) => p.id === normalized);
-  if (preset) {
-    return {
-      label: preset.label,
-    };
-  }
-  return {
-    label: cat.charAt(0).toUpperCase() + cat.slice(1),
-  };
+  return preset ? preset.label : cat.charAt(0).toUpperCase() + cat.slice(1);
 };
 
 export function BookmarkListRow({
   bookmark: bm,
   onEdit,
+  onDelete,
   isSelected = false,
   onToggleSelect,
-}: Props) {
+  selectionMode = false,
+  showCategory = true,
+  hasAnyTags = true,
+  gridTemplate,
+}: BookmarkListRowProps) {
   const toggleFavorite = useToggleBookmarkFavorite();
-  const deleteBookmark = useDeleteBookmark();
   const enrichBookmark = useEnrichBookmark();
-
   const [copied, setCopied] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const handleQuickEnrich = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    sound.playClick(900);
-    try {
-      await enrichBookmark.mutateAsync(bm.id);
-      setIsExpanded(true);
-      sound.playSuccess();
-      toast.success("AI Note Generated", {
-        description: `Note generated for "${bm.title}".`,
-      });
-    } catch {
-      toast.error("Could not generate note", {
-        description: "Check backend GROQ_API_KEY configuration.",
-      });
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+      return () => document.removeEventListener("mousedown", handleOutsideClick);
     }
-  };
+  }, [menuOpen]);
 
   const getHostname = (url: string) => {
     try {
-      return new URL(url).hostname.replace(/^www\./, "");
+      return new URL(url).hostname.replace(/^www\./i, "");
     } catch {
       return url;
     }
@@ -97,244 +94,329 @@ export function BookmarkListRow({
 
   const handleToggleStar = (e: React.MouseEvent) => {
     e.stopPropagation();
+    sound.playClick(bm.favorite ? 600 : 900);
     toggleFavorite.mutate(bm.id);
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleQuickEnrich = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowDeleteConfirm(true);
-  };
-
-  const handleConfirmDelete = async () => {
+    sound.playClick(900);
     try {
-      await deleteBookmark.mutateAsync(bm.id);
-      toast.success("Bookmark deleted", {
-        description: `"${bm.title}" removed from vault.`,
+      await enrichBookmark.mutateAsync(bm.id);
+      setIsExpanded(true);
+      sound.playSuccess();
+      toast.success("AI Note Generated", {
+        description: `Note generated for "${bm.title}".`,
       });
     } catch {
-      toast.error("Failed to delete bookmark");
+      toast.error("Could not generate note", {
+        description: "Check backend GROQ_API_KEY configuration.",
+      });
     }
   };
 
-  const categoryConfig = getCategoryBadge(bm.category);
   const domain = getHostname(bm.url);
+  const categoryLabel = getCategoryLabel(bm.category);
+  const decodedTitle = decodeEntities(bm.title);
+  const decodedNotes = decodeEntities(bm.notes);
+
+  // Extract first clean line of notes for second line preview
+  const firstLineDescription = decodedNotes
+    ? stripMarkdown(decodedNotes.split("\n")[0]).trim()
+    : "";
 
   return (
-    <>
+    <div
+      style={{
+        contentVisibility: "auto",
+        containIntrinsicSize: "52px",
+      }}
+      className={cn(
+        "border-b border-hairline/60 transition-colors select-none group flex flex-col",
+        isSelected
+          ? "bg-surface-2/70"
+          : "hover:bg-surface-2/40"
+      )}
+    >
+      {/* 52px Primary Row */}
       <div
+        role="button"
+        tabIndex={0}
         onClick={() => setIsExpanded(!isExpanded)}
-        className={cn(
-          "group flex items-center justify-between px-3.5 sm:px-4 py-2.5 transition-colors duration-150 text-xs border-b border-hairline first:rounded-t-lg last:rounded-b-lg last:border-b-0 cursor-pointer",
-          isSelected
-            ? "bg-primary/[0.04] border-primary/40 ring-1 ring-inset ring-primary/30"
-            : "bg-surface-1 hover:bg-surface-2/70"
-        )}
+        className="w-full min-h-[52px] h-[52px] px-3.5 flex items-center cursor-pointer text-left"
       >
-        {/* Left: Checkbox, Star, Favicon, Title, Domain, Project */}
-        <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-4">
-          {/* Checkbox */}
-          {onToggleSelect && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
+        <div
+          className="w-full grid items-center gap-3"
+          style={{
+            gridTemplateColumns:
+              gridTemplate ||
+              `24px 32px minmax(240px, 1fr) ${showCategory ? "112px " : ""}${hasAnyTags ? "168px " : ""}120px`,
+          }}
+        >
+          {/* Col 1: Select Checkbox (24px) */}
+          <div
+            className="flex items-center justify-center shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onToggleSelect) {
                 sound.playClick(isSelected ? 600 : 850);
                 onToggleSelect(bm.id, e);
-              }}
-              className={cn(
-                "w-4 h-4 rounded border transition-all flex items-center justify-center cursor-pointer shrink-0 -ml-1",
-                isSelected
-                  ? "bg-primary border-primary text-white shadow-xs"
-                  : "border-hairline-strong bg-surface-2 hover:border-primary/60 opacity-50 group-hover:opacity-100"
-              )}
-              title={isSelected ? "Deselect bookmark" : "Select bookmark"}
-              aria-checked={isSelected}
-              role="checkbox"
-            >
-              {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-            </button>
-          )}
-
-          {/* Star Button */}
-          <button
-            type="button"
-            onClick={handleToggleStar}
-            title={bm.favorite ? "Unstar bookmark" : "Star bookmark"}
-            aria-label={bm.favorite ? "Unstar bookmark" : "Star bookmark"}
-            className="p-1 -ml-1 transition-colors text-ink-subtle hover:text-amber-400 shrink-0 cursor-pointer"
+              }
+            }}
           >
-            <Star
-              className={cn(
-                "w-3.5 h-3.5 transition-colors",
-                bm.favorite
-                  ? "fill-amber-400 text-amber-400"
-                  : "text-ink-tertiary hover:text-amber-400"
-              )}
-            />
-          </button>
-
-          {/* Favicon */}
-          <BookmarkFavicon domain={domain} url={bm.url} size={16} />
-
-          {/* Title & Notes snippet & Project */}
-          <div className="flex flex-col min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <a
-                href={bm.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  sound.playClick(950);
-                }}
-                className="font-medium tracking-[-0.1px] text-ink hover:text-primary transition-colors truncate max-w-sm sm:max-w-md cursor-pointer"
+            {onToggleSelect && (
+              <div
+                role="checkbox"
+                aria-checked={isSelected}
+                tabIndex={0}
+                className={cn(
+                  "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all cursor-pointer",
+                  isSelected
+                    ? "bg-accent border-accent text-white"
+                    : "border-hairline-strong bg-surface-2 hover:border-accent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
+                  selectionMode && "opacity-100"
+                )}
               >
-                {bm.title}
-              </a>
-              {bm.project && (
-                <span className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-surface-3 border border-hairline font-mono text-[9px] text-ink-muted truncate max-w-[120px] shrink-0">
-                  <FolderKanban className="w-2.5 h-2.5 text-primary shrink-0" />
-                  <span className="truncate">{bm.project.title}</span>
-                </span>
-              )}
-            </div>
-            {!isExpanded && bm.notes && (
-              <span className="text-[11px] text-ink-tertiary truncate hidden sm:block">
-                {bm.notes}
-              </span>
+                {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Column 2: Category (Strictly Fixed Width) */}
-        <div className="hidden sm:flex w-20 md:w-24 shrink-0 items-center justify-start">
-          <span className="text-xs font-semibold text-ink tracking-tight truncate">
-            {categoryConfig.label}
-          </span>
-        </div>
-
-        {/* Column 3: Tags (Strictly Fixed Width — Placeheld if Missing) */}
-        <div className="hidden lg:flex w-28 xl:w-32 shrink-0 items-center justify-start">
-          {bm.tags && bm.tags.length > 0 ? (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-2 border border-hairline font-mono text-[10px] text-ink-subtle truncate max-w-full">
-              <Tag className="w-2 h-2 text-ink-tertiary shrink-0" />
-              <span className="truncate">{bm.tags[0]}</span>
-              {bm.tags.length > 1 && (
-                <span className="text-ink-tertiary shrink-0">+{bm.tags.length - 1}</span>
-              )}
-            </span>
-          ) : (
-            <div className="w-full h-4" aria-hidden="true" />
-          )}
-        </div>
-
-        {/* Column 4: Details Expand Chevron (Strictly Fixed Width) */}
-        <div className="w-6 shrink-0 flex items-center justify-center">
-          <span className="text-ink-tertiary group-hover:text-ink-muted transition-colors">
-            <ChevronDown
+          {/* Col 2: Star (32px) */}
+          <div
+            className="flex items-center justify-center shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={handleToggleStar}
               className={cn(
-                "w-3.5 h-3.5 transition-transform duration-150",
-                isExpanded && "rotate-180"
+                "p-1 rounded-[4px] transition-all cursor-pointer",
+                bm.favorite
+                  ? "text-warn"
+                  : "text-ink-subtle opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-warn"
               )}
+              title={bm.favorite ? "Unstar bookmark" : "Star bookmark"}
+              aria-label={bm.favorite ? "Unstar bookmark" : "Star bookmark"}
+            >
+              <Star
+                className={cn("w-3.5 h-3.5", bm.favorite && "fill-warn")}
+              />
+            </button>
+          </div>
+
+          {/* Col 3: Name (Favicon + Two-line column: title, domain · desc) */}
+          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+            <BookmarkFavicon
+              domain={domain}
+              url={bm.url}
+              variant="row"
+              tileSize={22}
+              size={14}
             />
-          </span>
-        </div>
 
-        {/* Column 5: Action Buttons (Strictly Fixed Width) */}
-        <div
-          className="w-28 shrink-0 flex items-center justify-end gap-0.5 text-ink-subtle"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Copy Link Button */}
-          <button
-            type="button"
-            onClick={handleCopy}
-            title={copied ? "Copied!" : "Copy link"}
-            aria-label="Copy link"
-            className="p-1.5 text-ink-tertiary hover:text-ink transition-colors cursor-pointer"
-          >
-            {copied ? (
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-            ) : (
-              <Copy className="w-3.5 h-3.5 text-ink-tertiary hover:text-ink" />
-            )}
-          </button>
+            <div className="flex flex-col min-w-0 flex-1 justify-center leading-tight">
+              {/* Line 1: Full title */}
+              <div className="flex items-center gap-2 min-w-0">
+                <a
+                  href={bm.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-[13px] font-medium text-ink hover:text-accent transition-colors truncate cursor-pointer"
+                  title={decodedTitle}
+                >
+                  {decodedTitle}
+                </a>
 
-          {/* Edit */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              sound.playClick(750);
-              onEdit(bm);
-            }}
-            title="Edit bookmark"
-            aria-label="Edit bookmark"
-            className="p-1.5 rounded hover:bg-surface-3 hover:text-ink transition-colors cursor-pointer"
-          >
-            <Edit2 className="w-3.5 h-3.5 text-ink-tertiary hover:text-ink" />
-          </button>
+                {bm.project && (
+                  <span className="hidden xl:inline-flex items-center gap-1 font-mono text-[10px] text-ink-subtle truncate max-w-[120px] shrink-0">
+                    <FolderKanban className="w-2.5 h-2.5 text-ink-subtle shrink-0" />
+                    <span className="truncate">{bm.project.title}</span>
+                  </span>
+                )}
+              </div>
 
-          {/* Delete */}
-          <button
-            type="button"
-            onClick={handleDelete}
-            title="Delete bookmark"
-            aria-label="Delete bookmark"
-            className="p-1.5 rounded hover:bg-rose-500/10 hover:text-rose-400 transition-colors cursor-pointer"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-ink-tertiary hover:text-rose-400" />
-          </button>
+              {/* Line 2: mono 11px text-subtle: domain · description */}
+              <div className="flex items-center gap-1.5 text-[11px] font-mono text-ink-subtle truncate min-w-0 mt-0.5">
+                <span className="shrink-0">{domain}</span>
+                {firstLineDescription && (
+                  <>
+                    <span className="shrink-0">·</span>
+                    <span className="truncate text-ink-subtle">
+                      {firstLineDescription}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
 
-          {/* External Visit Button */}
-          <a
-            href={bm.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => {
-              e.stopPropagation();
-              sound.playClick(950);
-            }}
-            title="Visit URL"
-            aria-label="Visit bookmark URL"
-            className="p-1.5 rounded text-ink-muted hover:text-primary transition-colors cursor-pointer flex items-center justify-center ml-0.5"
+          {/* Col 4: Category (112px, hidden inside specific folder) */}
+          {showCategory && (
+            <div className="hidden sm:flex items-center min-w-0">
+              <span className="text-xs font-mono text-ink-muted truncate">
+                {categoryLabel}
+              </span>
+            </div>
+          )}
+
+          {/* Col 5: Tags (168px, quiet mono text) */}
+          {hasAnyTags && (
+            <div className="hidden lg:flex items-center min-w-0">
+              {bm.tags && bm.tags.length > 0 ? (
+                <span className="font-mono text-[11px] text-ink-subtle truncate">
+                  #{bm.tags[0]}
+                  {bm.tags.length > 1 && (
+                    <span className="text-ink-subtle/80 ml-1">
+                      +{bm.tags.length - 1}
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-ink-subtle/40 text-[11px] font-mono">—</span>
+              )}
+            </div>
+          )}
+
+          {/* Col 6: Actions (120px, reserved width so hover causes no layout shift) */}
+          <div
+            className="flex items-center justify-end gap-1 shrink-0"
+            onClick={(e) => e.stopPropagation()}
           >
-            <ArrowUpRight className="w-4 h-4" />
-          </a>
+            {/* Edit: hover / focus-within */}
+            <button
+              type="button"
+              onClick={() => onEdit(bm)}
+              className="w-7 h-7 rounded-[4px] hover:bg-surface-2 text-ink-subtle hover:text-ink flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity cursor-pointer"
+              title="Edit bookmark"
+              aria-label="Edit bookmark"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Copy URL */}
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="w-7 h-7 rounded-[4px] hover:bg-surface-2 text-ink-subtle hover:text-ink flex items-center justify-center transition-colors cursor-pointer"
+              title="Copy URL"
+              aria-label="Copy URL"
+            >
+              {copied ? (
+                <Check className="w-3.5 h-3.5 text-ok" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+            </button>
+
+            {/* Open External */}
+            <a
+              href={bm.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => sound.playClick(950)}
+              className="w-7 h-7 rounded-[4px] hover:bg-surface-2 text-ink-subtle hover:text-accent flex items-center justify-center transition-colors cursor-pointer"
+              title="Open link"
+              aria-label="Open link"
+            >
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </a>
+
+            {/* "⋯" Menu */}
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="w-7 h-7 rounded-[4px] text-ink-subtle hover:text-ink hover:bg-surface-2 flex items-center justify-center transition-colors cursor-pointer"
+                title="More actions"
+                aria-label="More actions"
+              >
+                <MoreHorizontal className="w-3.5 h-3.5" />
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-32 rounded-[8px] bg-surface-1 border border-hairline-strong shadow-xl py-1 z-30 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onEdit(bm);
+                    }}
+                    className="w-full px-3 py-1.5 flex items-center gap-2 text-ink-muted hover:text-ink hover:bg-surface-2 text-left cursor-pointer transition-colors"
+                  >
+                    <Edit2 className="w-3 h-3 text-ink-subtle" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDelete(bm);
+                    }}
+                    className="w-full px-3 py-1.5 flex items-center gap-2 text-danger hover:bg-danger/10 text-left cursor-pointer transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Chevron notes drawer indicator */}
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="w-5 h-7 flex items-center justify-center text-ink-subtle group-hover:text-ink-muted transition-colors cursor-pointer"
+              title={isExpanded ? "Collapse notes" : "Expand notes"}
+              aria-label={isExpanded ? "Collapse notes" : "Expand notes"}
+            >
+              <ChevronDown
+                className={cn(
+                  "w-3 h-3 transition-transform duration-150",
+                  isExpanded && "rotate-180"
+                )}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Expandable Notes & Tags Drawer */}
       {isExpanded && (
-        <div className="px-4 py-2.5 bg-surface-2/40 border-b border-hairline/60 text-xs text-ink-muted leading-relaxed space-y-1.5 animate-in fade-in duration-150">
-          {bm.notes ? (
-            <p className="whitespace-pre-wrap">{bm.notes}</p>
+        <div className="px-14 py-3 border-t border-hairline bg-surface-2/30 text-xs text-ink-muted leading-relaxed space-y-2 select-text">
+          {decodedNotes ? (
+            <p className="whitespace-pre-wrap text-[12px] leading-relaxed">
+              {decodedNotes}
+            </p>
           ) : (
             <div className="flex items-center justify-between py-0.5">
-              <span className="text-[11px] text-ink-tertiary">No developer notes for this bookmark.</span>
+              <span className="text-[11px] text-ink-subtle">
+                No developer notes for this bookmark.
+              </span>
               <button
                 type="button"
                 onClick={handleQuickEnrich}
                 disabled={enrichBookmark.isPending}
-                className="inline-flex items-center gap-1.5 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer py-1 px-2.5 rounded bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 shrink-0"
+                className="inline-flex items-center gap-1.5 text-[11px] font-medium text-accent hover:underline transition-colors cursor-pointer shrink-0 disabled:opacity-50"
                 title="Generate developer note with AI"
               >
                 {enrichBookmark.isPending ? (
-                  <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+                  <Loader2 className="w-3 h-3 animate-spin" />
                 ) : (
-                  <BrainCircuit className="w-3 h-3 text-indigo-400" />
+                  <BrainCircuit className="w-3 h-3" />
                 )}
                 <span>Generate AI Note</span>
               </button>
             </div>
           )}
+
           {bm.tags && bm.tags.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-              <Tag className="w-2.5 h-2.5 text-ink-subtle shrink-0" />
               {bm.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-3 text-ink-muted border border-hairline"
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded-[4px] bg-surface-2 text-ink-subtle border border-hairline select-none"
                 >
                   #{tag}
                 </span>
@@ -343,15 +425,6 @@ export function BookmarkListRow({
           )}
         </div>
       )}
-
-      <ConfirmModal
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleConfirmDelete}
-        title="Delete Bookmark"
-        description={`Are you sure you want to remove "${bm.title}" from your bookmarks vault?`}
-        confirmText="Delete Bookmark"
-      />
-    </>
+    </div>
   );
 }

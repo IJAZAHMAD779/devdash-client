@@ -12,6 +12,7 @@ import {
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { decodeEntities } from "@/lib/decode-entities";
 
 interface Props {
   bookmark: Bookmark | null;
@@ -38,7 +39,7 @@ export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
 
   useEffect(() => {
     if (bookmark && isOpen) {
-      setTitle(bookmark.title);
+      setTitle(decodeEntities(bookmark.title));
       setUrl(bookmark.url);
       const cat = (bookmark.category || "tools").toLowerCase();
       const isPreset = PRESET_BOOKMARK_CATEGORIES.some((p) => p.id === cat);
@@ -51,7 +52,7 @@ export function EditBookmarkModal({ bookmark, isOpen, onClose }: Props) {
         setIsCustomCategory(true);
         setCustomCategoryInput(cat);
       }
-      setNotes(bookmark.notes || "");
+      setNotes(decodeEntities(bookmark.notes || ""));
       setProjectId(bookmark.projectId || "");
       setTags(bookmark.tags || []);
       setTagInput("");

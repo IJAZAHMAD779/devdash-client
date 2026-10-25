@@ -1,19 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
-  Save,
   Star,
-  Eye,
-  Edit3,
-  Columns,
   FolderKanban,
-  Tag,
-  X,
-  Loader2,
   Trash2,
   ChevronLeft,
   PanelLeftOpen,
+  MoreHorizontal,
+  Check,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Note } from "@/types/note";
@@ -27,13 +22,16 @@ import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { toast } from "@/lib/toast";
+import { TagInput } from "@/components/snippets/tag-input";
+import { SaveStatus } from "./save-status";
+import { ModeSegmented, NoteViewMode } from "./mode-segmented";
 
 const MarkdownPreview = dynamic(
   () => import("./markdown-preview").then((mod) => mod.MarkdownPreview),
   {
     ssr: false,
     loading: () => (
-      <div className="p-6 text-xs text-ink-muted">Loading preview...</div>
+      <div className="p-8 text-xs text-ink-subtle italic">Loading preview…</div>
     ),
   }
 );
@@ -62,23 +60,22 @@ export function NotesEditor({
   const deleteNote = useDeleteNote();
   const { data: projects } = useProjects();
 
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [projectId, setProjectId] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
   const [favorite, setFavorite] = useState(false);
-  const [viewMode, setViewMode] = useState<"edit" | "split" | "preview">("split");
+  const [viewMode, setViewMode] = useState<NoteViewMode>("edit");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 768) {
-      setViewMode("edit");
-    }
-  }, []);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const projectMenuRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
 
+  // Sync state on note selection or creating new
   useEffect(() => {
     if (activeNote) {
       setTitle(activeNote.title);
@@ -87,53 +84,65 @@ export function NotesEditor({
       setTags(activeNote.tags || []);
       setFavorite(activeNote.favorite);
       setHasUnsavedChanges(false);
-      // Open notes in view/preview mode by default when clicked
-      setViewMode("preview");
     } else if (isNew) {
-      setTitle("Untitled Note");
-      setContent("## Overview\n\nStart typing markdown here...\n\n- Key feature 1\n- Key feature 2\n\n```typescript\nconst message = 'Hello DevDash';\n```");
+      setTitle("");
+      setContent("");
       setProjectId("");
       setTags([]);
       setFavorite(false);
       setHasUnsavedChanges(true);
-      setViewMode(typeof window !== "undefined" && window.innerWidth >= 1024 ? "split" : "edit");
+      setTimeout(() => titleInputRef.current?.focus(), 50);
+    } else {
+      setTitle("");
+      setContent("");
+      setProjectId("");
+      setTags([]);
+      setFavorite(false);
+      setHasUnsavedChanges(false);
     }
   }, [activeNote, isNew]);
 
-  const handleAddTag = (e: React.KeyboardEvent) => {
-    if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
-      e.preventDefault();
-      const clean = tagInput.trim().replace(/^#/, "");
-      if (clean && !tags.includes(clean)) {
-        setTags([...tags, clean]);
-        setHasUnsavedChanges(true);
+  // Close menus on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (
+        projectMenuRef.current &&
+        !projectMenuRef.current.contains(e.target as Node)
+      ) {
+        setIsProjectMenuOpen(false);
       }
-      setTagInput("");
-    }
-  };
+      if (
+        moreMenuRef.current &&
+        !moreMenuRef.current.contains(e.target as Node)
+      ) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((t) => t !== tagToRemove));
-    setHasUnsavedChanges(true);
-  };
+  const isSaving = createNote.isPending || updateNote.isPending;
 
   const handleSave = async () => {
-    if (!title.trim()) {
-      toast.warning("Note title required", { description: "Please enter a title for your note." });
-      return;
-    }
+    if (!title.trim() || isSaving) return;
+    sound.playClick(950);
 
-    sound.playClick(900);
-
-    const saveAction = (isNew || !activeNote)
-      ? createNote.mutateAsync({
+    try {
+      if (isNew || !activeNote) {
+        const created = await createNote.mutateAsync({
           title: title.trim(),
           content,
           projectId: projectId || null,
           tags,
           favorite,
-        })
-      : updateNote.mutateAsync({
+        });
+        sound.playSuccess();
+        toast.success("Note created", { description: `"${created.title}" saved.` });
+        setHasUnsavedChanges(false);
+        onSaved(created);
+      } else {
+        const updated = await updateNote.mutateAsync({
           id: activeNote.id,
           payload: {
             title: title.trim(),
@@ -143,75 +152,75 @@ export function NotesEditor({
             favorite,
           },
         });
-
-    try {
-      const saved = await toast.promise(saveAction, {
-        loading: "Saving note...",
-        success: (res) => `Note "${res.title}" saved.`,
-        error: "Failed to save note",
-      });
-      sound.playSuccess();
-      setHasUnsavedChanges(false);
-      onSaved(saved);
+        sound.playSuccess();
+        toast.success("Note saved", { description: `Changes to "${updated.title}" saved.` });
+        setHasUnsavedChanges(false);
+        onSaved(updated);
+      }
     } catch {
-      // toast.promise displays error
+      toast.error("Failed to save note");
     }
   };
 
-  const handleDelete = () => {
-    if (!activeNote) return;
-    setShowDeleteConfirm(true);
-  };
+  // Keyboard shortcut Cmd/Ctrl + S
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "s" || e.key === "S")) {
+        if (activeNote || isNew) {
+          e.preventDefault();
+          handleSave();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeNote, isNew, title, content, projectId, tags, favorite, isSaving]);
 
   const handleConfirmDelete = async () => {
     if (!activeNote) return;
     try {
       await deleteNote.mutateAsync(activeNote.id);
+      sound.playSuccess();
       toast.success("Note deleted", {
-        description: `"${activeNote.title}" has been removed.`,
+        description: `"${activeNote.title}" removed.`,
       });
+      setShowDeleteConfirm(false);
       onDeleted();
     } catch {
       toast.error("Failed to delete note");
     }
   };
 
+  const handleToggleStar = () => {
+    sound.playClick(favorite ? 600 : 850);
+    const next = !favorite;
+    setFavorite(next);
+    setHasUnsavedChanges(true);
+  };
+
   if (!activeNote && !isNew) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-ink-muted text-xs">
-        {isSidebarCollapsed && onToggleSidebar && (
-          <button
-            type="button"
-            onClick={() => {
-              sound.playClick(600);
-              onToggleSidebar();
-            }}
-            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer mb-3"
-            title="Expand Notes Sidebar"
-          >
-            <PanelLeftOpen className="w-3.5 h-3.5 text-primary" />
-            <span>Show Notes</span>
-          </button>
-        )}
-        <p>Select a note from the left list or create a new note to start writing.</p>
+      <div className="flex-1 h-full flex flex-col items-center justify-center p-8 text-center select-none bg-surface-1/20">
+        <div className="max-w-sm space-y-2">
+          <p className="text-xs text-ink-subtle">
+            Select a note from the sidebar or create a new one.
+          </p>
+        </div>
       </div>
     );
   }
 
-  const isSaving = createNote.isPending || updateNote.isPending;
+  const selectedProject = projects?.find((p) => p.id === projectId);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
-      {/* Top action toolbar */}
-      <div className="px-3 sm:px-6 py-2.5 sm:py-3 border-b border-hairline bg-surface-1/60 flex items-center justify-between gap-2 sm:gap-4">
+    <div className="flex-1 h-full flex flex-col overflow-hidden bg-surface-1/10">
+      {/* Row 1: Title Input Alone (full width, 18-20px semibold, accent underline on focus) */}
+      <div className="px-6 pt-5 pb-2 flex items-center gap-3 shrink-0">
         {onBackToList && (
           <button
             type="button"
-            onClick={() => {
-              sound.playClick(600);
-              onBackToList();
-            }}
-            className="md:hidden p-1.5 -ml-1 rounded-md hover:bg-surface-2 text-ink-subtle hover:text-ink transition-colors cursor-pointer shrink-0"
+            onClick={onBackToList}
+            className="md:hidden p-1.5 rounded-[6px] hover:bg-surface-2 text-ink-muted hover:text-ink cursor-pointer shrink-0"
             title="Back to notes list"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -221,210 +230,162 @@ export function NotesEditor({
         {isSidebarCollapsed && onToggleSidebar && (
           <button
             type="button"
-            onClick={() => {
-              sound.playClick(600);
-              onToggleSidebar();
-            }}
-            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer shrink-0"
-            title="Expand Notes Sidebar"
+            onClick={onToggleSidebar}
+            className="hidden md:flex p-1.5 rounded-[6px] hover:bg-surface-2 text-ink-muted hover:text-ink cursor-pointer shrink-0"
+            title="Show note list"
+            aria-label="Show note list"
           >
-            <PanelLeftOpen className="w-3.5 h-3.5 text-primary" />
-            <span>Notes</span>
+            <PanelLeftOpen className="w-4 h-4" />
           </button>
         )}
 
-        {/* Title Input */}
         <input
+          ref={titleInputRef}
           type="text"
-          placeholder="Note title..."
+          placeholder="Note title…"
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
             setHasUnsavedChanges(true);
           }}
-          className="text-sm sm:text-base font-semibold tracking-[-0.3px] text-ink bg-transparent focus:outline-none flex-1 placeholder:text-ink-tertiary min-w-0"
+          className="flex-1 min-w-0 bg-transparent text-[19px] font-semibold tracking-card-title text-ink placeholder:text-ink-subtle focus:outline-none border-b border-transparent focus:border-accent pb-1 transition-colors leading-tight"
         />
+      </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Quick Edit/View Action for Note */}
-          {activeNote && (
+      {/* Row 2: Toolbar (36px high, wraps on narrow screens) */}
+      <div className="px-6 py-2 border-b border-hairline bg-surface-1/40 flex items-center justify-between gap-3 flex-wrap shrink-0 min-h-[44px]">
+        {/* Left: Project Popover + TagInput */}
+        <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+          {/* Project Popover */}
+          <div className="relative" ref={projectMenuRef}>
             <button
               type="button"
-              onClick={() => {
-                sound.playClick(800);
-                setViewMode(viewMode === "preview" ? "edit" : "preview");
-              }}
+              onClick={() => setIsProjectMenuOpen(!isProjectMenuOpen)}
               className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer border border-hairline",
-                viewMode === "preview"
-                  ? "bg-surface-2 hover:bg-surface-3 text-ink"
-                  : "bg-surface-3 text-primary border-primary/30"
+                "h-7 px-2 rounded-[6px] text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer border select-none",
+                selectedProject
+                  ? "bg-surface-2 text-ink border-hairline"
+                  : "bg-transparent text-ink-subtle hover:text-ink hover:bg-surface-2 border-hairline/60"
               )}
-              title={viewMode === "preview" ? "Switch to Edit Mode" : "Switch to Preview Mode"}
+              title="Link project"
             >
-              {viewMode === "preview" ? (
-                <>
-                  <Edit3 className="w-3.5 h-3.5 text-primary" />
-                  <span className="hidden sm:inline">Edit</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="w-3.5 h-3.5 text-primary" />
-                  <span className="hidden sm:inline">View</span>
-                </>
-              )}
+              <FolderKanban className="w-3 h-3 text-ink-subtle shrink-0" />
+              <span className="truncate max-w-[140px]">
+                {selectedProject ? selectedProject.title : "No project"}
+              </span>
             </button>
-          )}
 
-          {/* Mode Switcher */}
-          <div className="flex items-center bg-surface-2 rounded-lg p-0.5 border border-hairline">
-            <button
-              onClick={() => {
-                sound.playClick(800);
-                setViewMode("edit");
-              }}
-              className={cn(
-                "p-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer",
-                viewMode === "edit"
-                  ? "bg-surface-3 text-ink shadow-xs"
-                  : "text-ink-tertiary hover:text-ink"
-              )}
-              title="Markdown Editor"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => {
-                sound.playClick(800);
-                setViewMode("split");
-              }}
-              className={cn(
-                "p-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer hidden md:block",
-                viewMode === "split"
-                  ? "bg-surface-3 text-ink shadow-xs"
-                  : "text-ink-tertiary hover:text-ink"
-              )}
-              title="Split View"
-            >
-              <Columns className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => {
-                sound.playClick(800);
-                setViewMode("preview");
-              }}
-              className={cn(
-                "p-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer",
-                viewMode === "preview"
-                  ? "bg-surface-3 text-ink shadow-xs"
-                  : "text-ink-tertiary hover:text-ink"
-              )}
-              title="Rendered Preview"
-            >
-              <Eye className="w-3.5 h-3.5" />
-            </button>
+            {isProjectMenuOpen && (
+              <div className="absolute left-0 top-full mt-1 w-52 rounded-[8px] bg-surface-1 border border-hairline-strong shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProjectId("");
+                    setHasUnsavedChanges(true);
+                    setIsProjectMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-surface-2 cursor-pointer text-ink-muted hover:text-ink"
+                >
+                  <span className="font-mono">No project</span>
+                  {!projectId && <Check className="w-3.5 h-3.5 text-accent" />}
+                </button>
+                {projects?.map((p) => {
+                  const isCur = p.id === projectId;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setProjectId(p.id);
+                        setHasUnsavedChanges(true);
+                        setIsProjectMenuOpen(false);
+                      }}
+                      className="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-surface-2 cursor-pointer text-ink-muted hover:text-ink truncate"
+                    >
+                      <span className="truncate">{p.title}</span>
+                      {isCur && <Check className="w-3.5 h-3.5 text-accent shrink-0 ml-1.5" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Favorite Toggle */}
+          {/* Tags via TagInput */}
+          <div className="max-w-md">
+            <TagInput
+              tags={tags}
+              onChange={(newTags) => {
+                setTags(newTags);
+                setHasUnsavedChanges(true);
+              }}
+              placeholder="Add tag…"
+              className="py-0.5 px-1.5 min-h-[28px] border-hairline/60 bg-transparent hover:border-hairline"
+            />
+          </div>
+        </div>
+
+        {/* Right: ModeSegmented + Star + SaveStatus + More "⋯" menu */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Segmented Mode Control */}
+          <ModeSegmented viewMode={viewMode} onChange={setViewMode} />
+
+          {/* Star (ghost icon, filled --warn when starred, no box) */}
           <button
-            onClick={() => {
-              sound.playClick(800);
-              setFavorite(!favorite);
-              setHasUnsavedChanges(true);
-            }}
+            type="button"
+            onClick={handleToggleStar}
             className={cn(
-              "p-2 rounded-md border text-xs transition-colors cursor-pointer",
+              "p-1.5 rounded-[6px] hover:bg-surface-2 transition-colors cursor-pointer",
               favorite
-                ? "bg-amber-500/15 border-amber-500/30 text-amber-300"
-                : "bg-surface-2 border-hairline text-ink-muted hover:text-ink"
+                ? "text-warn"
+                : "text-ink-subtle hover:text-warn"
             )}
-            title={favorite ? "Starred" : "Star note"}
+            title={favorite ? "Unstar note" : "Star note"}
+            aria-label={favorite ? "Unstar note" : "Star note"}
           >
             <Star
-              className={cn("w-3.5 h-3.5", favorite && "fill-amber-400")}
+              className={cn("w-3.5 h-3.5", favorite && "fill-warn")}
             />
           </button>
 
-          {/* Delete Button (if existing note) */}
+          {/* Save Status Control */}
+          <SaveStatus
+            hasUnsavedChanges={hasUnsavedChanges}
+            isSaving={isSaving}
+            disabled={!title.trim()}
+            onSave={handleSave}
+          />
+
+          {/* "⋯" Menu (Delete with Confirm) */}
           {activeNote && (
-            <button
-              onClick={handleDelete}
-              className="p-2 rounded-md bg-surface-2 hover:bg-semantic-error/15 border border-hairline hover:border-semantic-error/30 text-ink-tertiary hover:text-semantic-error transition-colors cursor-pointer"
-              title="Delete note"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {/* Save Button */}
-          <button
-            onClick={handleSave}
-            disabled={isSaving || !title.trim()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight shadow-sm shadow-primary/25 disabled:opacity-50 transition-all duration-150 cursor-pointer"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-3.5 h-3.5" />
-                <span>{hasUnsavedChanges ? "Save Changes" : "Saved"}</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Secondary Meta Row: Project & Tags */}
-      <div className="px-6 py-2.5 border-b border-hairline bg-surface-1/30 flex items-center gap-4 flex-wrap text-xs">
-        {/* Project Selector */}
-        <div className="flex items-center gap-1.5">
-          <FolderKanban className="w-3.5 h-3.5 text-ink-tertiary" />
-          <select
-            value={projectId}
-            onChange={(e) => {
-              setProjectId(e.target.value);
-              setHasUnsavedChanges(true);
-            }}
-            className="px-2 py-1 rounded bg-surface-2 border border-hairline text-xs text-ink focus:border-primary focus:outline-none"
-          >
-            <option value="">No Project Linked</option>
-            {projects?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Tags */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Tag className="w-3.5 h-3.5 text-ink-tertiary" />
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-surface-2 text-ink border border-hairline"
-            >
-              #{tag}
+            <div className="relative" ref={moreMenuRef}>
               <button
                 type="button"
-                onClick={() => handleRemoveTag(tag)}
-                className="text-ink-muted hover:text-ink cursor-pointer"
+                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                className="p-1.5 rounded-[6px] text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
+                title="More actions"
+                aria-label="More actions"
               >
-                <X className="w-3 h-3" />
+                <MoreHorizontal className="w-3.5 h-3.5" />
               </button>
-            </span>
-          ))}
-          <input
-            type="text"
-            placeholder="Add tag (Enter)..."
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={handleAddTag}
-            className="bg-transparent text-xs text-ink placeholder:text-ink-tertiary focus:outline-none min-w-[100px]"
-          />
+
+              {isMoreMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-36 rounded-[8px] bg-surface-1 border border-hairline-strong shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setShowDeleteConfirm(true);
+                    }}
+                    className="w-full px-3 py-1.5 flex items-center gap-2 text-danger hover:bg-danger/10 text-left transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -434,7 +395,7 @@ export function NotesEditor({
         {(viewMode === "edit" || viewMode === "split") && (
           <div
             className={cn(
-              "flex-1 min-h-0 flex flex-col p-4 sm:p-6 overflow-y-auto overscroll-contain touch-pan-y",
+              "flex-1 min-h-0 flex flex-col p-6 overflow-y-auto overscroll-contain touch-pan-y bg-surface-1",
               viewMode === "split" && "border-r border-hairline"
             )}
           >
@@ -444,26 +405,28 @@ export function NotesEditor({
                 setContent(e.target.value);
                 setHasUnsavedChanges(true);
               }}
-              placeholder="Write your markdown note here..."
-              className="w-full flex-1 bg-transparent text-xs font-mono text-ink placeholder:text-ink-tertiary focus:outline-none resize-none leading-relaxed touch-pan-y"
+              placeholder="Write your markdown note here…"
+              spellCheck={false}
+              className="w-full flex-1 bg-transparent font-mono text-[13px] leading-[1.6] text-ink placeholder:text-ink-subtle focus:outline-none resize-none caret-accent"
             />
           </div>
         )}
 
-        {/* Rendered Preview Panel */}
+        {/* Rendered Preview Panel (72ch column, 32px padding) */}
         {(viewMode === "preview" || viewMode === "split") && (
-          <div className="flex-1 min-h-0 p-4 sm:p-6 overflow-y-auto overscroll-contain touch-pan-y bg-surface-1/10">
-            <MarkdownPreview content={content} />
+          <div className="flex-1 min-h-0 p-8 overflow-y-auto overscroll-contain touch-pan-y bg-surface-1/20">
+            <MarkdownPreview content={content} noteTitle={title} />
           </div>
         )}
       </div>
 
+      {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleConfirmDelete}
         title="Delete Note"
-        description={`Are you sure you want to delete note "${activeNote?.title}"?`}
+        description={`Are you sure you want to delete "${activeNote?.title}"? This action cannot be undone.`}
         confirmText="Delete Note"
         variant="danger"
         isLoading={deleteNote.isPending}

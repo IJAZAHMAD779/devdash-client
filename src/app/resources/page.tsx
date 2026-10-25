@@ -8,6 +8,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useNotes } from "@/hooks/use-notes";
+import { useBookmarks } from "@/hooks/use-bookmarks";
 import { Note } from "@/types/note";
 import { NotesList } from "@/components/resources/notes-list";
 import { NotesEditor } from "@/components/resources/notes-editor";
@@ -55,13 +56,43 @@ export default function ResourcesPage() {
     search: debouncedNotesSearch,
   });
 
+  const { data: allBookmarks } = useBookmarks();
+
+  // Keyboard shortcuts: 1 switch to Notes, 2 switch to Bookmarks
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.key === "1") {
+        e.preventDefault();
+        sound.playClick(850);
+        setActiveTab("notes");
+      } else if (e.key === "2") {
+        e.preventDefault();
+        sound.playClick(850);
+        setActiveTab("bookmarks");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Auto-select first note if none selected or if selected note is missing
   useEffect(() => {
     if (!isCreatingNewNote && notes && notes.length > 0) {
       if (!selectedNoteId || !notes.some((n) => n.id === selectedNoteId)) {
         const sorted = [...notes].sort((a, b) => {
           if (a.favorite === b.favorite) {
-            return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+            const timeA = new Date(a.updatedAt || a.createdAt).getTime();
+            const timeB = new Date(b.updatedAt || b.createdAt).getTime();
+            return timeB - timeA;
           }
           return a.favorite ? -1 : 1;
         });
@@ -99,61 +130,80 @@ export default function ResourcesPage() {
   return (
     <div className="flex-1 h-screen max-h-screen bg-canvas text-ink flex flex-col overflow-hidden">
       {/* Top Header — unified h-14 height matching sidebar brand header */}
-      <div className="h-14 px-4 sm:px-6 border-b border-hairline flex items-center justify-between gap-4 bg-surface-1/40 flex-shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <h1 className="text-sm sm:text-base font-semibold tracking-[-0.3px] text-ink truncate">
-            Resources & Knowledge
+      <div className="h-14 px-4 sm:px-6 border-b border-hairline flex items-center justify-between gap-6 bg-surface-1/40 flex-shrink-0 select-none">
+        <div className="flex items-center gap-8 h-full min-w-0">
+          <h1 className="text-sm font-semibold tracking-[-0.3px] text-ink shrink-0">
+            Resources
           </h1>
+
+          {/* Underline Tabs: Notes and Bookmarks with neutral icons and mono counts */}
+          <nav
+            role="tablist"
+            aria-label="Resources navigation"
+            className="flex items-center gap-6 h-full"
+          >
+            <button
+              role="tab"
+              aria-selected={activeTab === "notes"}
+              onClick={() => {
+                sound.playClick(850);
+                setActiveTab("notes");
+              }}
+              className={cn(
+                "h-full inline-flex items-center gap-2 text-xs font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap",
+                activeTab === "notes"
+                  ? "border-accent text-ink font-semibold"
+                  : "border-transparent text-ink-muted hover:text-ink"
+              )}
+            >
+              <BookOpen className="w-4 h-4 text-ink-subtle" />
+              <span>Notes</span>
+              {typeof notes?.length === "number" && (
+                <span className="font-mono text-[11px] text-ink-subtle">
+                  {notes.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              role="tab"
+              aria-selected={activeTab === "bookmarks"}
+              onClick={() => {
+                sound.playClick(850);
+                setActiveTab("bookmarks");
+              }}
+              className={cn(
+                "h-full inline-flex items-center gap-2 text-xs font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap",
+                activeTab === "bookmarks"
+                  ? "border-accent text-ink font-semibold"
+                  : "border-transparent text-ink-muted hover:text-ink"
+              )}
+            >
+              <BookmarkIcon className="w-4 h-4 text-ink-subtle" />
+              <span>Bookmarks</span>
+              {typeof allBookmarks?.length === "number" && (
+                <span className="font-mono text-[11px] text-ink-subtle">
+                  {allBookmarks.length}
+                </span>
+              )}
+            </button>
+          </nav>
         </div>
 
-        {/* Right side: Digest trigger */}
+        {/* Right side: Weekly Digest as a ghost button with a neutral icon */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => {
               sound.playClick(900);
               setIsDigestModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer px-2.5 py-1.5 rounded-md hover:bg-surface-2"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer px-2.5 py-1.5 rounded-[6px] hover:bg-surface-2"
+            title="Weekly productivity digest"
           >
-            <Mail className="w-3.5 h-3.5 text-primary" />
+            <Mail className="w-3.5 h-3.5 text-ink-subtle" />
             <span>Weekly Digest</span>
           </button>
         </div>
-      </div>
-
-      {/* Sliding Pill Tabs Bar */}
-      <div className="px-4 sm:px-6 py-2 border-b border-hairline bg-surface-1/20 flex items-center gap-2 shrink-0 overflow-x-auto no-scrollbar">
-        <button
-          onClick={() => {
-            sound.playClick(850);
-            setActiveTab("notes");
-          }}
-          className={cn(
-            "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium tracking-tight transition-all duration-150 cursor-pointer whitespace-nowrap",
-            activeTab === "notes"
-              ? "bg-surface-3 text-ink font-semibold shadow-xs border border-hairline"
-              : "text-ink-muted hover:text-ink hover:bg-surface-2"
-          )}
-        >
-          <BookOpen className="w-3.5 h-3.5 text-primary" />
-          <span>Technical Notes</span>
-        </button>
-
-        <button
-          onClick={() => {
-            sound.playClick(850);
-            setActiveTab("bookmarks");
-          }}
-          className={cn(
-            "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium tracking-tight transition-all duration-150 cursor-pointer whitespace-nowrap",
-            activeTab === "bookmarks"
-              ? "bg-surface-3 text-ink font-semibold shadow-xs border border-hairline"
-              : "text-ink-muted hover:text-ink hover:bg-surface-2"
-          )}
-        >
-          <BookmarkIcon className="w-3.5 h-3.5 text-rose-400" />
-          <span>URL Bookmarks</span>
-        </button>
       </div>
 
       {/* Main Workspace Body */}
@@ -173,7 +223,12 @@ export default function ResourcesPage() {
                 isNotesSidebarCollapsed && "md:hidden"
               )}
             />
-            <div className={cn("flex-1 h-full min-w-0 overflow-hidden", mobileNoteView === "list" ? "hidden md:flex flex-col" : "flex flex-col")}>
+            <div
+              className={cn(
+                "flex-1 h-full min-w-0 overflow-hidden",
+                mobileNoteView === "list" ? "hidden md:flex flex-col" : "flex flex-col"
+              )}
+            >
               <NotesEditor
                 activeNote={activeNote}
                 isNew={isCreatingNewNote}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   FolderInput,
@@ -30,6 +30,9 @@ interface Props {
   allBookmarks: Bookmark[];
   onClearSelection: () => void;
   onOpenMoveModal: () => void;
+  onSelectAll?: () => void;
+  isAllSelected?: boolean;
+  totalFilteredCount?: number;
 }
 
 export function BulkActionBar({
@@ -37,10 +40,17 @@ export function BulkActionBar({
   allBookmarks,
   onClearSelection,
   onOpenMoveModal,
+  onSelectAll,
+  isAllSelected = false,
+  totalFilteredCount,
 }: Props) {
   const [copyMenuOpen, setCopyMenuOpen] = useState(false);
   const [copiedMode, setCopiedMode] = useState<"plain" | "markdown" | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showClearNotesConfirm, setShowClearNotesConfirm] = useState(false);
+
+  const copyMenuRef = useRef<HTMLDivElement>(null);
+  const clearNotesConfirmRef = useRef<HTMLDivElement>(null);
 
   const batchEnrich = useBatchEnrichBookmarks();
   const batchClearNotes = useClearBookmarkNotes();
@@ -48,7 +58,6 @@ export function BulkActionBar({
 
   const count = selectedBookmarkIds.size;
 
-  // Selected bookmark objects
   const selectedBookmarks = allBookmarks.filter((b) =>
     selectedBookmarkIds.has(b.id)
   );
@@ -56,13 +65,38 @@ export function BulkActionBar({
   // Keyboard shortcut Esc to deselect
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && count > 0 && !showDeleteConfirm) {
+      if (
+        e.key === "Escape" &&
+        count > 0 &&
+        !showDeleteConfirm &&
+        !showClearNotesConfirm
+      ) {
         onClearSelection();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [count, onClearSelection, showDeleteConfirm]);
+  }, [count, onClearSelection, showDeleteConfirm, showClearNotesConfirm]);
+
+  // Outside click to close popovers
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (
+        copyMenuRef.current &&
+        !copyMenuRef.current.contains(e.target as Node)
+      ) {
+        setCopyMenuOpen(false);
+      }
+      if (
+        clearNotesConfirmRef.current &&
+        !clearNotesConfirmRef.current.contains(e.target as Node)
+      ) {
+        setShowClearNotesConfirm(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   if (count === 0) return null;
 
@@ -117,7 +151,7 @@ export function BulkActionBar({
     }
   };
 
-  const handleBatchClearNotes = async () => {
+  const handleConfirmClearNotes = async () => {
     sound.playClick(900);
     try {
       const res = await batchClearNotes.mutateAsync({
@@ -127,6 +161,7 @@ export function BulkActionBar({
       toast.success("Notes Cleared", {
         description: `Cleared developer notes on ${res.clearedCount} bookmarks.`,
       });
+      setShowClearNotesConfirm(false);
     } catch {
       toast.error("Failed to clear notes");
     }
@@ -150,78 +185,85 @@ export function BulkActionBar({
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[94vw] animate-in fade-in slide-in-from-bottom-4 duration-200 select-none">
-        <div className="rounded-full border border-white/10 bg-[#0d0e12]/95 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.65)] ring-1 ring-white/5 px-3 py-2 flex items-center gap-2 text-ink">
-          {/* Selected Count & Clear */}
-          <div className="flex items-center gap-2 pl-1 pr-3 border-r border-white/10 shrink-0">
-            <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-primary/20 border border-primary/30 text-primary flex items-center justify-center text-[11px] font-mono font-bold">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[94vw] select-none animate-in fade-in slide-in-from-bottom-2 duration-150">
+        <div className="h-10 px-3 rounded-[8px] border border-hairline-strong bg-surface-1 shadow-2xl flex items-center gap-2 text-ink">
+          {/* N selected */}
+          <div className="flex items-center gap-2 pr-2.5 border-r border-hairline shrink-0">
+            <span className="font-mono text-xs font-semibold text-ink">
               {count}
             </span>
-            <span className="text-xs font-medium text-ink-muted hidden sm:inline">
+            <span className="text-xs text-ink-subtle hidden sm:inline">
               selected
             </span>
-            <button
-              onClick={() => {
-                sound.playClick(700);
-                onClearSelection();
-              }}
-              title="Clear selection (Esc)"
-              className="w-5 h-5 rounded-full hover:bg-white/10 text-ink-subtle hover:text-ink flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+
+            {/* Select All N toggle if available */}
+            {onSelectAll && totalFilteredCount && totalFilteredCount > count && (
+              <button
+                type="button"
+                onClick={onSelectAll}
+                className="text-xs text-accent hover:underline ml-1 cursor-pointer"
+              >
+                Select all {totalFilteredCount}
+              </button>
+            )}
           </div>
 
-          {/* Move to Category CTA */}
+          {/* Move to Category */}
           <button
+            type="button"
             onClick={() => {
               sound.playClick(900);
               onOpenMoveModal();
             }}
-            className="h-8 px-3 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-medium shadow-sm shadow-primary/25 inline-flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap"
-            title="Move selected bookmarks to another category"
+            className="h-7 px-2 rounded-[6px] text-ink-muted hover:text-ink hover:bg-surface-2 text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+            title="Move selected to category"
           >
-            <FolderInput className="w-3.5 h-3.5 shrink-0" />
-            <span>Move</span>
+            <FolderInput className="w-4 h-4 shrink-0 text-ink-subtle" />
+            <span className="hidden sm:inline">Move</span>
           </button>
 
-          {/* Copy URLs with Split Dropdown */}
-          <div className="relative shrink-0">
-            <div className="h-8 inline-flex items-center rounded-lg bg-white/[0.05] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-ink transition-colors whitespace-nowrap">
+          {/* Copy URLs split dropdown */}
+          <div className="relative shrink-0" ref={copyMenuRef}>
+            <div className="h-7 inline-flex items-center rounded-[6px] hover:bg-surface-2 text-xs font-medium text-ink-muted transition-colors">
               <button
+                type="button"
                 onClick={handleCopyPlain}
-                className="h-full inline-flex items-center gap-1.5 px-2.5 hover:text-white transition-colors cursor-pointer"
-                title="Copy all URLs to clipboard"
+                className="h-full inline-flex items-center gap-1.5 px-2 hover:text-ink cursor-pointer"
+                title="Copy URLs to clipboard"
               >
                 {copiedMode ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <Check className="w-3.5 h-3.5 text-ok shrink-0" />
                 ) : (
                   <Copy className="w-3.5 h-3.5 text-ink-subtle shrink-0" />
                 )}
-                <span>{copiedMode ? "Copied" : "Copy URLs"}</span>
+                <span className="hidden sm:inline">
+                  {copiedMode ? "Copied" : "Copy"}
+                </span>
               </button>
-              <div className="h-4 w-px bg-white/10" />
               <button
+                type="button"
                 onClick={() => setCopyMenuOpen(!copyMenuOpen)}
-                className="h-full px-2 hover:bg-white/10 rounded-r-lg text-ink-subtle hover:text-ink cursor-pointer flex items-center justify-center"
-                title="More copy options"
+                className="h-full px-1 text-ink-subtle hover:text-ink cursor-pointer flex items-center justify-center border-l border-hairline/60"
+                title="Copy options"
               >
                 <ChevronUp className="w-3 h-3" />
               </button>
             </div>
 
             {copyMenuOpen && (
-              <div className="absolute bottom-full mb-2 left-0 w-48 rounded-xl bg-[#141519] border border-white/10 shadow-2xl p-1 space-y-0.5 text-xs z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute bottom-full mb-1.5 left-0 w-48 rounded-[8px] bg-surface-1 border border-hairline-strong shadow-xl p-1 space-y-0.5 text-xs z-50">
                 <button
+                  type="button"
                   onClick={handleCopyPlain}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-white/10 text-ink text-left cursor-pointer transition-colors"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] hover:bg-surface-2 text-ink text-left cursor-pointer transition-colors"
                 >
                   <Link2 className="w-3.5 h-3.5 text-ink-subtle shrink-0" />
                   <span>Plain URLs (newline)</span>
                 </button>
                 <button
+                  type="button"
                   onClick={handleCopyMarkdown}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-white/10 text-ink text-left cursor-pointer transition-colors"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] hover:bg-surface-2 text-ink text-left cursor-pointer transition-colors"
                 >
                   <FileText className="w-3.5 h-3.5 text-ink-subtle shrink-0" />
                   <span>Markdown links</span>
@@ -230,47 +272,94 @@ export function BulkActionBar({
             )}
           </div>
 
-          {/* Auto-Note with AI */}
+          {/* AI Notes */}
           <button
+            type="button"
             onClick={handleBatchEnrich}
             disabled={batchEnrich.isPending}
-            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/25 text-indigo-300 text-xs font-medium transition-colors cursor-pointer shrink-0 disabled:opacity-50 whitespace-nowrap"
-            title="Generate AI developer notes for selected bookmarks"
+            className="h-7 px-2 rounded-[6px] text-ink-muted hover:text-ink hover:bg-surface-2 text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+            title="Generate AI notes for selected"
           >
             {batchEnrich.isPending ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-accent" />
             ) : (
-              <BrainCircuit className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <BrainCircuit className="w-3.5 h-3.5 shrink-0 text-ink-subtle" />
             )}
-            <span>AI Notes</span>
+            <span className="hidden sm:inline">AI Notes</span>
           </button>
 
-          {/* Clear Notes */}
-          <button
-            onClick={handleBatchClearNotes}
-            disabled={batchClearNotes.isPending}
-            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] border border-white/10 text-ink-muted hover:text-ink text-xs font-medium transition-colors cursor-pointer shrink-0 disabled:opacity-50 whitespace-nowrap"
-            title="Clear notes on selected bookmarks"
-          >
-            {batchClearNotes.isPending ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-            ) : (
-              <Eraser className="w-3.5 h-3.5 text-ink-subtle shrink-0" />
+          {/* Clear Notes with Confirmation Popover */}
+          <div className="relative shrink-0" ref={clearNotesConfirmRef}>
+            <button
+              type="button"
+              onClick={() => setShowClearNotesConfirm(!showClearNotesConfirm)}
+              disabled={batchClearNotes.isPending}
+              className="h-7 px-2 rounded-[6px] text-ink-muted hover:text-danger hover:bg-surface-2 text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+              title="Clear notes on selected bookmarks"
+            >
+              {batchClearNotes.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+              ) : (
+                <Eraser className="w-3.5 h-3.5 shrink-0 text-ink-subtle" />
+              )}
+              <span className="hidden sm:inline">Clear notes</span>
+            </button>
+
+            {/* Inline Confirmation Popover */}
+            {showClearNotesConfirm && (
+              <div className="absolute bottom-full mb-1.5 right-0 sm:left-1/2 sm:-translate-x-1/2 w-64 rounded-[8px] bg-surface-1 border border-hairline-strong shadow-xl p-3 text-xs space-y-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <p className="font-medium text-ink leading-snug">
+                  Remove notes from {count} {count === 1 ? "bookmark" : "bookmarks"}?
+                </p>
+                <p className="text-[11px] text-ink-subtle leading-tight">
+                  This will wipe description and AI notes text. Bookmarks remain intact.
+                </p>
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowClearNotesConfirm(false)}
+                    className="px-2 py-1 rounded-[4px] text-ink-muted hover:text-ink hover:bg-surface-2 text-xs transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmClearNotes}
+                    className="px-2.5 py-1 rounded-[4px] bg-danger text-white hover:bg-danger/90 text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
             )}
-            <span>Clear Notes</span>
-          </button>
+          </div>
 
           {/* Delete Action */}
           <button
+            type="button"
             onClick={() => {
               sound.playClick(600);
               setShowDeleteConfirm(true);
             }}
-            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-300 hover:text-rose-200 text-xs font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-7 px-2 rounded-[6px] text-ink-muted hover:text-danger hover:bg-surface-2 text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
             title="Delete selected bookmarks"
           >
-            <Trash2 className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-            <span>Delete</span>
+            <Trash2 className="w-3.5 h-3.5 shrink-0 text-ink-subtle" />
+            <span className="hidden sm:inline">Delete</span>
+          </button>
+
+          {/* ✕ Clear Selection */}
+          <button
+            type="button"
+            onClick={() => {
+              sound.playClick(700);
+              onClearSelection();
+            }}
+            title="Clear selection (Esc)"
+            aria-label="Clear selection (Esc)"
+            className="w-7 h-7 rounded-[4px] text-ink-subtle hover:text-ink hover:bg-surface-2 flex items-center justify-center transition-colors cursor-pointer ml-1"
+          >
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -284,7 +373,7 @@ export function BulkActionBar({
         description={`Are you sure you want to delete ${count} ${
           count === 1 ? "bookmark" : "bookmarks"
         }? This action will permanently remove them from your vault.`}
-        confirmText={batchDelete.isPending ? "Deleting..." : "Delete All"}
+        confirmText={batchDelete.isPending ? "Deleting…" : "Delete All"}
         variant="danger"
       />
     </>

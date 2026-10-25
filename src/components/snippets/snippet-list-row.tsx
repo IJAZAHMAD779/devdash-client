@@ -7,9 +7,8 @@ import { useToggleSnippetFavorite, useDeleteSnippet } from "@/hooks/use-snippets
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
-import { CopyButton } from "./copy-button";
 import { LanguageDot, formatLanguageName } from "./language-dot";
-import { TagList } from "./tag-list";
+import { CopyButton } from "./copy-button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 interface SnippetListRowProps {
@@ -17,6 +16,9 @@ interface SnippetListRowProps {
   onView: (snippet: Snippet) => void;
   onEdit: (snippet: Snippet) => void;
   showLanguage?: boolean;
+  hasTags?: boolean;
+  hasProject?: boolean;
+  gridTemplate: string;
 }
 
 function formatRelativeTime(dateString?: string): string | null {
@@ -45,6 +47,9 @@ export function SnippetListRow({
   onView,
   onEdit,
   showLanguage = true,
+  hasTags = true,
+  hasProject = true,
+  gridTemplate,
 }: SnippetListRowProps) {
   const toggleFavorite = useToggleSnippetFavorite();
   const deleteSnippet = useDeleteSnippet();
@@ -102,15 +107,16 @@ export function SnippetListRow({
             onView(snippet);
           }
         }}
-        className="group relative flex items-center h-11 px-3 border-b border-hairline hover:bg-surface-2 transition-colors cursor-pointer select-none text-xs focus-visible:outline-none focus-visible:bg-surface-2"
+        style={{ gridTemplateColumns: gridTemplate }}
+        className="group relative grid items-center gap-4 h-[52px] px-3 border-b border-hairline hover:bg-surface-2 transition-colors cursor-pointer select-none text-xs focus-visible:outline-none focus-visible:bg-surface-2"
       >
-        {/* Star Column */}
-        <div className="w-8 shrink-0 flex items-center justify-start">
+        {/* 1. Star Column (40px) */}
+        <div className="min-w-0 overflow-hidden flex items-center justify-start">
           <button
             type="button"
             onClick={handleFavoriteClick}
             aria-label={snippet.favorite ? "Unstar snippet" : "Star snippet"}
-            className="p-1 rounded text-ink-subtle hover:text-ink transition-colors"
+            className="p-1 rounded text-ink-subtle hover:text-ink transition-colors cursor-pointer"
           >
             <Star
               className={cn(
@@ -121,85 +127,81 @@ export function SnippetListRow({
           </button>
         </div>
 
-        {/* Title + Description Column (flex-1) */}
-        <div className="flex-1 min-w-0 pr-3 flex flex-col justify-center">
-          <div className="flex items-baseline gap-2 truncate">
-            <span className="font-medium text-ink truncate leading-tight">
-              {snippet.title}
+        {/* 2. Title + Description Column: Two-line cell (minmax(220px, 1fr)) */}
+        <div className="min-w-0 overflow-hidden flex flex-col justify-center">
+          <span
+            className="font-medium text-sm text-ink truncate leading-snug min-w-0 max-w-full"
+            title={snippet.title}
+          >
+            {snippet.title}
+          </span>
+          {snippet.description ? (
+            <span
+              className="text-xs text-ink-subtle truncate leading-tight mt-0.5"
+              title={snippet.description}
+            >
+              {snippet.description}
             </span>
-            {snippet.description && (
-              <span className="hidden md:inline text-ink-subtle truncate text-[11px]">
-                — {snippet.description}
-              </span>
-            )}
-          </div>
-
-          {/* Under ~640px: meta line below title */}
-          <div className="flex sm:hidden items-center gap-2 mt-0.5 text-[10px] font-mono text-ink-subtle">
-            {showLanguage && (
-              <span className="inline-flex items-center gap-1">
-                <LanguageDot language={snippet.language} className="shrink-0" />
-                <span>{formatLanguageName(snippet.language)}</span>
-              </span>
-            )}
-            {snippet.tags && snippet.tags.length > 0 && (
-              <TagList tags={snippet.tags} maxDisplay={1} />
-            )}
-            {projectName && <span>· {projectName}</span>}
-            {relativeTime && <span>· {relativeTime}</span>}
-          </div>
+          ) : null}
         </div>
 
-        {/* Language Column (hidden if inside language folder) */}
+        {/* 3. Language Column (132px, conditional on showLanguage) */}
         {showLanguage && (
-          <div className="hidden sm:flex items-center gap-1.5 w-28 shrink-0 font-mono text-[11px] text-ink-muted truncate">
+          <div className="min-w-0 overflow-hidden flex items-center gap-1.5 font-mono text-[11px] text-ink-muted truncate">
             <LanguageDot language={snippet.language} className="shrink-0" />
             <span className="truncate">{formatLanguageName(snippet.language)}</span>
           </div>
         )}
 
-        {/* Tags Column */}
-        <div className="hidden sm:flex items-center w-28 shrink-0 truncate">
-          {snippet.tags && snippet.tags.length > 0 ? (
-            <TagList tags={snippet.tags} maxDisplay={2} />
-          ) : (
-            <span className="text-ink-subtle/50 font-mono text-[11px]">—</span>
-          )}
-        </div>
+        {/* 4. Tags Column (160px, conditional on hasTags) */}
+        {hasTags && (
+          <div className="min-w-0 overflow-hidden font-mono text-[11px] text-ink-subtle truncate">
+            {snippet.tags && snippet.tags.length > 0 ? (
+              <span className="truncate">
+                {snippet.tags.map((t) => `#${t}`).join(" ")}
+              </span>
+            ) : (
+              "—"
+            )}
+          </div>
+        )}
 
-        {/* Project Column */}
-        <div className="hidden md:flex items-center w-28 shrink-0 font-mono text-[11px] text-ink-subtle truncate">
-          <span className="truncate">{projectName || "—"}</span>
-        </div>
+        {/* 5. Project Column (120px, conditional on hasProject) */}
+        {hasProject && (
+          <div className="min-w-0 overflow-hidden font-mono text-[11px] text-ink-subtle truncate">
+            <span className="truncate">{projectName || "—"}</span>
+          </div>
+        )}
 
-        {/* Updated Column */}
-        <div className="hidden lg:flex items-center justify-end w-20 shrink-0 font-mono text-[10px] text-ink-subtle text-right">
+        {/* 6. Updated Column (88px, right-aligned) */}
+        <div className="min-w-0 overflow-hidden font-mono text-[11px] text-ink-subtle text-right tabular-nums">
           {relativeTime || "—"}
         </div>
 
-        {/* Actions Column (Copy always visible; Edit and Menu on hover/focus-within) */}
+        {/* 7. Actions Column (88px, right-aligned flex cell with gap-1, 28px hit areas) */}
         <div
-          className="flex items-center justify-end gap-1 w-20 shrink-0 pl-2"
+          className="min-w-0 overflow-hidden flex items-center justify-end gap-1"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Quick Copy: Always visible ghost icon */}
+          {/* Quick Copy code button (28px hit area, 16px icon) */}
           <CopyButton
             textToCopy={snippet.code}
-            className="h-7 w-7 text-ink-subtle hover:text-ink hover:bg-surface-3"
+            label="Copy code"
+            className="h-7 w-7 text-ink-subtle hover:text-ink hover:bg-surface-3 cursor-pointer"
           />
 
-          {/* Edit Button: Hover/focus-within */}
+          {/* Edit Button (28px hit area, 16px icon) */}
           <button
             type="button"
             onClick={handleEditClick}
             aria-label="Edit snippet"
             title="Edit snippet"
-            className="p-1.5 rounded-[6px] text-ink-subtle hover:text-ink hover:bg-surface-3 transition-opacity opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-[768px]:opacity-100"
+            className="h-7 w-7 inline-flex items-center justify-center rounded-[6px] text-ink-subtle hover:text-ink hover:bg-surface-3 transition-opacity opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-[768px]:opacity-100 cursor-pointer"
           >
-            <Edit2 className="w-3.5 h-3.5" />
+            <Edit2 className="w-4 h-4" />
           </button>
 
-          {/* More Menu (Delete): Hover/focus-within */}
+          {/* More Menu / Delete Button (28px hit area, 16px icon) */}
           <div className="relative">
             <button
               type="button"
@@ -209,9 +211,9 @@ export function SnippetListRow({
                 setShowMenu(!showMenu);
               }}
               aria-label="Snippet actions"
-              className="p-1.5 rounded-[6px] text-ink-subtle hover:text-ink hover:bg-surface-3 transition-opacity opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-[768px]:opacity-100"
+              className="h-7 w-7 inline-flex items-center justify-center rounded-[6px] text-ink-subtle hover:text-ink hover:bg-surface-3 transition-opacity opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-[768px]:opacity-100 cursor-pointer"
             >
-              <MoreHorizontal className="w-3.5 h-3.5" />
+              <MoreHorizontal className="w-4 h-4" />
             </button>
 
             {showMenu && (
@@ -222,7 +224,7 @@ export function SnippetListRow({
                 <button
                   type="button"
                   onClick={handleDeleteClick}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-rose-400 hover:bg-rose-500/10 transition-colors text-left font-mono"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-rose-400 hover:bg-rose-500/10 transition-colors text-left font-mono cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5 shrink-0" />
                   <span>Delete</span>

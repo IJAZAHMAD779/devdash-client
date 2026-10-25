@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   LayoutGrid,
   List,
@@ -11,6 +11,7 @@ import {
   Blocks,
   Palette,
   Layers,
+  PanelLeft,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,9 @@ interface ComponentsTopBarProps {
   onNewComponent: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  // Rail toggle
+  isRailCollapsed?: boolean;
+  onToggleRail?: () => void;
   // Framework filter
   availableFrameworks: ComponentFramework[];
   selectedFrameworks: ComponentFramework[];
@@ -68,6 +72,8 @@ export function ComponentsTopBar({
   onNewComponent,
   searchQuery,
   onSearchChange,
+  isRailCollapsed = false,
+  onToggleRail,
   availableFrameworks,
   selectedFrameworks,
   onFrameworksChange,
@@ -83,6 +89,7 @@ export function ComponentsTopBar({
   className,
 }: ComponentsTopBarProps) {
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // Keyboard shortcuts: "/" search, "N" new component, "G"/"L" view toggle
   useEffect(() => {
@@ -139,7 +146,7 @@ export function ComponentsTopBar({
   }));
 
   return (
-    <div className={cn("flex flex-col gap-3 pb-3 border-b border-hairline", className)}>
+    <div className={cn("flex flex-col gap-4 pb-4 border-b border-hairline", className)}>
       {/* Row 1: Title, Total Count, View switcher, Synthesizer ghost CTA, New Component */}
       <div className="flex items-center justify-between gap-3">
         {/* Title + Muted Mono Total Count */}
@@ -158,7 +165,7 @@ export function ComponentsTopBar({
           <div
             role="group"
             aria-label="View mode"
-            className="flex items-center p-0.5 rounded-[6px] bg-surface-1 border border-hairline"
+            className="h-9 p-0.5 rounded-[6px] bg-surface-1 border border-hairline inline-flex items-center"
           >
             <button
               type="button"
@@ -170,7 +177,7 @@ export function ComponentsTopBar({
               aria-label="Grid view (G)"
               aria-pressed={viewMode === "cards"}
               className={cn(
-                "p-1.5 rounded-[4px] text-xs transition-colors",
+                "h-8 w-8 inline-flex items-center justify-center rounded-[4px] text-xs transition-colors cursor-pointer",
                 viewMode === "cards"
                   ? "bg-surface-2 text-ink shadow-sm"
                   : "text-ink-subtle hover:text-ink hover:bg-surface-2/40"
@@ -188,7 +195,7 @@ export function ComponentsTopBar({
               aria-label="List view (L)"
               aria-pressed={viewMode === "list"}
               className={cn(
-                "p-1.5 rounded-[4px] text-xs transition-colors",
+                "h-8 w-8 inline-flex items-center justify-center rounded-[4px] text-xs transition-colors cursor-pointer",
                 viewMode === "list"
                   ? "bg-surface-2 text-ink shadow-sm"
                   : "text-ink-subtle hover:text-ink hover:bg-surface-2/40"
@@ -205,60 +212,73 @@ export function ComponentsTopBar({
               sound.playClick(900);
               onOpenSynthesizer();
             }}
-            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-[6px] text-xs font-medium text-ink-muted hover:text-ink hover:bg-surface-2 border border-hairline transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[6px] text-xs font-medium text-ink-muted hover:text-ink hover:bg-surface-2 border border-hairline transition-colors cursor-pointer"
             title="Open AI Synthesizer"
           >
             <Blocks className="w-3.5 h-3.5 text-ink-subtle" />
             <span>AI Synthesizer</span>
           </button>
 
-          {/* New Component: Only accent-filled button with N shortcut */}
+          {/* New Component: Only accent-filled button with quiet N hint */}
           <button
             type="button"
             onClick={() => {
               sound.playClick(900);
               onNewComponent();
             }}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors shadow-sm focus-visible:ring-1 focus-visible:ring-accent"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[6px] bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors shadow-sm focus-visible:ring-1 focus-visible:ring-accent cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New Component</span>
-            <kbd className="hidden sm:inline-block text-[10px] bg-black/25 px-1 py-0.2 rounded font-mono font-normal">
+            <span className="hidden sm:inline-block text-[11px] font-mono text-white/70 ml-0.5">
               N
-            </kbd>
+            </span>
           </button>
         </div>
       </div>
 
-      {/* Row 2: Search, Framework, Styling, Project popovers, Starred toggle */}
+      {/* Row 2: Rail Toggle, Search, Framework, Styling, Project popovers, Starred toggle */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Search Input: 32-36px, surface-2, 6px radius, "/" hint */}
-        <div className="relative flex-1 min-w-[200px] h-8.5 max-w-md">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-subtle pointer-events-none" />
+        {/* Rail Toggle Button (leftmost in toolbar row) */}
+        {onToggleRail && (
+          <button
+            type="button"
+            onClick={onToggleRail}
+            title={isRailCollapsed ? "Show folders" : "Hide folders"}
+            aria-label={isRailCollapsed ? "Show folders" : "Hide folders"}
+            className="h-9 w-9 shrink-0 rounded-[6px] inline-flex items-center justify-center text-ink-subtle hover:text-ink hover:bg-surface-2 border border-hairline transition-colors cursor-pointer"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Search Input: fixed h-9 (36px), min-h-9, shrink-0, items-center, px-3, 6px radius, surface-2 */}
+        <div className="relative flex-1 min-w-[220px] max-w-[420px] h-9 min-h-9 shrink-0 flex items-center px-3 rounded-[6px] bg-surface-2 border border-hairline focus-within:border-hairline-strong transition-colors">
+          <Search className="w-3.5 h-3.5 text-ink-subtle shrink-0 pointer-events-none mr-2" />
           <input
             ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             placeholder="Search components (name, category, tags)..."
-            className="w-full h-full pl-8 pr-12 rounded-[6px] bg-surface-2 text-xs text-ink placeholder:text-ink-subtle/60 border border-hairline focus:border-hairline-strong focus:outline-none transition-colors font-mono"
+            className="h-full w-full bg-transparent focus:outline-none text-xs text-ink placeholder:text-ink-subtle/60 font-mono"
           />
           {searchQuery ? (
             <button
               type="button"
               onClick={() => onSearchChange("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-ink-subtle hover:text-ink"
+              className="p-0.5 rounded text-ink-subtle hover:text-ink shrink-0 ml-1 cursor-pointer"
               aria-label="Clear search"
             >
-              <X className="w-3 h-3" />
+              <X className="w-3.5 h-3.5" />
             </button>
-          ) : (
-            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
-              <kbd className="text-[10px] font-mono text-ink-subtle/50 border border-hairline px-1 py-0.2 rounded bg-surface-1">
-                /
-              </kbd>
-            </div>
-          )}
+          ) : !isSearchFocused ? (
+            <span className="font-mono text-[11px] text-ink-subtle pointer-events-none shrink-0 ml-1">
+              /
+            </span>
+          ) : null}
         </div>
 
         {/* Framework Filter Popover (hidden if <= 1 framework) */}
@@ -278,7 +298,7 @@ export function ComponentsTopBar({
                 <button
                   type="button"
                   className={cn(
-                    "inline-flex items-center gap-1.5 h-8.5 px-2.5 rounded-[6px] text-xs font-mono transition-colors border",
+                    "inline-flex items-center gap-1.5 h-9 px-3 rounded-[6px] text-[13px] font-mono transition-colors border cursor-pointer",
                     isOpen
                       ? "bg-surface-2 text-ink border-hairline-strong"
                       : isActive
@@ -317,7 +337,7 @@ export function ComponentsTopBar({
               <button
                 type="button"
                 className={cn(
-                  "inline-flex items-center gap-1.5 h-8.5 px-2.5 rounded-[6px] text-xs font-mono transition-colors border",
+                  "inline-flex items-center gap-1.5 h-9 px-3 rounded-[6px] text-[13px] font-mono transition-colors border cursor-pointer",
                   isOpen
                     ? "bg-surface-2 text-ink border-hairline-strong"
                     : isActive
@@ -357,7 +377,7 @@ export function ComponentsTopBar({
               <button
                 type="button"
                 className={cn(
-                  "inline-flex items-center gap-1.5 h-8.5 px-2.5 rounded-[6px] text-xs font-mono transition-colors border",
+                  "inline-flex items-center gap-1.5 h-9 px-3 rounded-[6px] text-[13px] font-mono transition-colors border cursor-pointer",
                   isOpen
                     ? "bg-surface-2 text-ink border-hairline-strong"
                     : isActive
@@ -388,7 +408,7 @@ export function ComponentsTopBar({
           }}
           aria-pressed={onlyFavorites}
           className={cn(
-            "inline-flex items-center gap-1.5 h-8.5 px-2.5 rounded-[6px] text-xs font-mono transition-colors border",
+            "inline-flex items-center gap-1.5 h-9 px-3 rounded-[6px] text-[13px] font-mono transition-colors border whitespace-nowrap cursor-pointer",
             onlyFavorites
               ? "bg-surface-2 text-ink border-warn/40"
               : "bg-surface-1 text-ink-muted border-hairline hover:bg-surface-2 hover:text-ink"
@@ -401,7 +421,7 @@ export function ComponentsTopBar({
             )}
           />
           <span>Starred</span>
-          <span className="text-[11px] text-ink-subtle font-mono">{starredCount}</span>
+          <span className="text-[11px] text-ink-subtle font-mono tabular-nums">{starredCount}</span>
         </button>
       </div>
     </div>

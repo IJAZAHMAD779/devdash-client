@@ -6,6 +6,7 @@ import { UIComponentItem } from "@/types/component";
 import { cn } from "@/lib/utils";
 import { sound } from "@/lib/audio";
 import { ComponentListRow } from "./component-list-row";
+import { getComponentGridTemplate } from "@/lib/list-columns";
 
 interface ComponentListViewProps {
   components: UIComponentItem[];
@@ -63,6 +64,24 @@ export function ComponentListView({
     });
   }, [components, sortField, sortDirection]);
 
+  // Dynamic column visibility: hide column only when every currently visible row has no value for it
+  const hasCategory = useMemo(() => {
+    if (!showCategory) return false;
+    return components.some((c) => Boolean(c.category && c.category.trim()));
+  }, [components, showCategory]);
+
+  const hasProject = useMemo(() => {
+    return components.some((c) => Boolean(c.project?.title || c.projectId));
+  }, [components]);
+
+  const gridTemplate = useMemo(() => {
+    return getComponentGridTemplate({
+      showCategory,
+      hasCategory,
+      hasProject,
+    });
+  }, [showCategory, hasCategory, hasProject]);
+
   const renderSortIndicator = (field: SortField) => {
     if (sortField !== field) {
       return (
@@ -90,55 +109,60 @@ export function ComponentListView({
         className
       )}
     >
-      {/* Table Header */}
+      {/* Table Header: sharing the exact same gridTemplate as every row */}
       <div
         role="row"
-        className="flex items-center h-8 px-3 border-b border-hairline bg-surface-2/40 text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle"
+        style={{ gridTemplateColumns: gridTemplate }}
+        className="grid items-center gap-4 h-8 px-3 border-b border-hairline bg-surface-2/40 text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle"
       >
-        {/* Star column placeholder */}
-        <div className="w-8 shrink-0" />
+        {/* 1. Star column placeholder (40px) */}
+        <div className="min-w-0 overflow-hidden" />
 
-        {/* Name column header (sortable) */}
+        {/* 2. Name column header (sortable) */}
         <div
           role="columnheader"
           aria-sort={getAriaSort("name")}
           onClick={() => handleSort("name")}
-          className="flex-1 min-w-0 pr-3 flex items-center gap-1 cursor-pointer group hover:text-ink transition-colors"
+          className="min-w-0 overflow-hidden flex items-center gap-1 cursor-pointer group hover:text-ink transition-colors"
         >
           <span>Name</span>
           {renderSortIndicator("name")}
         </div>
 
-        {/* Framework column header (sortable) */}
+        {/* 3. Framework column header (sortable) */}
         <div
           role="columnheader"
           aria-sort={getAriaSort("framework")}
           onClick={() => handleSort("framework")}
-          className="hidden sm:flex items-center gap-1 w-36 shrink-0 cursor-pointer group hover:text-ink transition-colors"
+          className="min-w-0 overflow-hidden flex items-center gap-1 cursor-pointer group hover:text-ink transition-colors"
         >
           <span>Framework</span>
           {renderSortIndicator("framework")}
         </div>
 
-        {/* Category column header */}
-        {showCategory && <div className="hidden md:block w-28 shrink-0">Category</div>}
+        {/* 4. Category column header (conditional) */}
+        {showCategory && hasCategory && (
+          <div className="min-w-0 overflow-hidden">Category</div>
+        )}
 
-        {/* Project column header */}
-        <div className="hidden lg:block w-28 shrink-0">Project</div>
+        {/* 5. Project column header (conditional) */}
+        {hasProject && <div className="min-w-0 overflow-hidden">Project</div>}
 
-        {/* Updated column header (sortable) */}
+        {/* 6. Updated column header (sortable, right-aligned) */}
         <div
           role="columnheader"
           aria-sort={getAriaSort("updated")}
           onClick={() => handleSort("updated")}
-          className="hidden lg:flex items-center justify-end gap-1 w-20 shrink-0 cursor-pointer group hover:text-ink transition-colors text-right"
+          className="min-w-0 overflow-hidden flex items-center justify-end gap-1 cursor-pointer group hover:text-ink transition-colors text-right"
         >
           <span>Updated</span>
           {renderSortIndicator("updated")}
         </div>
 
-        {/* Actions column header placeholder */}
-        <div className="w-20 shrink-0 text-right pr-2">Actions</div>
+        {/* 7. Actions column header (right-aligned) */}
+        <div className="min-w-0 overflow-hidden text-right flex items-center justify-end pr-1">
+          Actions
+        </div>
       </div>
 
       {/* Rows */}
@@ -150,6 +174,9 @@ export function ComponentListView({
             onViewCode={onViewCode}
             onEdit={onEdit}
             showCategory={showCategory}
+            hasCategory={hasCategory}
+            hasProject={hasProject}
+            gridTemplate={gridTemplate}
           />
         ))}
       </div>

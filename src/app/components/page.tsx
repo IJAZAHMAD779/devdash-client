@@ -240,6 +240,8 @@ export default function ComponentsCatalogPage() {
           availableStylings={availableStylings}
           selectedStylings={selectedStylings}
           onStylingsChange={setSelectedStylings}
+          isRailCollapsed={isRailCollapsed}
+          onToggleRail={() => setIsRailCollapsed(!isRailCollapsed)}
           projects={projects?.map((p) => ({ id: p.id, title: p.title || "Project" }))}
           selectedProjectIds={selectedProjectIds}
           onProjectIdsChange={setSelectedProjectIds}
@@ -260,16 +262,16 @@ export default function ComponentsCatalogPage() {
 
       {/* Main Body: Slim Folder Rail + Component Grid / List */}
       <div className="flex-1 flex px-4 sm:px-6 py-4 gap-6 min-w-0">
-        {/* Slim Folder Rail (visible on container width >= 900px) */}
-        <div className="hidden @[900px]:block shrink-0">
-          <ComponentFolderRail
-            folders={folderItems}
-            selectedFolder={selectedFolder}
-            onSelectFolder={(id) => setSelectedFolder(id)}
-            isCollapsed={isRailCollapsed}
-            onToggleCollapse={() => setIsRailCollapsed(!isRailCollapsed)}
-          />
-        </div>
+        {/* Slim Folder Rail (visible on container width >= 900px when not collapsed) */}
+        {!isRailCollapsed && (
+          <div className="hidden @[900px]:block shrink-0">
+            <ComponentFolderRail
+              folders={folderItems}
+              selectedFolder={selectedFolder}
+              onSelectFolder={(id) => setSelectedFolder(id)}
+            />
+          </div>
+        )}
 
         {/* Content Area */}
         <main className="flex-1 min-w-0">

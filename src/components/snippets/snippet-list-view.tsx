@@ -6,6 +6,7 @@ import { Snippet } from "@/types/snippet";
 import { cn } from "@/lib/utils";
 import { sound } from "@/lib/audio";
 import { SnippetListRow } from "./snippet-list-row";
+import { getSnippetGridTemplate } from "@/lib/list-columns";
 
 interface SnippetListViewProps {
   snippets: Snippet[];
@@ -63,9 +64,28 @@ export function SnippetListView({
     });
   }, [snippets, sortField, sortDirection]);
 
+  // Dynamic column visibility: hide column only when every currently visible row has no value for it
+  const hasTags = useMemo(() => {
+    return snippets.some((s) => s.tags && s.tags.length > 0);
+  }, [snippets]);
+
+  const hasProject = useMemo(() => {
+    return snippets.some((s) => Boolean(s.project?.title || s.projectId));
+  }, [snippets]);
+
+  const gridTemplate = useMemo(() => {
+    return getSnippetGridTemplate({
+      showLanguage,
+      hasTags,
+      hasProject,
+    });
+  }, [showLanguage, hasTags, hasProject]);
+
   const renderSortIndicator = (field: SortField) => {
     if (sortField !== field) {
-      return <ArrowUpDown className="w-3 h-3 text-ink-subtle/40 opacity-0 group-hover:opacity-100 transition-opacity" />;
+      return (
+        <ArrowUpDown className="w-3 h-3 text-ink-subtle/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+      );
     }
     return sortDirection === "asc" ? (
       <ArrowUp className="w-3 h-3 text-accent" />
@@ -88,57 +108,60 @@ export function SnippetListView({
         className
       )}
     >
-      {/* Table Header */}
+      {/* Table Header: sharing the exact same gridTemplate as every row */}
       <div
         role="row"
-        className="flex items-center h-8 px-3 border-b border-hairline bg-surface-2/40 text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle"
+        style={{ gridTemplateColumns: gridTemplate }}
+        className="grid items-center gap-4 h-8 px-3 border-b border-hairline bg-surface-2/40 text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle"
       >
-        {/* Star column placeholder */}
-        <div className="w-8 shrink-0" />
+        {/* 1. Star column placeholder (40px) */}
+        <div className="min-w-0 overflow-hidden" />
 
-        {/* Title column header (sortable) */}
+        {/* 2. Title column header (sortable) */}
         <div
           role="columnheader"
           aria-sort={getAriaSort("title")}
           onClick={() => handleSort("title")}
-          className="flex-1 min-w-0 pr-3 flex items-center gap-1 cursor-pointer group hover:text-ink transition-colors"
+          className="min-w-0 overflow-hidden flex items-center gap-1 cursor-pointer group hover:text-ink transition-colors"
         >
           <span>Title</span>
           {renderSortIndicator("title")}
         </div>
 
-        {/* Language column header (sortable, hidden if inside language folder) */}
+        {/* 3. Language column header (sortable, conditional) */}
         {showLanguage && (
           <div
             role="columnheader"
             aria-sort={getAriaSort("language")}
             onClick={() => handleSort("language")}
-            className="hidden sm:flex items-center gap-1 w-28 shrink-0 cursor-pointer group hover:text-ink transition-colors"
+            className="min-w-0 overflow-hidden flex items-center gap-1 cursor-pointer group hover:text-ink transition-colors"
           >
             <span>Language</span>
             {renderSortIndicator("language")}
           </div>
         )}
 
-        {/* Tags column header */}
-        <div className="hidden sm:block w-28 shrink-0">Tags</div>
+        {/* 4. Tags column header (conditional) */}
+        {hasTags && <div className="min-w-0 overflow-hidden">Tags</div>}
 
-        {/* Project column header */}
-        <div className="hidden md:block w-28 shrink-0">Project</div>
+        {/* 5. Project column header (conditional) */}
+        {hasProject && <div className="min-w-0 overflow-hidden">Project</div>}
 
-        {/* Updated column header (sortable) */}
+        {/* 6. Updated column header (sortable, right-aligned) */}
         <div
           role="columnheader"
           aria-sort={getAriaSort("updated")}
           onClick={() => handleSort("updated")}
-          className="hidden lg:flex items-center justify-end gap-1 w-20 shrink-0 cursor-pointer group hover:text-ink transition-colors text-right"
+          className="min-w-0 overflow-hidden flex items-center justify-end gap-1 cursor-pointer group hover:text-ink transition-colors text-right"
         >
           <span>Updated</span>
           {renderSortIndicator("updated")}
         </div>
 
-        {/* Actions column header placeholder */}
-        <div className="w-20 shrink-0 text-right pr-2">Actions</div>
+        {/* 7. Actions column header (right-aligned) */}
+        <div className="min-w-0 overflow-hidden text-right flex items-center justify-end pr-1">
+          Actions
+        </div>
       </div>
 
       {/* Rows */}
@@ -150,6 +173,9 @@ export function SnippetListView({
             onView={onView}
             onEdit={onEdit}
             showLanguage={showLanguage}
+            hasTags={hasTags}
+            hasProject={hasProject}
+            gridTemplate={gridTemplate}
           />
         ))}
       </div>

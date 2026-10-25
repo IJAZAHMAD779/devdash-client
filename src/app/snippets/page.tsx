@@ -201,6 +201,8 @@ export default function SnippetsPage() {
         onNewSnippet={() => setIsNewModalOpen(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        isRailCollapsed={isRailCollapsed}
+        onToggleRail={handleToggleRailCollapse}
         projects={projects?.map((p) => ({ id: p.id, title: p.title }))}
         selectedProjectIds={selectedProjectIds}
         onProjectIdsChange={setSelectedProjectIds}
@@ -221,16 +223,16 @@ export default function SnippetsPage() {
 
       {/* Main Body: [ Folder Rail 200px ] | [ Snippet Grid or List ] */}
       <div className="flex-1 flex gap-6 items-start">
-        {/* Desktop Folder Rail: Visible at 900px+ container width */}
-        <div className="hidden @[900px]:block shrink-0">
-          <FolderRail
-            folders={folders}
-            selectedFolder={selectedFolder}
-            onSelectFolder={handleSelectFolder}
-            isCollapsed={isRailCollapsed}
-            onToggleCollapse={handleToggleRailCollapse}
-          />
-        </div>
+        {/* Desktop Folder Rail: Visible at 900px+ container width when not collapsed */}
+        {!isRailCollapsed && (
+          <div className="hidden @[900px]:block shrink-0">
+            <FolderRail
+              folders={folders}
+              selectedFolder={selectedFolder}
+              onSelectFolder={handleSelectFolder}
+            />
+          </div>
+        )}
 
         {/* Snippets Area */}
         <main className="flex-1 min-w-0 flex flex-col gap-3">

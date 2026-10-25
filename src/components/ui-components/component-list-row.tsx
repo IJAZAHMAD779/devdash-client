@@ -15,6 +15,9 @@ interface ComponentListRowProps {
   onViewCode: (component: UIComponentItem) => void;
   onEdit: (component: UIComponentItem) => void;
   showCategory?: boolean;
+  hasCategory?: boolean;
+  hasProject?: boolean;
+  gridTemplate: string;
 }
 
 function formatRelativeTime(dateString?: string): string | null {
@@ -43,6 +46,9 @@ export function ComponentListRow({
   onViewCode,
   onEdit,
   showCategory = true,
+  hasCategory = true,
+  hasProject = true,
+  gridTemplate,
 }: ComponentListRowProps) {
   const toggleFavorite = useToggleComponentFavorite();
   const deleteComponent = useDeleteComponent();
@@ -100,15 +106,16 @@ export function ComponentListRow({
             onViewCode(component);
           }
         }}
-        className="group relative flex items-center h-11 px-3 border-b border-hairline hover:bg-surface-2 transition-colors cursor-pointer select-none text-xs focus-visible:outline-none focus-visible:bg-surface-2"
+        style={{ gridTemplateColumns: gridTemplate }}
+        className="group relative grid items-center gap-4 h-[52px] px-3 border-b border-hairline hover:bg-surface-2 transition-colors cursor-pointer select-none text-xs focus-visible:outline-none focus-visible:bg-surface-2"
       >
-        {/* Star Column */}
-        <div className="w-8 shrink-0 flex items-center justify-start">
+        {/* 1. Star Column (40px) */}
+        <div className="min-w-0 overflow-hidden flex items-center justify-start">
           <button
             type="button"
             onClick={handleFavoriteClick}
             aria-label={component.favorite ? "Unstar component" : "Star component"}
-            className="p-1 rounded text-ink-subtle hover:text-ink transition-colors"
+            className="p-1 rounded text-ink-subtle hover:text-ink transition-colors cursor-pointer"
           >
             <Star
               className={cn(
@@ -119,76 +126,74 @@ export function ComponentListRow({
           </button>
         </div>
 
-        {/* Name + Description Column (flex-1) */}
-        <div className="flex-1 min-w-0 pr-3 flex flex-col justify-center">
-          <div className="flex items-baseline gap-2 truncate">
-            <span className="font-medium text-ink truncate leading-tight">
-              {component.name}
+        {/* 2. Name + Description Column: Two-line cell (minmax(220px, 1fr)) */}
+        <div className="min-w-0 overflow-hidden flex flex-col justify-center">
+          <span
+            className="font-medium text-sm text-ink truncate leading-snug min-w-0 max-w-full"
+            title={component.name}
+          >
+            {component.name}
+          </span>
+          {component.description ? (
+            <span
+              className="text-xs text-ink-subtle truncate leading-tight mt-0.5"
+              title={component.description}
+            >
+              {component.description}
             </span>
-            {component.description && (
-              <span className="hidden md:inline text-ink-subtle truncate text-[11px]">
-                — {component.description}
-              </span>
-            )}
-          </div>
-
-          {/* Under ~640px: meta line below name */}
-          <div className="flex sm:hidden items-center gap-2 mt-0.5 text-[10px] font-mono text-ink-subtle">
-            <span>{component.framework.toLowerCase()}</span>
-            {showCategory && component.category && <span>· {component.category}</span>}
-            {projectName && <span>· {projectName}</span>}
-            {relativeTime && <span>· {relativeTime}</span>}
-          </div>
+          ) : null}
         </div>
 
-        {/* Framework · Styling Column */}
-        <div className="hidden sm:flex items-center w-36 shrink-0 font-mono text-[11px] text-ink-muted truncate">
+        {/* 3. Framework · Styling Column (168px) */}
+        <div className="min-w-0 overflow-hidden font-mono text-[11px] text-ink-muted truncate">
           <span className="truncate">
             {component.framework.toLowerCase()} · {component.styling.toLowerCase().replace(/_/g, " ")}
           </span>
         </div>
 
-        {/* Category Column (shown in All / Starred / Search) */}
-        {showCategory && (
-          <div className="hidden md:flex items-center w-28 shrink-0 font-mono text-[11px] text-ink-subtle truncate capitalize">
+        {/* 4. Category Column (112px, conditional on hasCategory) */}
+        {showCategory && hasCategory && (
+          <div className="min-w-0 overflow-hidden font-mono text-[11px] text-ink-subtle truncate capitalize">
             <span className="truncate">{component.category || "general"}</span>
           </div>
         )}
 
-        {/* Project Column */}
-        <div className="hidden lg:flex items-center w-28 shrink-0 font-mono text-[11px] text-ink-subtle truncate">
-          <span className="truncate">{projectName || "—"}</span>
-        </div>
+        {/* 5. Project Column (120px, conditional on hasProject) */}
+        {hasProject && (
+          <div className="min-w-0 overflow-hidden font-mono text-[11px] text-ink-subtle truncate">
+            <span className="truncate">{projectName || "—"}</span>
+          </div>
+        )}
 
-        {/* Updated Column */}
-        <div className="hidden lg:flex items-center justify-end w-20 shrink-0 font-mono text-[10px] text-ink-subtle text-right">
+        {/* 6. Updated Column (88px, right-aligned) */}
+        <div className="min-w-0 overflow-hidden font-mono text-[11px] text-ink-subtle text-right tabular-nums">
           {relativeTime || "—"}
         </div>
 
-        {/* Actions Column: Copy code always visible; Edit and Menu on hover/focus */}
+        {/* 7. Actions Column (88px, right-aligned flex cell with gap-1, 28px hit areas) */}
         <div
-          className="flex items-center justify-end gap-1 w-20 shrink-0 pl-2"
+          className="min-w-0 overflow-hidden flex items-center justify-end gap-1"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Quick Copy code button */}
+          {/* Quick Copy code button (28px hit area, 16px icon) */}
           <CopyButton
             textToCopy={component.code}
             label="Copy code"
-            className="h-7 w-7 text-ink-subtle hover:text-ink hover:bg-surface-3"
+            className="h-7 w-7 text-ink-subtle hover:text-ink hover:bg-surface-3 cursor-pointer"
           />
 
-          {/* Edit Button */}
+          {/* Edit Button (28px hit area, 16px icon) */}
           <button
             type="button"
             onClick={handleEditClick}
             aria-label="Edit component"
             title="Edit component"
-            className="p-1.5 rounded-[6px] text-ink-subtle hover:text-ink hover:bg-surface-3 transition-opacity opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-[768px]:opacity-100"
+            className="h-7 w-7 inline-flex items-center justify-center rounded-[6px] text-ink-subtle hover:text-ink hover:bg-surface-3 transition-opacity opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-[768px]:opacity-100 cursor-pointer"
           >
-            <Edit2 className="w-3.5 h-3.5" />
+            <Edit2 className="w-4 h-4" />
           </button>
 
-          {/* More Menu (Delete) */}
+          {/* More Menu / Delete Button (28px hit area, 16px icon) */}
           <div className="relative">
             <button
               type="button"
@@ -198,9 +203,9 @@ export function ComponentListRow({
                 setShowMenu(!showMenu);
               }}
               aria-label="Component actions"
-              className="p-1.5 rounded-[6px] text-ink-subtle hover:text-ink hover:bg-surface-3 transition-opacity opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-[768px]:opacity-100"
+              className="h-7 w-7 inline-flex items-center justify-center rounded-[6px] text-ink-subtle hover:text-ink hover:bg-surface-3 transition-opacity opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-[768px]:opacity-100 cursor-pointer"
             >
-              <MoreHorizontal className="w-3.5 h-3.5" />
+              <MoreHorizontal className="w-4 h-4" />
             </button>
 
             {showMenu && (
@@ -211,7 +216,7 @@ export function ComponentListRow({
                 <button
                   type="button"
                   onClick={handleDeleteClick}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-rose-400 hover:bg-rose-500/10 transition-colors text-left font-mono"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-rose-400 hover:bg-rose-500/10 transition-colors text-left font-mono cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5 shrink-0" />
                   <span>Delete</span>

@@ -14,9 +14,17 @@ import { ProjectCard } from "@/components/projects/project-card";
 import { ProjectExplorer } from "@/components/projects/project-explorer";
 import { ProjectWorkbench } from "@/components/projects/project-workbench";
 import { ProjectDataGrid } from "@/components/projects/project-data-grid";
+import dynamic from "next/dynamic";
 import { ProjectsTopBar, ViewMode, StatusCountMap } from "@/components/projects/projects-top-bar";
-import { NewProjectModal } from "@/components/projects/new-project-modal";
-import { EditProjectModal } from "@/components/projects/edit-project-modal";
+
+const NewProjectModal = dynamic(
+  () => import("@/components/projects/new-project-modal").then((m) => m.NewProjectModal),
+  { ssr: false }
+);
+const EditProjectModal = dynamic(
+  () => import("@/components/projects/edit-project-modal").then((m) => m.EditProjectModal),
+  { ssr: false }
+);
 import { sound } from "@/lib/audio";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";

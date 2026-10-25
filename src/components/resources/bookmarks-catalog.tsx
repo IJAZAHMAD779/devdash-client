@@ -37,12 +37,32 @@ import { getBookmarkGridTemplate } from "@/lib/list-columns";
 import { BookmarkCard } from "./bookmark-card";
 import { BookmarkListRow } from "./bookmark-list-row";
 import { BulkActionBar } from "./bulk-action-bar";
-import { NewBookmarkModal } from "./new-bookmark-modal";
-import { EditBookmarkModal } from "./edit-bookmark-modal";
-import { ImportBookmarksModal } from "./import-bookmarks-modal";
-import { ClearNotesModal } from "./clear-notes-modal";
-import { MoveBookmarksModal } from "./move-bookmarks-modal";
-import { ConfirmModal } from "@/components/ui/confirm-modal";
+import dynamic from "next/dynamic";
+
+const NewBookmarkModal = dynamic(
+  () => import("./new-bookmark-modal").then((m) => m.NewBookmarkModal),
+  { ssr: false }
+);
+const EditBookmarkModal = dynamic(
+  () => import("./edit-bookmark-modal").then((m) => m.EditBookmarkModal),
+  { ssr: false }
+);
+const ImportBookmarksModal = dynamic(
+  () => import("./import-bookmarks-modal").then((m) => m.ImportBookmarksModal),
+  { ssr: false }
+);
+const ClearNotesModal = dynamic(
+  () => import("./clear-notes-modal").then((m) => m.ClearNotesModal),
+  { ssr: false }
+);
+const MoveBookmarksModal = dynamic(
+  () => import("./move-bookmarks-modal").then((m) => m.MoveBookmarksModal),
+  { ssr: false }
+);
+const ConfirmModal = dynamic(
+  () => import("@/components/ui/confirm-modal").then((m) => m.ConfirmModal),
+  { ssr: false }
+);
 
 export function BookmarksCatalog() {
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");

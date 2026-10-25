@@ -16,10 +16,21 @@ import { FolderStrip } from "@/components/snippets/folder-strip";
 import { SnippetsTopBar } from "@/components/snippets/snippets-top-bar";
 import { SnippetCard } from "@/components/snippets/snippet-card";
 import { SnippetListView } from "@/components/snippets/snippet-list-view";
+import dynamic from "next/dynamic";
 import { EmptyState } from "@/components/snippets/empty-state";
-import { SnippetCodeModal } from "@/components/snippets/snippet-code-modal";
-import { NewSnippetModal } from "@/components/snippets/new-snippet-modal";
-import { EditSnippetModal } from "@/components/snippets/edit-snippet-modal";
+
+const SnippetCodeModal = dynamic(
+  () => import("@/components/snippets/snippet-code-modal").then((m) => m.SnippetCodeModal),
+  { ssr: false }
+);
+const NewSnippetModal = dynamic(
+  () => import("@/components/snippets/new-snippet-modal").then((m) => m.NewSnippetModal),
+  { ssr: false }
+);
+const EditSnippetModal = dynamic(
+  () => import("@/components/snippets/edit-snippet-modal").then((m) => m.EditSnippetModal),
+  { ssr: false }
+);
 
 export default function SnippetsPage() {
   // 1. View mode: Grid ("cards") or List ("list") - persisted

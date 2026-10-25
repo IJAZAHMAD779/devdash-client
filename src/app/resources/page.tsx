@@ -12,8 +12,13 @@ import { useBookmarks } from "@/hooks/use-bookmarks";
 import { Note } from "@/types/note";
 import { NotesList } from "@/components/resources/notes-list";
 import { NotesEditor } from "@/components/resources/notes-editor";
+import dynamic from "next/dynamic";
 import { BookmarksCatalog } from "@/components/resources/bookmarks-catalog";
-import { DigestModal } from "@/components/resources/digest-modal";
+
+const DigestModal = dynamic(
+  () => import("@/components/resources/digest-modal").then((m) => m.DigestModal),
+  { ssr: false }
+);
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";

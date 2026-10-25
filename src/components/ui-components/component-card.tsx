@@ -1,38 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Star,
-  MoreVertical,
-  Trash2,
-  Edit2,
-  Copy,
-  Check,
-  Blocks,
-} from "lucide-react";
+import React from "react";
+import { Star } from "lucide-react";
 import { UIComponentItem } from "@/types/component";
-import {
-  useToggleComponentFavorite,
-  useDeleteComponent,
-} from "@/hooks/use-components";
-import { SchematicWireframe } from "./schematic-wireframe";
+import { useToggleComponentFavorite } from "@/hooks/use-components";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
-import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { toast } from "@/lib/toast";
+import { CodePreview } from "@/components/snippets/code-preview";
+import { CopyButton } from "@/components/snippets/copy-button";
 
-interface Props {
+interface ComponentCardProps {
   component: UIComponentItem;
-  onEdit: (component: UIComponentItem) => void;
   onViewCode: (component: UIComponentItem) => void;
+  onEdit?: (component: UIComponentItem) => void;
+  showCategory?: boolean;
 }
 
-export function ComponentCard({ component, onEdit, onViewCode }: Props) {
+export function ComponentCard({
+  component,
+  onViewCode,
+  showCategory = true,
+}: ComponentCardProps) {
   const toggleFavorite = useToggleComponentFavorite();
-  const deleteComponent = useDeleteComponent();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -43,179 +32,117 @@ export function ComponentCard({ component, onEdit, onViewCode }: Props) {
     });
   };
 
-  const handleCopyCode = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    sound.playClick(900);
-    try {
-      await navigator.clipboard.writeText(component.code);
-      setCopied(true);
-      toast.success("Code copied to clipboard");
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy code");
-    }
+  const getLanguage = () => {
+    if (component.framework === "VUE") return "html";
+    if (component.framework === "SVELTE") return "html";
+    if (component.framework === "HTML_CSS") return "html";
+    return "typescript";
   };
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setMenuOpen(false);
-    setShowDeleteConfirm(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    try {
-      await deleteComponent.mutateAsync(component.id);
-      toast.success("Component deleted", {
-        description: `"${component.name}" has been removed from catalog.`,
-      });
-    } catch {
-      toast.error("Failed to delete component");
-    }
-  };
-
-  // Subtitle format: e.g. "Login template" or "React · Tailwind CSS" or category
-  const subtitle = component.category
-    ? `${component.category}`
-    : `${component.framework.toLowerCase()}`;
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={() => {
         sound.playClick(800);
         onViewCode(component);
       }}
-      className="group relative flex flex-col rounded-2xl bg-surface-1 border border-hairline hover:border-hairline-strong hover:bg-surface-2/30 transition-all duration-200 cursor-pointer overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 select-none"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onViewCode(component);
+        }
+      }}
+      className="group relative flex flex-col rounded-lg bg-surface-1 border border-hairline hover:border-hairline-strong transition-colors cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent select-none"
     >
-      {/* Component Visual Preview Container (matching Image 2 - clean frame, no colored dots) */}
-      <div className="w-full h-48 bg-[#090a0b] border-b border-hairline/60 relative flex items-center justify-center overflow-hidden p-3 group-hover:border-hairline-strong transition-colors">
-        {/* Subtle blueprint grid overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#141517_1px,transparent_1px),linear-gradient(to_bottom,#141517_1px,transparent_1px)] bg-[size:16px_16px] opacity-30 pointer-events-none" />
-
-        {/* Schematic Blueprint Wireframe matching Image 2 */}
-        <SchematicWireframe
-          category={component.category}
-          name={component.name}
-          className="w-full h-full"
+      {/* 1. Code preview fills top: Shiki output, line numbers, ~8-9 lines, bottom fade */}
+      <div className="relative w-full overflow-hidden">
+        <CodePreview
+          code={component.code}
+          language={getLanguage()}
+          snippetId={component.id}
+          updatedAt={component.updatedAt}
+          maxLines={8}
         />
 
-        {/* Hover Quick Action Buttons */}
+        {/* 3. Hover/focus actions (top-right of preview): Copy code & Star */}
         <div
-          className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10"
+          className="absolute top-2 right-2 flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity max-[768px]:opacity-100"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Quick Copy Button */}
-          <button
-            onClick={handleCopyCode}
-            className="p-1.5 rounded-md bg-surface-2/90 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink transition-colors cursor-pointer shadow-xs"
-            title="Copy Code"
-          >
-            {copied ? (
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-            ) : (
-              <Copy className="w-3.5 h-3.5" />
-            )}
-          </button>
+          <CopyButton
+            textToCopy={component.code}
+            label="Copy code"
+            className="h-7 w-7 bg-surface-1/90 backdrop-blur-xs border border-hairline hover:border-hairline-strong"
+          />
 
-          {/* Favorite Star Button */}
+          {/* Star Toggle Button */}
           <button
+            type="button"
             onClick={handleFavoriteClick}
+            aria-label={component.favorite ? "Unstar component" : "Star component"}
             className={cn(
-              "p-1.5 rounded-md bg-surface-2/90 hover:bg-surface-3 border border-hairline transition-colors cursor-pointer shadow-xs",
-              component.favorite ? "text-amber-400 opacity-100" : "text-ink-muted hover:text-ink"
+              "h-7 w-7 rounded-[6px] flex items-center justify-center transition-colors border",
+              component.favorite
+                ? "bg-surface-1/90 border-warn/40 text-warn !opacity-100"
+                : "bg-surface-1/90 border-hairline text-ink-subtle hover:text-ink hover:border-hairline-strong"
             )}
-            title={component.favorite ? "Starred" : "Star component"}
           >
             <Star
               className={cn(
-                "w-3.5 h-3.5",
-                component.favorite && "fill-amber-400"
+                "w-3.5 h-3.5 transition-colors",
+                component.favorite ? "text-warn fill-warn" : ""
               )}
             />
           </button>
-
-          {/* More Menu */}
-          <div className="relative">
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="p-1.5 rounded-md bg-surface-2/90 hover:bg-surface-3 border border-hairline text-ink-muted hover:text-ink transition-colors cursor-pointer shadow-xs"
-              title="Options"
-            >
-              <MoreVertical className="w-3.5 h-3.5" />
-            </button>
-
-            {menuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-20"
-                  onClick={() => setMenuOpen(false)}
-                />
-                <div className="absolute right-0 top-full mt-1.5 w-32 rounded-lg bg-surface-2 border border-hairline shadow-xl py-1 z-30 text-xs animate-in fade-in zoom-in-95 duration-100">
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onEdit(component);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-ink-muted hover:text-ink hover:bg-surface-3 text-left transition-colors cursor-pointer"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span>Edit</span>
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-semantic-error hover:bg-semantic-error/10 text-left transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete</span>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
         </div>
 
-        {/* Always visible starred indicator if favored and not hovering */}
+        {/* If starred, show star badge on top right when not hovered on desktop */}
         {component.favorite && (
-          <div className="absolute top-2.5 right-2.5 group-hover:hidden z-0">
-            <div className="p-1.5 rounded-md bg-surface-2/80 border border-hairline text-amber-400">
-              <Star className="w-3.5 h-3.5 fill-amber-400" />
+          <div className="absolute top-2 right-2 z-0 group-hover:hidden max-[768px]:hidden pointer-events-none">
+            <div className="h-7 w-7 rounded-[6px] bg-surface-1/90 border border-warn/30 flex items-center justify-center">
+              <Star className="w-3.5 h-3.5 text-warn fill-warn" />
             </div>
           </div>
         )}
       </div>
 
-      {/* Card Footer: Clean Title · Subtitle matching Image 2 */}
-      <div className="p-3.5 flex items-center justify-between gap-2">
-        <div className="min-w-0 flex items-center gap-1.5 text-xs truncate">
-          <span className="font-semibold text-ink group-hover:text-primary transition-colors truncate">
-            {component.name}
-          </span>
-          <span className="text-ink-tertiary select-none">·</span>
-          <span className="text-ink-muted capitalize truncate font-normal">
-            {subtitle}
-          </span>
-        </div>
+      {/* 2. Footer: Name (full name wrap to 2 lines max), framework · styling, category, AI prompt marker */}
+      <div className="flex flex-col gap-1.5 p-3 border-t border-hairline bg-surface-1">
+        {/* Full name, wrap to 2 lines max, no mid-word ellipsis */}
+        <span className="text-sm font-medium text-ink line-clamp-2 leading-snug">
+          {component.name}
+        </span>
 
-        {component.aiAgentPrompt && (
-          <div
-            className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[10px] font-mono text-blue-400 font-medium"
-            title="AI Agent Prompt & Props available"
-          >
-            <Blocks className="w-2.5 h-2.5" />
-            <span className="hidden sm:inline">AI Prompt</span>
+        {/* Meta line: framework · styling, category (if applicable), prompt ✓ */}
+        <div className="flex items-center justify-between gap-2 text-[11px] font-mono text-ink-subtle truncate pt-0.5">
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="truncate">
+              {component.framework.toLowerCase()} · {component.styling.toLowerCase().replace(/_/g, " ")}
+            </span>
+
+            {showCategory && component.category && (
+              <>
+                <span className="text-ink-subtle/50">·</span>
+                <span className="capitalize truncate text-ink-muted">
+                  {component.category}
+                </span>
+              </>
+            )}
           </div>
-        )}
-      </div>
 
-      <ConfirmModal
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleConfirmDelete}
-        title="Delete Component"
-        description={`Are you sure you want to delete component "${component.name}"? This action cannot be undone.`}
-        confirmText="Delete Component"
-        variant="danger"
-        isLoading={deleteComponent.isPending}
-      />
+          {/* Plain mono marker for AI prompt readiness */}
+          {component.aiAgentPrompt && (
+            <span
+              title="AI prompt generated"
+              className="shrink-0 text-ink-subtle/80 text-[10px] bg-surface-2 px-1 py-0.2 rounded border border-hairline"
+            >
+              prompt ✓
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

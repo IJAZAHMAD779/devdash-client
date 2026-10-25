@@ -11,6 +11,9 @@ interface Props {
   category?: string;
   framework?: ComponentFramework;
   className?: string;
+  viewport?: "desktop" | "tablet" | "mobile";
+  hideToolbar?: boolean;
+  onRefresh?: () => void;
 }
 
 function isHtmlCode(code: string, framework?: ComponentFramework): boolean {
@@ -80,16 +83,44 @@ function generateHtmlSrcDoc(code: string, baseOrigin: string): string {
   const tailwindScript = `<script src="https://cdn.tailwindcss.com"></script>`;
   const baseTag = `<base href="${baseOrigin}/" />`;
 
+  const darkScrollbarStyles = `
+  <style>
+    html {
+      color-scheme: dark;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #23252a #090a0b;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090a0b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #23252a;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #34343a;
+    }
+  </style>`;
+
   // Full HTML document
   if (lower.includes("<html") || lower.includes("<!doctype")) {
     let doc = trimmed;
     if (/<head[^>]*>/i.test(doc)) {
       doc = doc.replace(
         /<head[^>]*>/i,
-        `$&${baseTag}${storagePolyfill}${doc.includes("cdn.tailwindcss.com") ? "" : tailwindScript}`
+        `$&${baseTag}${storagePolyfill}${darkScrollbarStyles}${doc.includes("cdn.tailwindcss.com") ? "" : tailwindScript}`
       );
     } else {
-      doc = `${baseTag}${storagePolyfill}${tailwindScript}${doc}`;
+      doc = `${baseTag}${storagePolyfill}${darkScrollbarStyles}${tailwindScript}${doc}`;
     }
     return doc;
   }
@@ -103,10 +134,8 @@ function generateHtmlSrcDoc(code: string, baseOrigin: string): string {
   ${baseTag}
   ${tailwindScript}
   ${storagePolyfill}
+  ${darkScrollbarStyles}
   <style>
-    *, *::before, *::after {
-      box-sizing: border-box;
-    }
     body {
       background-color: #090a0b;
       background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
@@ -143,13 +172,18 @@ export function ComponentLivePreview({
   category,
   framework,
   className,
+  viewport: controlledViewport,
+  hideToolbar = false,
+  onRefresh,
 }: Props) {
-  const [iframeKey, setIframeKey] = useState(0);
-  const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [internalIframeKey, setInternalIframeKey] = useState(0);
+  const [internalViewport, setInternalViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
+
+  const viewport = controlledViewport || internalViewport;
 
   const isHtml = useMemo(() => isHtmlCode(code, framework), [code, framework]);
 
-  // Generate safe HTML payload with native DOM or in-browser Babel 7 + React 18 runtime
+  // Generate safe HTML payload with native DOM or in-browser Babel 7 + React 18 runtime + Lucide React UMD
   const srcDoc = useMemo(() => {
     const baseOrigin = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -171,11 +205,34 @@ export function ComponentLivePreview({
   <!-- React 18 UMD -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Lucide React UMD (pinned to 0.454.0 matching package.json) -->
+  <script src="https://unpkg.com/lucide-react@0.454.0/dist/umd/lucide-react.min.js"></script>
   <!-- Babel Standalone 7.26.4 (Stable pinned release from cdnjs) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
   <style>
+    html {
+      color-scheme: dark;
+    }
     *, *::before, *::after {
       box-sizing: border-box;
+    }
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #23252a #090a0b;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090a0b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #23252a;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #34343a;
     }
     body {
       background-color: #090a0b;
@@ -273,7 +330,7 @@ export function ComponentLivePreview({
         try {
           var rawCode = ${serializedCode};
 
-          // 1. Setup Sandbox Lucide Icon Dictionary
+          // 1. Setup Sandbox Lucide Icon Dictionary with expanded dashboard/nav paths
           var iconPathMap = {
             User: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
             Heart: "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z",
@@ -292,6 +349,30 @@ export function ComponentLivePreview({
             Pause: "rect width='4' height='16' x='6' y='4' rect width='4' height='16' x='14' y='4'",
             RotateCcw: "path d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' path d='M3 3v5h5'",
             Trophy: "path d='M6 9H4.5a2.5 2.5 0 0 1 0-5H6' path d='M18 9h1.5a2.5 2.5 0 0 0 0-5H18' path d='M4 22h16' path d='M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22' path d='M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22' path d='M18 2H6v7a6 6 0 0 0 12 0V2Z'",
+            LayoutDashboard: "M3 3h7v7H3z M14 3h7v4h-7z M14 11h7v10h-7z M3 14h7v7H3z",
+            FolderKanban: "M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z M8 10v4 M12 10v2 M16 10v6",
+            CheckSquare: "m9 11 3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
+            Code2: "m18 16 4-4-4-4 M6 8l-4 4 4 4 M14.5 4l-5 16",
+            Bookmark: "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z",
+            Blocks: "rect width='7' height='7' x='14' y='3' rx='1' path d='M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3'",
+            Gamepad2: "line x1='6' x2='10' y1='12' y2='12' line x1='8' x2='8' y1='10' y2='14' line x1='15' x2='15.01' y1='13' y2='13' line x1='18' x2='18.01' y1='11' y2='11' rect width='20' height='12' x='2' y='6' rx='6'",
+            Sliders: "line x1='4' x2='4' y1='21' y2='14' line x1='4' x2='4' y1='10' y2='3' line x1='12' x2='12' y1='21' y2='12' line x1='12' x2='12' y1='8' y2='3' line x1='20' x2='20' y1='21' y2='16' line x1='20' x2='20' y1='12' y2='3' line x1='2' x2='6' y1='14' y2='14' line x1='10' x2='14' y1='8' y2='8' line x1='18' x2='22' y1='16' y2='16'",
+            Menu: "line x1='4' x2='20' y1='12' y2='12' line x1='4' x2='20' y1='6' y2='6' line x1='4' x2='20' y1='18' y2='18'",
+            X: "path d='M18 6 6 18' path d='m6 6 12 12'",
+            Bell: "path d='M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9' path d='M10.3 21a1.94 1.94 0 0 0 3.4 0'",
+            Folder: "path d='M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z'",
+            FileText: "path d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z' polyline points='14 2 14 8 20 8'",
+            Terminal: "polyline points='4 17 10 11 4 5' line x1='12' x2='20' y1='19' y2='19'",
+            LogOut: "path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4' polyline points='16 17 21 12 16 7' line x1='21' x2='9' y1='12' y2='12'",
+            Moon: "path d='M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'",
+            Sun: "circle cx='12' cy='12' r='4' path d='M12 2v2' path d='M12 20v2' path d='m4.93 4.93 1.41 1.41' path d='m17.66 17.66 1.41 1.41' path d='M2 12h2' path d='M20 12h2' path d='m6.34 17.66-1.41 1.41' path d='m19.07 4.93-1.41 1.41'",
+            ArrowLeft: "path d='m12 19-7-7 7-7' path d='M19 12H5'",
+            ArrowRight: "path d='M5 12h14' path d='m12 5 7 7-7 7'",
+            Eye: "path d='M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z' circle cx='12' cy='12' r='3'",
+            EyeOff: "path d='M9.88 9.88a3 3 0 1 0 4.24 4.24' path d='M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68' path d='M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61' line x1='2' x2='22' y1='2' y2='22'",
+            Copy: "rect width='14' height='14' x='8' y='8' rx='2' ry='2' path d='M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'",
+            Edit2: "path d='M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z'",
+            Trash2: "path d='M3 6h18' path d='M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6' path d='M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'",
           };
 
           function makeIcon(iconName) {
@@ -374,7 +455,7 @@ export function ComponentLivePreview({
             }
           });
 
-          // 4. In-Browser Module Resolver
+          // 4. In-Browser Module Resolver with Real LucideReact UMD + Proxy Fallback
           var LucideProxy = new Proxy({}, {
             get: function(target, prop) {
               return makeIcon(String(prop));
@@ -453,7 +534,18 @@ export function ComponentLivePreview({
           function customRequire(moduleName) {
             if (moduleName === "react") return React;
             if (moduleName === "react-dom" || moduleName === "react-dom/client") return ReactDOM;
-            if (moduleName === "lucide-react") return LucideProxy;
+            if (moduleName === "lucide-react") {
+              // Return real LucideReact global if loaded, with LucideProxy as fallback
+              if (typeof window !== "undefined" && window.LucideReact) {
+                return new Proxy(window.LucideReact, {
+                  get: function(target, prop) {
+                    if (prop in target) return target[prop];
+                    return LucideProxy[prop];
+                  }
+                });
+              }
+              return LucideProxy;
+            }
             if (KnownWorkspaceModules[moduleName]) return KnownWorkspaceModules[moduleName];
             return CustomComponentsProxy;
           }
@@ -518,25 +610,30 @@ export function ComponentLivePreview({
 
           // If no explicit exports found, scan top-level PascalCase identifiers
           if (exportedNames.length === 0) {
-            var topFuncRegex = /(?:function|const|let|var)\\s+([A-Z][A-Za-z0-9_$]+)/g;
-            var topMatch;
-            while ((topMatch = topFuncRegex.exec(processed)) !== null) {
-              exportedNames.push(topMatch[1]);
-            }
+            var fnMatch = processed.match(/function\\s+([A-Z][a-zA-Z0-9_$]*)/);
+            if (fnMatch) exportedNames.push(fnMatch[1]);
+            var constMatch = processed.match(/(?:const|let|var)\\s+([A-Z][a-zA-Z0-9_$]*)/);
+            if (constMatch) exportedNames.push(constMatch[1]);
           }
 
-          // Strip export default and export keywords
+          // Strip export keywords cleanly
           processed = processed.replace(/export\\s+default\\s+/g, "module.exports.default = ");
-          processed = processed.replace(/export\\s+(function|const|let|var|class)\\s+/g, "$1 ");
-
-          // Attach exported names onto module.exports
-          exportedNames.forEach(function(expName) {
-            processed += "\\nif (typeof " + expName + " !== 'undefined') { module.exports['" + expName + "'] = " + expName + "; }";
+          processed = processed.replace(/export\\s+(?:async\\s+)?function\\s+([A-Za-z0-9_$]+)/g, "module.exports['$1'] = function $1");
+          processed = processed.replace(/export\\s+(?:const|let|var)\\s+([A-Za-z0-9_$]+)/g, "var $1 = module.exports['$1']");
+          processed = processed.replace(/export\\s+\\{([^}]+)\\};?/g, function(_, names) {
+            return names.split(",").map(function(n) {
+              var clean = n.trim();
+              if (clean.includes(" as ")) {
+                var p = clean.split(" as ").map(function(x) { return x.trim(); });
+                return "module.exports['" + p[1] + "'] = " + p[0] + ";";
+              }
+              return "module.exports['" + clean + "'] = " + clean + ";";
+            }).join("\\n");
           });
 
-          // Fallback to default
+          // Ensure default export exists if named export found
           processed += "\\nif (!module.exports.default) {\\n" +
-            "  for (var k of Object.keys(module.exports)) {\\n" +
+            "  for (var k in module.exports) {\\n" +
             "    if (typeof module.exports[k] === 'function') { module.exports.default = module.exports[k]; break; }\\n" +
             "  }\\n" +
             "}";
@@ -631,93 +728,92 @@ export function ComponentLivePreview({
 </html>`;
   }, [code, isHtml]);
 
+  const handleRefresh = () => {
+    setInternalIframeKey((k) => k + 1);
+    if (onRefresh) onRefresh();
+  };
+
   return (
     <div
       className={cn(
-        "relative rounded-2xl bg-surface-1 border border-hairline overflow-hidden flex flex-col transition-all duration-200 shadow-inner",
+        "relative rounded-lg bg-surface-1 border border-hairline overflow-hidden flex flex-col transition-all duration-150",
         className
       )}
     >
-      {/* Clean Toolbar — No colored dots */}
-      <div className="px-4 py-2 bg-surface-2/70 border-b border-hairline flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2 text-ink-muted">
-          <span className="text-xs font-semibold tracking-tight text-ink">
-            {isHtml ? "Live HTML Sandbox" : "Live React Sandbox"}
-          </span>
-          <span className="text-ink-tertiary">·</span>
-          <span className="text-[11px] font-mono text-ink-tertiary">
-            {isHtml ? "Native DOM + Tailwind" : "Babel + React 18"}
-          </span>
-        </div>
-
-        {/* Viewport switchers & reload */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-lg bg-surface-3/80 p-0.5 border border-hairline">
-            <button
-              type="button"
-              onClick={() => setViewport("desktop")}
-              className={cn(
-                "p-1.5 rounded-md transition-colors cursor-pointer",
-                viewport === "desktop" ? "bg-primary text-white shadow-xs" : "text-ink-tertiary hover:text-ink"
-              )}
-              title="Desktop viewport (100%)"
-            >
-              <Monitor className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewport("tablet")}
-              className={cn(
-                "p-1.5 rounded-md transition-colors cursor-pointer",
-                viewport === "tablet" ? "bg-primary text-white shadow-xs" : "text-ink-tertiary hover:text-ink"
-              )}
-              title="Tablet viewport (768px)"
-            >
-              <Tablet className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewport("mobile")}
-              className={cn(
-                "p-1.5 rounded-md transition-colors cursor-pointer",
-                viewport === "mobile" ? "bg-primary text-white shadow-xs" : "text-ink-tertiary hover:text-ink"
-              )}
-              title="Mobile viewport (375px)"
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-            </button>
+      {/* Optional Toolbar if not hidden by parent */}
+      {!hideToolbar && (
+        <div className="px-3.5 py-1.5 bg-surface-2/60 border-b border-hairline flex items-center justify-between text-xs select-none">
+          <div className="flex items-center gap-2 text-ink-subtle font-mono text-[11px]">
+            <span>{isHtml ? "Native DOM + Tailwind" : "React 18 · Babel"}</span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIframeKey((k) => k + 1)}
-            title="Reload sandbox preview"
-            className="p-1.5 rounded-lg text-ink-tertiary hover:text-ink hover:bg-surface-3 transition-colors cursor-pointer border border-hairline"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-[6px] bg-surface-3/80 p-0.5 border border-hairline">
+              <button
+                type="button"
+                onClick={() => setInternalViewport("desktop")}
+                className={cn(
+                  "p-1 rounded-[4px] transition-colors cursor-pointer",
+                  viewport === "desktop" ? "bg-accent text-white shadow-xs" : "text-ink-subtle hover:text-ink"
+                )}
+                title="Desktop viewport (100%)"
+              >
+                <Monitor className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setInternalViewport("tablet")}
+                className={cn(
+                  "p-1 rounded-[4px] transition-colors cursor-pointer",
+                  viewport === "tablet" ? "bg-accent text-white shadow-xs" : "text-ink-subtle hover:text-ink"
+                )}
+                title="Tablet viewport (768px)"
+              >
+                <Tablet className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setInternalViewport("mobile")}
+                className={cn(
+                  "p-1 rounded-[4px] transition-colors cursor-pointer",
+                  viewport === "mobile" ? "bg-accent text-white shadow-xs" : "text-ink-subtle hover:text-ink"
+                )}
+                title="Mobile viewport (390px)"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleRefresh}
+              title="Reload sandbox preview"
+              className="p-1 rounded-[6px] text-ink-subtle hover:text-ink hover:bg-surface-3 transition-colors cursor-pointer border border-hairline"
+            >
+              <RefreshCw className="w-3 h-3" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Sandboxed iframe viewport */}
-      <div className="flex-1 bg-[#090a0b] flex items-center justify-center p-4 min-h-[440px] overflow-auto">
+      <div className="flex-1 bg-[#090a0b] flex items-center justify-center p-3 min-h-[440px] overflow-auto">
         <div
           className={cn(
-            "h-full w-full transition-all duration-200 flex items-center justify-center",
-            viewport === "tablet" && "max-w-[768px] border-x border-hairline/60 shadow-2xl",
-            viewport === "mobile" && "max-w-[375px] border-x border-hairline/60 shadow-2xl"
+            "h-full w-full transition-[max-width] duration-150 motion-reduce:transition-none flex items-center justify-center",
+            viewport === "tablet" && "max-w-[768px] border-x border-hairline shadow-2xl",
+            viewport === "mobile" && "max-w-[390px] border-x border-hairline shadow-2xl"
           )}
         >
           <iframe
-            key={iframeKey}
+            key={internalIframeKey}
             title={`Live Preview of ${name}`}
             srcDoc={srcDoc}
             sandbox="allow-scripts allow-same-origin"
-            className="w-full h-full min-h-[420px] border-0 bg-[#090a0b] rounded-xl"
+            className="w-full h-full min-h-[420px] border-0 bg-[#090a0b] rounded-md"
           />
         </div>
       </div>
     </div>
   );
 }
-

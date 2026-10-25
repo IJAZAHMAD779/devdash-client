@@ -1,19 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
-  Blocks,
-  Copy,
-  Check,
-  Terminal,
-  FileCode2,
-  Play,
-  Sliders,
-  Bot,
-  Plus,
   Loader2,
   FolderOpen,
+  Terminal,
+  RefreshCw,
+  Plus,
 } from "lucide-react";
 import {
   ComponentFramework,
@@ -26,7 +20,11 @@ import {
   useCreateComponent,
 } from "@/hooks/use-components";
 import { ComponentLivePreview } from "./component-live-preview";
+import { DeviceFrame } from "./device-frame";
 import { CodeBlock } from "@/components/ui/code-block";
+import { CopyButton } from "@/components/snippets/copy-button";
+import { TabsUnderline, TabItem } from "./tabs-underline";
+import { SnippetPopover, SnippetPopoverOption } from "@/components/snippets/snippet-popover";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -37,13 +35,26 @@ interface Props {
   onSaved?: () => void;
 }
 
-export function ComponentSynthesizerModal({
-  isOpen,
-  onClose,
-  onSaved,
-}: Props) {
+const FRAMEWORK_OPTIONS: SnippetPopoverOption<ComponentFramework>[] = [
+  { value: "REACT", label: "React" },
+  { value: "NEXTJS", label: "Next.js" },
+  { value: "VUE", label: "Vue" },
+  { value: "SVELTE", label: "Svelte" },
+  { value: "HTML_CSS", label: "HTML/CSS" },
+];
+
+const STYLING_OPTIONS: SnippetPopoverOption<ComponentStyling>[] = [
+  { value: "TAILWIND", label: "Tailwind CSS" },
+  { value: "CSS_MODULES", label: "CSS Modules" },
+  { value: "VANILLA_CSS", label: "Vanilla CSS" },
+  { value: "STYLED_COMPONENTS", label: "Styled Components" },
+];
+
+type ResultTab = "preview" | "code" | "props" | "prompt";
+
+export function ComponentSynthesizerModal({ isOpen, onClose, onSaved }: Props) {
   const [mode, setMode] = useState<"synthesize" | "generate">("synthesize");
-  const [activeTab, setActiveTab] = useState<"preview" | "code" | "props" | "prompt">("preview");
+  const [activeTab, setActiveTab] = useState<ResultTab>("preview");
 
   // Inputs
   const [inputCode, setInputCode] = useState("");
@@ -54,7 +65,9 @@ export function ComponentSynthesizerModal({
 
   // Result state
   const [result, setResult] = useState<SynthesizedComponentResult | null>(null);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Mutations
   const synthesizeMutation = useSynthesizeComponent();
@@ -63,22 +76,67 @@ export function ComponentSynthesizerModal({
 
   const isProcessing = synthesizeMutation.isPending || generateMutation.isPending;
 
+  // Auto-grow textarea up to 50vh
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      const maxHeight = window.innerHeight * 0.5;
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = `${Math.min(Math.max(scrollHeight, 220), maxHeight)}px`;
+    }
+  }, [inputCode, inputPrompt]);
+
+  // Keyboard shortcut: Cmd/Ctrl + Enter runs synthesis, Esc cancels
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        sound.playClick(600);
+        onClose();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isProcessing) {
+        e.preventDefault();
+        handleRun();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, inputCode, inputPrompt, mode, framework, styling, preferredCategory, isProcessing]);
+
   if (!isOpen) return null;
 
-  const handleCopy = async (text: string, key: string, label: string) => {
-    sound.playClick(900);
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedKey(key);
-      toast.success(`${label} copied to clipboard`);
-      setTimeout(() => setCopiedKey(null), 2000);
-    } catch {
-      toast.error("Failed to copy");
+  // Tab key handling for code
+  const handleCodeKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const target = e.currentTarget;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+
+      if (!e.shiftKey) {
+        const next = inputCode.substring(0, start) + "  " + inputCode.substring(end);
+        setInputCode(next);
+        setTimeout(() => {
+          target.selectionStart = target.selectionEnd = start + 2;
+        }, 0);
+      } else {
+        if (inputCode.substring(start - 2, start) === "  ") {
+          const next = inputCode.substring(0, start - 2) + inputCode.substring(end);
+          setInputCode(next);
+          setTimeout(() => {
+            target.selectionStart = target.selectionEnd = Math.max(0, start - 2);
+          }, 0);
+        }
+      }
     }
   };
 
   const handleRun = async () => {
     sound.playClick(800);
+    setErrorMsg(null);
+
     if (mode === "synthesize") {
       if (!inputCode.trim()) {
         toast.error("Please paste component code to synthesize");
@@ -94,7 +152,9 @@ export function ComponentSynthesizerModal({
             toast.success("Component synthesized successfully");
           },
           onError: (err: any) => {
-            toast.error(err?.message || "Synthesis failed. Please try again.");
+            const msg = err?.message || "Synthesis failed. Please try again.";
+            setErrorMsg(msg);
+            toast.error(msg);
           },
         }
       );
@@ -118,534 +178,437 @@ export function ComponentSynthesizerModal({
             toast.success("Component generated successfully");
           },
           onError: (err: any) => {
-            toast.error(err?.message || "Generation failed. Please try again.");
+            const msg = err?.message || "Generation failed. Please try again.";
+            setErrorMsg(msg);
+            toast.error(msg);
           },
         }
       );
     }
   };
 
-  const handleSaveToDevDash = async () => {
+  const handleSaveToCatalog = () => {
     if (!result) return;
-    sound.playClick(1000);
-
+    sound.playClick(850);
     createComponentMutation.mutate(
       {
         name: result.name,
         description: result.description,
-        category: result.category,
+        category: result.category || preferredCategory || "general",
         framework: result.framework,
         styling: result.styling,
         code: result.code,
-        tags: [result.category, result.framework.toLowerCase(), result.styling.toLowerCase()],
-        aiAgentPrompt: result.aiAgentPrompt,
-        howToUse: result.howToUse,
         dependencies: result.dependencies,
         propsSchema: result.propsSchema,
+        howToUse: result.howToUse,
+        aiAgentPrompt: result.aiAgentPrompt,
+        tags: [result.category || "ui", result.framework.toLowerCase()],
       },
       {
         onSuccess: () => {
           sound.playSuccess();
-          toast.success(`Saved "${result.name}" to DevDash library!`);
+          toast.success(`"${result.name}" saved to component library`);
           if (onSaved) onSaved();
           onClose();
         },
         onError: (err: any) => {
-          toast.error(err?.message || "Failed to save component to library");
+          toast.error(err?.message || "Failed to save component");
         },
       }
     );
   };
 
+  const resultTabs: TabItem<ResultTab>[] = [
+    { id: "preview", label: "Preview" },
+    { id: "code", label: "Code" },
+    { id: "props", label: "Props & Docs", hasContent: Boolean(result?.propsSchema?.length || result?.dependencies?.length) },
+    { id: "prompt", label: "AI Prompt", hasContent: Boolean(result?.aiAgentPrompt) },
+  ];
+
+  const npmCmd = result?.dependencies && result.dependencies.length > 0
+    ? `npm i ${result.dependencies.join(" ")}`
+    : null;
+
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 md:p-6 animate-in fade-in duration-150"
-      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="synthesizer-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          sound.playClick(600);
+          onClose();
+        }
+      }}
     >
       <div
-        className="bg-surface-1 border border-hairline rounded-2xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+        className="w-full max-w-[1100px] max-h-[92vh] rounded-lg bg-surface-1 border border-hairline-strong shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Studio Top Header */}
-        <div className="px-5 py-3.5 bg-surface-2/60 border-b border-hairline flex items-center justify-between gap-4">
+        {/* Header: Title, Subtitle, Underline Mode Toggle, Gemini Engine mono label, Close */}
+        <div className="px-5 py-3 border-b border-hairline flex flex-wrap items-center justify-between gap-3 shrink-0 select-none bg-surface-1">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-surface-3 border border-hairline flex items-center justify-center text-ink shrink-0">
-              <Blocks className="w-4 h-4 text-primary" />
-            </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold tracking-tight text-ink">
-                  Component Synthesizer & Architect
-                </h2>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-blue-400 font-medium">
-                  Gemini Engine
-                </span>
-              </div>
-              <p className="text-[11px] text-ink-muted">
-                Analyze and generate production-ready components with auto-categorization & AI agent prompts
+              <h2
+                id="synthesizer-modal-title"
+                className="text-base font-semibold tracking-[-0.4px] text-ink leading-tight"
+              >
+                AI Component Synthesizer
+              </h2>
+              <p className="text-[11px] text-ink-subtle mt-0.5">
+                Transform code into design system assets or generate from natural language
               </p>
             </div>
+
+            <span className="font-mono text-[10px] text-ink-subtle/80 bg-surface-2 px-1.5 py-0.5 rounded border border-hairline">
+              gemini-flash
+            </span>
           </div>
 
-          {/* Mode Switcher */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-lg bg-surface-3/90 p-1 border border-hairline">
+          <div className="flex items-center gap-3">
+            {/* Mode Underline Toggle with high contrast */}
+            <div className="flex items-center gap-2 border-b border-hairline text-xs font-medium">
               <button
                 type="button"
                 onClick={() => {
-                  sound.playClick(600);
+                  sound.playClick(850);
                   setMode("synthesize");
                 }}
                 className={cn(
-                  "px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                  "pb-1.5 transition-colors relative",
                   mode === "synthesize"
-                    ? "bg-surface-1 text-ink shadow-xs border border-hairline"
-                    : "text-ink-tertiary hover:text-ink"
+                    ? "text-ink font-semibold"
+                    : "text-ink-muted hover:text-ink"
                 )}
               >
-                <FileCode2 className="w-3.5 h-3.5" />
                 <span>Code to Asset</span>
+                {mode === "synthesize" && (
+                  <span className="absolute bottom-0 inset-x-0 h-[2px] bg-accent rounded-full" />
+                )}
               </button>
+
               <button
                 type="button"
                 onClick={() => {
-                  sound.playClick(600);
+                  sound.playClick(850);
                   setMode("generate");
                 }}
                 className={cn(
-                  "px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                  "pb-1.5 transition-colors relative",
                   mode === "generate"
-                    ? "bg-surface-1 text-ink shadow-xs border border-hairline"
-                    : "text-ink-tertiary hover:text-ink"
+                    ? "text-ink font-semibold"
+                    : "text-ink-muted hover:text-ink"
                 )}
               >
-                <Sliders className="w-3.5 h-3.5" />
                 <span>Prompt to Component</span>
+                {mode === "generate" && (
+                  <span className="absolute bottom-0 inset-x-0 h-[2px] bg-accent rounded-full" />
+                )}
               </button>
             </div>
 
+            {/* Close */}
             <button
               type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-ink-tertiary hover:text-ink hover:bg-surface-3 transition-colors cursor-pointer border border-hairline"
-              title="Close modal"
+              onClick={() => {
+                sound.playClick(600);
+                onClose();
+              }}
+              aria-label="Close modal"
+              className="p-1 rounded text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Studio Body: Split View */}
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
-          {/* Left Column: Input Panel */}
-          <div className="w-full lg:w-[42%] border-b lg:border-b-0 lg:border-r border-hairline bg-surface-1/40 flex flex-col p-4 space-y-3 overflow-y-auto">
-            {/* Context Notice */}
-            <div className="text-[11px] text-ink-muted">
-              {mode === "synthesize"
-                ? "Paste any raw React, Next.js, or HTML snippet. The AI will extract category, props, npm packages, and a prompt for other AI agents."
-                : "Describe the UI component you need. The AI will generate full production code, documentation, and the master agent prompt."}
-            </div>
-
-            {/* Input Editor */}
-            {mode === "synthesize" ? (
-              <div className="flex-1 flex flex-col space-y-1.5 min-h-[220px]">
-                <label className="text-xs font-medium text-ink flex items-center justify-between">
-                  <span>Source Code</span>
-                  <span className="text-[10px] font-mono text-ink-tertiary">TSX / JSX / HTML</span>
-                </label>
-                <textarea
-                  value={inputCode}
-                  onChange={(e) => setInputCode(e.target.value)}
-                  placeholder={`// Paste component code here...\nexport function MyButton({ children }) {\n  return <button className="px-4 py-2 bg-blue-600 rounded-lg">{children}</button>;\n}`}
-                  className="flex-1 w-full p-3 rounded-xl bg-surface-2 border border-hairline text-ink text-xs font-mono resize-none focus:outline-none focus:border-primary/50 placeholder:text-ink-subtle transition-colors min-h-[220px]"
-                  spellCheck={false}
-                />
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col space-y-1.5 min-h-[200px]">
-                <label className="text-xs font-medium text-ink flex items-center justify-between">
-                  <span>Component Prompt</span>
-                  <span className="text-[10px] font-mono text-ink-tertiary">Natural Language</span>
-                </label>
-                <textarea
-                  value={inputPrompt}
-                  onChange={(e) => setInputPrompt(e.target.value)}
-                  placeholder="e.g. Minimalist dark-mode subscription tier card with yearly 20% discount badge, checkmark benefits list, and royal blue primary CTA button..."
-                  className="flex-1 w-full p-3 rounded-xl bg-surface-2 border border-hairline text-ink text-xs leading-relaxed resize-none focus:outline-none focus:border-primary/50 placeholder:text-ink-subtle transition-colors min-h-[200px]"
-                />
-              </div>
-            )}
-
-            {/* Config Selectors */}
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
-              <div>
-                <label className="text-[11px] text-ink-tertiary block mb-1">Framework</label>
-                <select
-                  value={framework}
-                  onChange={(e) => setFramework(e.target.value as ComponentFramework)}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-surface-2 border border-hairline text-ink text-xs focus:outline-none cursor-pointer"
-                >
-                  <option value="REACT">React</option>
-                  <option value="NEXTJS">Next.js</option>
-                  <option value="HTML_CSS">HTML & CSS</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] text-ink-tertiary block mb-1">Styling</label>
-                <select
-                  value={styling}
-                  onChange={(e) => setStyling(e.target.value as ComponentStyling)}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-surface-2 border border-hairline text-ink text-xs focus:outline-none cursor-pointer"
-                >
-                  <option value="TAILWIND">Tailwind CSS</option>
-                  <option value="VANILLA_CSS">Vanilla CSS</option>
-                </select>
-              </div>
-            </div>
-
-            {mode === "generate" && (
-              <div>
-                <label className="text-[11px] text-ink-tertiary block mb-1">Target Category (Optional)</label>
-                <input
-                  type="text"
-                  value={preferredCategory}
-                  onChange={(e) => setPreferredCategory(e.target.value)}
-                  placeholder="e.g. card, button, modal, auth, navigation..."
-                  className="w-full px-3 py-1.5 rounded-lg bg-surface-2 border border-hairline text-ink text-xs focus:outline-none placeholder:text-ink-subtle"
-                />
-              </div>
-            )}
-
-            {/* Run Button */}
-            <button
-              type="button"
-              onClick={handleRun}
-              disabled={isProcessing}
-              className="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover active:scale-[0.99] transition-all cursor-pointer shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>{mode === "synthesize" ? "Analyzing with Gemini..." : "Synthesizing Component..."}</span>
-                </>
-              ) : (
-                <>
-                  <Blocks className="w-3.5 h-3.5" />
-                  <span>{mode === "synthesize" ? "Synthesize & Extract Prompt" : "Generate Component"}</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Right Column: Results & Inspection Panel */}
-          <div className="flex-1 flex flex-col bg-surface-1 overflow-hidden min-h-0">
-            {result ? (
-              <>
-                {/* Result Top Sub-header & Segmented Tabs */}
-                <div className="px-4 py-2 bg-surface-2/40 border-b border-hairline flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-semibold text-xs text-ink truncate">{result.name}</span>
-                    <span className="text-ink-tertiary">·</span>
-                    <span className="text-[11px] font-mono text-ink-muted px-2 py-0.5 rounded bg-surface-3 border border-hairline capitalize">
-                      {result.category}
-                    </span>
-                  </div>
-
-                  {/* 4 Inspection Tabs */}
-                  <div className="flex items-center rounded-lg bg-surface-3/80 p-0.5 border border-hairline">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        sound.playClick(700);
-                        setActiveTab("preview");
-                      }}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1.5",
-                        activeTab === "preview"
-                          ? "bg-surface-1 text-ink shadow-xs border border-hairline"
-                          : "text-ink-tertiary hover:text-ink"
-                      )}
-                    >
-                      <Play className="w-3 h-3 text-emerald-400" />
-                      <span>Preview</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        sound.playClick(700);
-                        setActiveTab("code");
-                      }}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1.5",
-                        activeTab === "code"
-                          ? "bg-surface-1 text-ink shadow-xs border border-hairline"
-                          : "text-ink-tertiary hover:text-ink"
-                      )}
-                    >
-                      <FileCode2 className="w-3 h-3" />
-                      <span>Code</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        sound.playClick(700);
-                        setActiveTab("props");
-                      }}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1.5",
-                        activeTab === "props"
-                          ? "bg-surface-1 text-ink shadow-xs border border-hairline"
-                          : "text-ink-tertiary hover:text-ink"
-                      )}
-                    >
-                      <Terminal className="w-3 h-3" />
-                      <span>Docs & Deps</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        sound.playClick(700);
-                        setActiveTab("prompt");
-                      }}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1.5",
-                        activeTab === "prompt"
-                          ? "bg-primary text-white shadow-xs"
-                          : "text-ink-tertiary hover:text-ink"
-                      )}
-                    >
-                      <Bot className="w-3 h-3" />
-                      <span>AI Agent Prompt</span>
-                    </button>
-                  </div>
+        {/* Two-Pane Body */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-hairline overflow-hidden">
+          {/* LEFT PANE: Inputs & Controls */}
+          <div className="flex flex-col h-full overflow-hidden bg-surface-1">
+            <div className="p-4 flex-1 overflow-y-auto space-y-3.5">
+              {/* Popovers row: Framework & Styling */}
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                <div className="flex items-center gap-1.5 font-mono text-xs">
+                  <span className="text-ink-subtle text-[11px]">Framework:</span>
+                  <SnippetPopover
+                    options={FRAMEWORK_OPTIONS}
+                    value={framework}
+                    onChange={(val) => setFramework(val)}
+                  />
                 </div>
 
-                {/* Tab Contents */}
-                <div className="flex-1 overflow-auto p-4">
-                  {/* Tab 1: Live Interactive Preview */}
+                <div className="flex items-center gap-1.5 font-mono text-xs">
+                  <span className="text-ink-subtle text-[11px]">Styling:</span>
+                  <SnippetPopover
+                    options={STYLING_OPTIONS}
+                    value={styling}
+                    onChange={(val) => setStyling(val)}
+                  />
+                </div>
+
+                {mode === "generate" && (
+                  <div className="flex items-center gap-1.5 font-mono text-xs">
+                    <span className="text-ink-subtle text-[11px]">Category:</span>
+                    <input
+                      type="text"
+                      value={preferredCategory}
+                      onChange={(e) => setPreferredCategory(e.target.value)}
+                      placeholder="e.g. navigation"
+                      className="h-7 px-2 rounded-md bg-surface-2 text-xs font-mono text-ink border border-hairline focus:outline-none focus:border-accent w-28 placeholder:text-ink-subtle/50"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Main Input Field */}
+              {mode === "synthesize" ? (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-ink-subtle">
+                    <span>Source Code (JSX / TSX / HTML)</span>
+                    <span>Tab indents</span>
+                  </div>
+                  <textarea
+                    ref={textareaRef}
+                    value={inputCode}
+                    onChange={(e) => setInputCode(e.target.value)}
+                    onKeyDown={handleCodeKeyDown}
+                    placeholder="// Paste raw React component, SVG asset, or HTML code..."
+                    spellCheck={false}
+                    className="w-full min-h-[260px] p-3 rounded-md bg-surface-2/70 border border-hairline text-ink font-mono text-[13px] leading-[20px] resize-none focus:outline-none focus:border-accent transition-colors"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <span className="text-[11px] font-mono text-ink-subtle">
+                    Natural Language Component Prompt
+                  </span>
+                  <textarea
+                    ref={textareaRef}
+                    value={inputPrompt}
+                    onChange={(e) => setInputPrompt(e.target.value)}
+                    placeholder="e.g. Build a dense dark-mode Kanban column header with active task count, popover options menu, and drag handle..."
+                    spellCheck={false}
+                    className="w-full min-h-[260px] p-3 rounded-md bg-surface-2/70 border border-hairline text-ink text-xs leading-relaxed resize-none focus:outline-none focus:border-accent transition-colors"
+                  />
+                </div>
+              )}
+
+              {/* Server error line with retry */}
+              {errorMsg && (
+                <div className="flex items-center justify-between gap-2 p-2 rounded text-xs font-mono text-rose-300 bg-rose-500/10 border border-rose-500/20">
+                  <span className="truncate">{errorMsg}</span>
+                  <button
+                    type="button"
+                    onClick={handleRun}
+                    className="inline-flex items-center gap-1 text-ink underline hover:text-white shrink-0"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Retry</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Left Footer: Standard-sized primary button right-aligned */}
+            <div className="px-4 py-2.5 border-t border-hairline bg-surface-1 flex items-center justify-between select-none">
+              <span className="text-[11px] font-mono text-ink-subtle">
+                <kbd className="border border-hairline px-1 py-0.2 rounded bg-surface-2 text-ink-muted">
+                  ⌘ Enter
+                </kbd>{" "}
+                to run
+              </span>
+
+              <button
+                type="button"
+                onClick={handleRun}
+                disabled={isProcessing}
+                className={cn(
+                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-medium bg-accent text-white hover:bg-accent/90 transition-colors shadow-sm",
+                  isProcessing && "opacity-60 cursor-not-allowed"
+                )}
+              >
+                {isProcessing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>
+                  {isProcessing
+                    ? "Synthesizing..."
+                    : mode === "synthesize"
+                    ? "Synthesize & Extract Prompt"
+                    : "Generate Component"}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT PANE: Results / Empty State */}
+          <div className="flex flex-col h-full overflow-hidden bg-surface-1">
+            {result ? (
+              <>
+                {/* Result Tabs & Save Button Header */}
+                <div className="px-4 pt-2.5 border-b border-hairline flex items-center justify-between select-none bg-surface-1">
+                  <TabsUnderline
+                    tabs={resultTabs}
+                    activeTab={activeTab}
+                    onChange={setActiveTab}
+                    className="border-b-0"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleSaveToCatalog}
+                    disabled={createComponentMutation.isPending}
+                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[6px] text-xs font-medium bg-accent text-white hover:bg-accent/90 transition-colors shadow-sm shrink-0 mb-1.5"
+                  >
+                    {createComponentMutation.isPending ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Plus className="w-3 h-3" />
+                    )}
+                    <span>Save to Catalog</span>
+                  </button>
+                </div>
+
+                {/* Result Content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {/* TAB 1: PREVIEW */}
                   {activeTab === "preview" && (
-                    <div className="h-full flex flex-col space-y-3">
-                      <div className="text-[11px] text-ink-muted flex items-center justify-between">
-                        <span>Interactive Sandbox Canvas (React 18 + Tailwind)</span>
-                        <span className="font-mono text-[10px] text-ink-subtle">Click & hover to test states</span>
-                      </div>
-                      <div className="flex-1 min-h-[380px]">
+                    <DeviceFrame
+                      runtimeNote={
+                        result.framework === "HTML_CSS"
+                          ? "Native DOM + Tailwind"
+                          : "React 18 · Babel"
+                      }
+                    >
+                      {(viewport, refreshKey) => (
                         <ComponentLivePreview
+                          key={refreshKey}
                           code={result.code}
                           name={result.name}
                           category={result.category}
                           framework={result.framework}
-                          className="h-full min-h-[380px]"
+                          viewport={viewport}
+                          hideToolbar={true}
+                          className="w-full border-0 bg-transparent rounded-none"
                         />
-                      </div>
-                    </div>
+                      )}
+                    </DeviceFrame>
                   )}
 
-                  {/* Tab 2: Clean Source Code */}
+                  {/* TAB 2: CODE */}
                   {activeTab === "code" && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-ink">Production Source Code</span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(result.code, "code", "Source code")}
-                          className="px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface-3 text-xs font-medium text-ink-muted hover:text-ink border border-hairline inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                        >
-                          {copiedKey === "code" ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                          <span>{copiedKey === "code" ? "Copied!" : "Copy Code"}</span>
-                        </button>
-                      </div>
-                      <CodeBlock
-                        code={result.code}
-                        language={result.framework === "HTML_CSS" ? "html" : "typescript"}
-                      />
-                    </div>
-                  )}
-
-                  {/* Tab 3: Props & Dependencies */}
-                  {activeTab === "props" && (
-                    <div className="space-y-5">
-                      {/* Dependencies Card */}
-                      <div className="p-3.5 rounded-xl bg-surface-2 border border-hairline space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-ink flex items-center gap-1.5">
-                            <Terminal className="w-3.5 h-3.5 text-ink-tertiary" />
-                            <span>Required NPM Dependencies</span>
-                          </span>
-                          {result.dependencies.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleCopy(
-                                  `npm i ${result.dependencies.join(" ")}`,
-                                  "deps",
-                                  "Install command"
-                                )
-                              }
-                              className="text-[11px] text-ink-muted hover:text-ink px-2 py-0.5 rounded bg-surface-3 border border-hairline inline-flex items-center gap-1 cursor-pointer transition-colors"
-                            >
-                              {copiedKey === "deps" ? (
-                                <Check className="w-3 h-3 text-emerald-400" />
-                              ) : (
-                                <Copy className="w-3 h-3" />
-                              )}
-                              <span>Copy npm install</span>
-                            </button>
-                          )}
-                        </div>
-
-                        {result.dependencies.length > 0 ? (
-                          <div className="font-mono text-xs text-blue-400 bg-surface-3 p-2 rounded-lg border border-hairline flex items-center gap-2">
-                            <span className="text-ink-tertiary select-none">$</span>
-                            <span>npm i {result.dependencies.join(" ")}</span>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-ink-tertiary font-mono">
-                            Zero third-party dependencies required. Standard React only.
-                          </div>
-                        )}
-                      </div>
-
-                      {/* How To Use Snippet */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-ink">Usage Snippet</span>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(result.howToUse, "usage", "Usage snippet")}
-                            className="text-[11px] text-ink-muted hover:text-ink px-2 py-0.5 rounded bg-surface-2 hover:bg-surface-3 border border-hairline inline-flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            {copiedKey === "usage" ? (
-                              <Check className="w-3 h-3 text-emerald-400" />
-                            ) : (
-                              <Copy className="w-3 h-3" />
-                            )}
-                            <span>Copy Usage</span>
-                          </button>
-                        </div>
-                        <CodeBlock
-                          code={result.howToUse}
-                          language="typescript"
+                    <div className="rounded-lg bg-surface-2/40 border border-hairline overflow-hidden flex flex-col">
+                      <div className="flex items-center justify-between px-3 py-1.5 border-b border-hairline bg-surface-2/60 select-none">
+                        <span className="font-mono text-[11px] text-ink-subtle uppercase">
+                          Generated Code
+                        </span>
+                        <CopyButton
+                          textToCopy={result.code}
+                          label="Copy code"
+                          showText={true}
+                          className="h-6 px-2 text-[11px] rounded text-ink-muted hover:text-ink hover:bg-surface-3"
                         />
                       </div>
-
-                      {/* Props Schema Table */}
-                      <div className="space-y-2">
-                        <span className="text-xs font-semibold text-ink">Props Schema</span>
-                        {result.propsSchema && result.propsSchema.length > 0 ? (
-                          <div className="rounded-xl border border-hairline overflow-hidden">
-                            <table className="w-full text-left text-xs">
-                              <thead className="bg-surface-2/80 text-ink-tertiary border-b border-hairline font-mono text-[11px]">
-                                <tr>
-                                  <th className="p-2.5 font-medium">Prop</th>
-                                  <th className="p-2.5 font-medium">Type</th>
-                                  <th className="p-2.5 font-medium">Default</th>
-                                  <th className="p-2.5 font-medium">Description</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-hairline bg-surface-1">
-                                {result.propsSchema.map((item, idx) => (
-                                  <tr key={idx} className="hover:bg-surface-2/40 transition-colors">
-                                    <td className="p-2.5 font-mono text-blue-400 font-semibold">
-                                      {item.prop}
-                                    </td>
-                                    <td className="p-2.5 font-mono text-ink-muted">{item.type}</td>
-                                    <td className="p-2.5 font-mono text-ink-subtle">
-                                      {item.default || "—"}
-                                    </td>
-                                    <td className="p-2.5 text-ink-muted leading-relaxed">
-                                      {item.description}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <div className="p-3 text-xs text-ink-tertiary bg-surface-2 rounded-xl border border-hairline">
-                            No customizable props defined. Component is self-contained.
-                          </div>
-                        )}
+                      <div className="max-h-[min(55vh,480px)] overflow-auto p-3 font-mono text-[12px] leading-[22px]">
+                        <CodeBlock
+                          code={result.code}
+                          language="typescript"
+                          enableSecretMasking={false}
+                          className="bg-transparent border-0 p-0 text-xs"
+                        />
                       </div>
                     </div>
                   )}
 
-                  {/* Tab 4: AI Agent Master Prompt */}
+                  {/* TAB 3: PROPS & DOCS */}
+                  {activeTab === "props" && (
+                    <div className="space-y-3 select-none">
+                      <div className="p-3 rounded-lg bg-surface-2/40 border border-hairline text-xs text-ink-muted leading-relaxed">
+                        <div className="font-medium text-ink mb-1">{result.name}</div>
+                        {result.description}
+                      </div>
+
+                      {npmCmd && (
+                        <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-surface-2/40 border border-hairline text-xs font-mono">
+                          <div className="flex items-center gap-2 truncate text-ink-muted">
+                            <Terminal className="w-3.5 h-3.5 text-ink-subtle shrink-0" />
+                            <span className="truncate">{npmCmd}</span>
+                          </div>
+                          <CopyButton
+                            textToCopy={npmCmd}
+                            label="Copy npm"
+                            showText={true}
+                            className="h-6 px-2 text-[11px] rounded text-ink-muted hover:text-ink hover:bg-surface-3 shrink-0"
+                          />
+                        </div>
+                      )}
+
+                      {result.propsSchema && result.propsSchema.length > 0 && (
+                        <div className="rounded-lg border border-hairline overflow-hidden bg-surface-1">
+                          <div className="grid grid-cols-12 px-3 py-2 bg-surface-2/60 border-b border-hairline text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle">
+                            <div className="col-span-3">Prop</div>
+                            <div className="col-span-3">Type</div>
+                            <div className="col-span-2">Default</div>
+                            <div className="col-span-4">Description</div>
+                          </div>
+                          <div className="divide-y divide-hairline">
+                            {result.propsSchema.map((p, idx) => (
+                              <div
+                                key={idx}
+                                className="grid grid-cols-12 px-3 py-2 text-xs hover:bg-surface-2/30 transition-colors items-baseline"
+                              >
+                                <div className="col-span-3 font-mono font-medium text-ink truncate pr-2">
+                                  {p.prop}
+                                </div>
+                                <div className="col-span-3 font-mono text-[11px] text-blue-400 truncate pr-2">
+                                  {p.type}
+                                </div>
+                                <div className="col-span-2 font-mono text-[11px] text-ink-subtle truncate pr-2">
+                                  {p.default || "—"}
+                                </div>
+                                <div className="col-span-4 text-ink-muted text-[11px] leading-relaxed">
+                                  {p.description || "—"}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 4: AI PROMPT */}
                   {activeTab === "prompt" && (
-                    <div className="space-y-4">
-                      <div className="p-4 rounded-xl bg-surface-2 border border-hairline space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Bot className="w-4 h-4 text-primary" />
-                            <span className="text-xs font-semibold text-ink">
-                              Reusable Master Prompt for AI Agents
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(result.aiAgentPrompt, "agent-prompt", "AI Agent Prompt")}
-                            className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
-                          >
-                            {copiedKey === "agent-prompt" ? (
-                              <Check className="w-3.5 h-3.5" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                            <span>{copiedKey === "agent-prompt" ? "Copied!" : "Copy Master Prompt"}</span>
-                          </button>
-                        </div>
-
-                        <p className="text-[11px] text-ink-muted leading-relaxed">
-                          This reverse-engineered prompt captures the exact design tokens, interaction mechanics, and props architecture. Feed it into Claude, Cursor, Antigravity, or Gemini to recreate or adapt this component into any future project.
-                        </p>
-
-                        <div className="p-3.5 rounded-xl bg-black/60 border border-hairline font-mono text-xs text-ink leading-relaxed whitespace-pre-wrap select-all max-h-[320px] overflow-y-auto">
-                          {result.aiAgentPrompt}
-                        </div>
+                    <div className="rounded-lg bg-surface-2/40 border border-hairline overflow-hidden flex flex-col">
+                      <div className="flex items-center justify-between px-3 py-1.5 border-b border-hairline bg-surface-2/60 select-none">
+                        <span className="font-mono text-[11px] text-ink-subtle uppercase">
+                          AI Agent Master Prompt
+                        </span>
+                        <CopyButton
+                          textToCopy={result.aiAgentPrompt}
+                          label="Copy prompt"
+                          showText={true}
+                          className="h-6 px-2 text-[11px] rounded text-ink-muted hover:text-ink hover:bg-surface-3"
+                        />
+                      </div>
+                      <div className="max-h-[min(55vh,480px)] overflow-auto p-3 font-mono text-[12px] leading-[22px]">
+                        <CodeBlock
+                          code={result.aiAgentPrompt}
+                          language="markdown"
+                          enableSecretMasking={false}
+                          className="bg-transparent border-0 p-0 text-xs"
+                        />
                       </div>
                     </div>
                   )}
-                </div>
-
-                {/* Studio Footer: Save to Library */}
-                <div className="px-5 py-3 bg-surface-2/60 border-t border-hairline flex items-center justify-between">
-                  <div className="text-xs text-ink-muted">
-                    Ready to keep in your personal workspace catalog.
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSaveToDevDash}
-                    disabled={createComponentMutation.isPending}
-                    className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover active:scale-[0.99] transition-all cursor-pointer shadow-sm flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    {createComponentMutation.isPending ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Plus className="w-3.5 h-3.5" />
-                    )}
-                    <span>Save to DevDash Library</span>
-                  </button>
                 </div>
               </>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-surface-2 border border-hairline flex items-center justify-center text-ink-tertiary">
-                  <Blocks className="w-6 h-6 text-primary" />
-                </div>
-                <div className="space-y-1 max-w-sm">
-                  <h3 className="text-sm font-semibold text-ink">No Component Synthesized Yet</h3>
-                  <p className="text-xs text-ink-muted leading-relaxed">
-                    Paste raw code on the left to extract metadata and AI prompts, or write a description to generate one from scratch.
-                  </p>
-                </div>
+              /* Centered single-line muted empty state (NO big icon box) */
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none">
+                <p className="text-xs font-mono text-ink-subtle max-w-xs leading-relaxed">
+                  No component synthesized yet. Enter code or prompt on the left and run synthesis.
+                </p>
               </div>
             )}
           </div>

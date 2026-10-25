@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Plus, Star, Loader2, Layers, Palette, Folder } from "lucide-react";
-import { useCreateComponent } from "@/hooks/use-components";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { X, Star, Loader2, ChevronDown, ChevronRight, Check } from "lucide-react";
+import { useCreateComponent, useUIComponents } from "@/hooks/use-components";
 import { useProjects } from "@/hooks/use-projects";
 import { ComponentFramework, ComponentStyling } from "@/types/component";
+import { Combobox } from "./combobox";
 import { sound } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -32,12 +33,12 @@ const STYLING_OPTIONS: { id: ComponentStyling; label: string }[] = [
 
 export function NewComponentModal({ isOpen, onClose, initialCategory }: Props) {
   const createComponent = useCreateComponent();
+  const { data: allComponents } = useUIComponents();
   const { data: projects } = useProjects();
 
-  const [isClosing, setIsClosing] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState(initialCategory || "general");
+  const [category, setCategory] = useState("general");
   const [framework, setFramework] = useState<ComponentFramework>("REACT");
   const [styling, setStyling] = useState<ComponentStyling>("TAILWIND");
   const [code, setCode] = useState("");
@@ -48,11 +49,39 @@ export function NewComponentModal({ isOpen, onClose, initialCategory }: Props) {
   const [favorite, setFavorite] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Popover open states
+  const [openFramework, setOpenFramework] = useState(false);
+  const [openStyling, setOpenStyling] = useState(false);
+  const [openProject, setOpenProject] = useState(false);
+
+  // Collapsible section
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const codeAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Extract distinct category names preserving canonical casing
+  const categoryOptions = useMemo(() => {
+    if (!allComponents || allComponents.length === 0) return ["general", "navbars", "buttons", "cards", "forms", "modals"];
+    const map = new Map<string, string>();
+    allComponents.forEach((c) => {
+      const cat = (c.category || "general").trim();
+      if (!cat) return;
+      const lower = cat.toLowerCase();
+      if (!map.has(lower)) {
+        map.set(lower, cat);
+      }
+    });
+    if (!map.has("general")) map.set("general", "general");
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+  }, [allComponents]);
+
+  // Reset state on open
   useEffect(() => {
     if (isOpen) {
       setName("");
       setDescription("");
-      setCategory(initialCategory || "general");
+      setCategory(initialCategory && initialCategory !== "ALL" && initialCategory !== "STARRED" ? initialCategory : "general");
       setFramework("REACT");
       setStyling("TAILWIND");
       setCode("");
@@ -62,29 +91,81 @@ export function NewComponentModal({ isOpen, onClose, initialCategory }: Props) {
       setTagInput("");
       setFavorite(false);
       setError(null);
-      setIsClosing(false);
-    }
-  }, [isOpen]);
+      setIsMoreOpen(false);
 
-  // Handle escape key
+      // Autofocus name input
+      setTimeout(() => {
+        nameInputRef.current?.focus();
+      }, 60);
+    }
+  }, [isOpen, initialCategory]);
+
+  const isDirty = useMemo(() => {
+    return Boolean(name.trim() || code.trim() || description.trim() || tags.length > 0);
+  }, [name, code, description, tags]);
+
+  const handleClose = () => {
+    if (isDirty) {
+      if (!window.confirm("Discard unsaved component changes?")) {
+        return;
+      }
+    }
+    onClose();
+  };
+
+  // Keyboard shortcut listener: ⌘/Ctrl+Enter saves, Esc closes with confirm
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && !isClosing) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        handleSubmit();
+      } else if (e.key === "Escape") {
+        // Only trigger if no inner popover is open
+        if (openFramework || openStyling || openProject) {
+          setOpenFramework(false);
+          setOpenStyling(false);
+          setOpenProject(false);
+          return;
+        }
+        e.preventDefault();
         handleClose();
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isClosing]);
+  }, [isOpen, isDirty, openFramework, openStyling, openProject, name, code, category, framework, styling, description, projectId, tags, favorite, previewCode]);
 
-  if (!isOpen) return null;
+  // Code textarea Tab handling (indents with 2 spaces)
+  const handleCodeKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const target = e.currentTarget;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
 
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsClosing(false);
-      onClose();
-    }, 150);
+      if (e.shiftKey) {
+        // Outdent
+        const linesBefore = code.substring(0, start).split("\n");
+        const currentLine = linesBefore[linesBefore.length - 1];
+        if (currentLine.startsWith("  ")) {
+          const newCode = code.substring(0, start - 2) + code.substring(start);
+          setCode(newCode);
+          setTimeout(() => {
+            target.selectionStart = target.selectionEnd = start - 2;
+          }, 0);
+        }
+      } else {
+        // Indent 2 spaces
+        const newCode = code.substring(0, start) + "  " + code.substring(end);
+        setCode(newCode);
+        setTimeout(() => {
+          target.selectionStart = target.selectionEnd = start + 2;
+        }, 0);
+      }
+    }
   };
 
   const handleAddTag = (e: React.KeyboardEvent) => {
@@ -102,18 +183,21 @@ export function NewComponentModal({ isOpen, onClose, initialCategory }: Props) {
     setTags(tags.filter((t) => t !== tagToRemove));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!name.trim()) {
       setError("Component name is required");
+      nameInputRef.current?.focus();
       return;
     }
     if (!code.trim()) {
-      setError("Component code is required");
+      setError("Component source code is required");
+      codeAreaRef.current?.focus();
       return;
     }
 
     try {
+      setError(null);
       await createComponent.mutateAsync({
         name: name.trim(),
         description: description.trim() || undefined,
@@ -131,7 +215,7 @@ export function NewComponentModal({ isOpen, onClose, initialCategory }: Props) {
       toast.success("Component created", {
         description: `"${name.trim()}" added to your UI library.`,
       });
-      handleClose();
+      onClose();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } };
       const msg = e?.response?.data?.error?.message || "Failed to create component";
@@ -140,280 +224,383 @@ export function NewComponentModal({ isOpen, onClose, initialCategory }: Props) {
     }
   };
 
+  if (!isOpen) return null;
+
+  const currentFrameworkLabel = FRAMEWORKS.find((f) => f.id === framework)?.label || "React";
+  const currentStylingLabel = STYLING_OPTIONS.find((s) => s.id === styling)?.label || "Tailwind CSS";
+  const currentProjectName = projects?.find((p) => p.id === projectId)?.title || "No project";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className={cn(
-          "fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity duration-150",
-          isClosing ? "opacity-0" : "opacity-100"
-        )}
+        className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity duration-150 animate-in fade-in"
         onClick={handleClose}
       />
 
       {/* Modal Dialog */}
       <div
-        className={cn(
-          "relative w-full max-w-2xl bg-surface-1 border border-hairline rounded-xl shadow-2xl overflow-hidden transition-all duration-150 max-h-[90vh] flex flex-col",
-          isClosing
-            ? "opacity-0 scale-95"
-            : "opacity-100 scale-100 animate-in fade-in zoom-in-95"
-        )}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-component-title"
+        className="relative w-full max-w-[720px] bg-surface-1 border border-hairline rounded-lg shadow-2xl overflow-hidden transition-all duration-150 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95"
       >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-hairline flex items-center justify-between bg-surface-1/80">
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold tracking-[-0.3px] text-ink">
-              New UI Component
-            </h2>
+        {/* Header / Name Field */}
+        <div className="px-5 pt-4 pb-3 border-b border-hairline bg-surface-1">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2 flex-1">
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick(favorite ? 500 : 850);
+                  setFavorite(!favorite);
+                }}
+                className={cn(
+                  "p-1 rounded text-ink-subtle hover:text-ink transition-colors cursor-pointer shrink-0",
+                  favorite && "text-warn hover:text-warn"
+                )}
+                title={favorite ? "Starred" : "Star component"}
+                aria-label="Toggle star"
+              >
+                <Star className={cn("w-4 h-4", favorite && "fill-warn text-warn")} />
+              </button>
+
+              <input
+                ref={nameInputRef}
+                id="new-component-title"
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (error) setError(null);
+                }}
+                placeholder="Component name (e.g. GlowingButton.tsx)"
+                className="w-full bg-transparent text-lg font-semibold tracking-[-0.02em] text-ink placeholder:text-ink-subtle/40 focus:outline-none border-b border-transparent focus:border-accent/40 pb-0.5 transition-colors"
+                autoComplete="off"
+              />
+            </div>
+
             <button
               type="button"
-              onClick={() => {
-                sound.playClick(800);
-                setFavorite(!favorite);
-              }}
-              className={cn(
-                "p-1 rounded transition-colors cursor-pointer",
-                favorite
-                  ? "text-amber-400"
-                  : "text-ink-tertiary hover:text-ink-muted"
-              )}
-              title={favorite ? "Starred component" : "Star component"}
+              onClick={handleClose}
+              className="p-1.5 rounded-md text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer shrink-0"
+              aria-label="Close dialog"
             >
-              <Star
-                className={cn("w-4 h-4", favorite && "fill-amber-400")}
-              />
+              <X className="w-4 h-4" />
             </button>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-1 rounded-md text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+
+          {/* Properties row */}
+          <div className="flex items-center flex-wrap gap-2 pt-1">
+            {/* Category Combobox */}
+            <Combobox
+              value={category}
+              onChange={(newCat) => setCategory(newCat)}
+              options={categoryOptions}
+              placeholder="Category"
+            />
+
+            {/* Framework Popover Trigger */}
+            <div className="relative inline-block text-left">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenFramework(!openFramework);
+                  setOpenStyling(false);
+                  setOpenProject(false);
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-mono transition-colors border",
+                  openFramework
+                    ? "bg-surface-2 text-ink border-hairline-strong"
+                    : "bg-surface-2 text-ink border-hairline hover:border-hairline-strong"
+                )}
+              >
+                <span className="text-ink-subtle text-[11px] uppercase tracking-wider">FW:</span>
+                <span>{currentFrameworkLabel}</span>
+                <ChevronDown className="w-3 h-3 text-ink-subtle" />
+              </button>
+
+              {openFramework && (
+                <div className="absolute left-0 mt-1 w-44 rounded-lg bg-surface-1 border border-hairline-strong shadow-2xl p-1 z-50 animate-in fade-in duration-100">
+                  {FRAMEWORKS.map((fw) => (
+                    <button
+                      key={fw.id}
+                      type="button"
+                      onClick={() => {
+                        setFramework(fw.id);
+                        setOpenFramework(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-mono transition-colors text-left",
+                        framework === fw.id
+                          ? "bg-surface-2 text-ink font-medium"
+                          : "text-ink-muted hover:bg-surface-2 hover:text-ink"
+                      )}
+                    >
+                      <span>{fw.label}</span>
+                      {framework === fw.id && <Check className="w-3.5 h-3.5 text-accent" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Styling Popover Trigger */}
+            <div className="relative inline-block text-left">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenStyling(!openStyling);
+                  setOpenFramework(false);
+                  setOpenProject(false);
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-mono transition-colors border",
+                  openStyling
+                    ? "bg-surface-2 text-ink border-hairline-strong"
+                    : "bg-surface-2 text-ink border-hairline hover:border-hairline-strong"
+                )}
+              >
+                <span className="text-ink-subtle text-[11px] uppercase tracking-wider">STYLE:</span>
+                <span className="truncate max-w-[120px]">{currentStylingLabel}</span>
+                <ChevronDown className="w-3 h-3 text-ink-subtle" />
+              </button>
+
+              {openStyling && (
+                <div className="absolute left-0 mt-1 w-48 rounded-lg bg-surface-1 border border-hairline-strong shadow-2xl p-1 z-50 animate-in fade-in duration-100">
+                  {STYLING_OPTIONS.map((st) => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => {
+                        setStyling(st.id);
+                        setOpenStyling(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-mono transition-colors text-left",
+                        styling === st.id
+                          ? "bg-surface-2 text-ink font-medium"
+                          : "text-ink-muted hover:bg-surface-2 hover:text-ink"
+                      )}
+                    >
+                      <span className="truncate">{st.label}</span>
+                      {styling === st.id && <Check className="w-3.5 h-3.5 text-accent" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Project Popover Trigger */}
+            <div className="relative inline-block text-left">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenProject(!openProject);
+                  setOpenFramework(false);
+                  setOpenStyling(false);
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-mono transition-colors border",
+                  projectId
+                    ? "bg-surface-2 text-ink border-hairline-strong"
+                    : "bg-surface-1 text-ink-subtle border-hairline hover:text-ink hover:bg-surface-2"
+                )}
+              >
+                <span className="text-ink-subtle text-[11px] uppercase tracking-wider">PROJ:</span>
+                <span className="truncate max-w-[110px]">{currentProjectName}</span>
+                <ChevronDown className="w-3 h-3 text-ink-subtle" />
+              </button>
+
+              {openProject && (
+                <div className="absolute left-0 mt-1 w-52 rounded-lg bg-surface-1 border border-hairline-strong shadow-2xl p-1 z-50 animate-in fade-in duration-100 max-h-48 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectId("");
+                      setOpenProject(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-mono transition-colors text-left",
+                      !projectId
+                        ? "bg-surface-2 text-ink font-medium"
+                        : "text-ink-muted hover:bg-surface-2 hover:text-ink"
+                    )}
+                  >
+                    <span>No project</span>
+                    {!projectId && <Check className="w-3.5 h-3.5 text-accent" />}
+                  </button>
+                  {projects?.map((proj) => (
+                    <button
+                      key={proj.id}
+                      type="button"
+                      onClick={() => {
+                        setProjectId(proj.id);
+                        setOpenProject(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-mono transition-colors text-left",
+                        projectId === proj.id
+                          ? "bg-surface-2 text-ink font-medium"
+                          : "text-ink-muted hover:bg-surface-2 hover:text-ink"
+                      )}
+                    >
+                      <span className="truncate">{proj.title}</span>
+                      {projectId === proj.id && <Check className="w-3.5 h-3.5 text-accent shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Form Body */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto p-6 space-y-4"
-        >
-          {error && (
-            <div className="p-3 rounded-lg bg-semantic-error/10 border border-semantic-error/20 text-semantic-error text-xs">
-              {error}
-            </div>
-          )}
-
-          {/* Component Name, Category & Project Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-ink-muted mb-1.5">
-                Component Name <span className="text-primary">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. GlowingButton.tsx"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink placeholder:text-ink-tertiary transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-ink-muted mb-1.5 flex items-center gap-1.5">
-                <Folder className="w-3.5 h-3.5 text-ink-tertiary" />
-                <span>Category / Folder</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. navbars, buttons, sliders"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink placeholder:text-ink-tertiary transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-ink-muted mb-1.5">
-                Link to Project
-              </label>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink transition-colors"
-              >
-                <option value="">No Project Linked</option>
-                {projects?.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Framework & Styling Selectors */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-ink-muted mb-1.5 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-ink-tertiary" />
-                <span>Framework</span>
-              </label>
-              <select
-                value={framework}
-                onChange={(e) =>
-                  setFramework(e.target.value as ComponentFramework)
-                }
-                className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink transition-colors"
-              >
-                {FRAMEWORKS.map((fw) => (
-                  <option key={fw.id} value={fw.id}>
-                    {fw.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-ink-muted mb-1.5 flex items-center gap-1.5">
-                <Palette className="w-3.5 h-3.5 text-ink-tertiary" />
-                <span>Styling Engine</span>
-              </label>
-              <select
-                value={styling}
-                onChange={(e) =>
-                  setStyling(e.target.value as ComponentStyling)
-                }
-                className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink transition-colors"
-              >
-                {STYLING_OPTIONS.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    {st.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-xs font-medium text-ink-muted mb-1.5">
-              Description (optional)
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Accessible micro-animated button with subtle hover elevation."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 rounded-md bg-surface-2 border border-hairline focus:border-primary focus:outline-none text-xs text-ink placeholder:text-ink-tertiary transition-colors"
-            />
-          </div>
-
-          {/* Component Code */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Source Code Section */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-medium text-ink-muted">
-                Component Source Code <span className="text-primary">*</span>
+              <label
+                htmlFor="new-component-code"
+                className="text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle flex items-center gap-1.5"
+              >
+                <span>Source Code</span>
+                <span className="text-[10px] text-accent font-normal lowercase">(required)</span>
               </label>
-              <span className="text-[10px] text-ink-subtle font-mono">
-                JSX / TSX / Vue / Svelte / CSS
-              </span>
+              <span className="text-[10px] font-mono text-ink-subtle">Tab indents</span>
             </div>
             <textarea
-              rows={8}
-              placeholder={`export function Button({ children, ...props }) {\n  return (\n    <button className="px-4 py-2 rounded-md bg-primary text-white" {...props}>\n      {children}\n    </button>\n  );\n}`}
+              ref={codeAreaRef}
+              id="new-component-code"
               value={code}
-              onChange={(e) => setCode(e.target.value)}
-              required
-              className="w-full px-3.5 py-2.5 rounded-md bg-canvas border border-hairline focus:border-primary focus:outline-none text-xs font-mono text-ink placeholder:text-ink-tertiary transition-colors leading-relaxed"
+              onChange={(e) => {
+                setCode(e.target.value);
+                if (error) setError(null);
+              }}
+              onKeyDown={handleCodeKeyDown}
+              placeholder={`export default function GlowingButton({ children }: { children: React.ReactNode }) {\n  return (\n    <button className="px-4 py-2 bg-blue-600 rounded-md shadow-lg">\n      {children}\n    </button>\n  );\n}`}
+              spellCheck={false}
+              className="w-full font-mono text-[13px] leading-relaxed bg-surface-2 border border-hairline rounded-md p-3 text-ink placeholder:text-ink-subtle/30 focus:outline-none focus:border-hairline-strong focus:ring-1 focus:ring-accent/30 min-h-[220px] max-h-[46vh] resize-none overflow-y-auto"
             />
           </div>
 
-          {/* Usage / Preview Code */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-medium text-ink-muted">
-                Usage Example / Preview Code (optional)
-              </label>
-              <span className="text-[10px] text-ink-subtle font-mono">
-                How to invoke it
+          {/* Collapsible More Details */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setIsMoreOpen(!isMoreOpen)}
+              className="flex items-center gap-1.5 text-xs font-mono text-ink-subtle hover:text-ink transition-colors cursor-pointer group"
+            >
+              {isMoreOpen ? (
+                <ChevronDown className="w-3.5 h-3.5 text-ink-subtle group-hover:text-ink transition-transform" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 text-ink-subtle group-hover:text-ink transition-transform" />
+              )}
+              <span>More details</span>
+              {!isMoreOpen && (description || tags.length > 0 || previewCode) && (
+                <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
+              )}
+            </button>
+
+            {isMoreOpen && (
+              <div className="mt-3 space-y-3.5 pl-3 border-l border-hairline animate-in fade-in duration-100">
+                {/* Description */}
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle mb-1">
+                    Description
+                  </label>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Brief description of this component's purpose or design system role"
+                    className="w-full px-3 py-1.5 rounded-md bg-surface-2 border border-hairline text-xs text-ink placeholder:text-ink-subtle/40 focus:outline-none focus:border-hairline-strong font-mono"
+                  />
+                </div>
+
+                {/* Usage Example */}
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle mb-1">
+                    Usage Example
+                  </label>
+                  <textarea
+                    value={previewCode}
+                    onChange={(e) => setPreviewCode(e.target.value)}
+                    placeholder={`<GlowingButton onClick={() => alert("Clicked!")}>\n  Click me\n</GlowingButton>`}
+                    spellCheck={false}
+                    className="w-full font-mono text-xs leading-relaxed bg-surface-2 border border-hairline rounded-md p-2.5 text-ink placeholder:text-ink-subtle/30 focus:outline-none focus:border-hairline-strong min-h-[90px] resize-none"
+                  />
+                </div>
+
+                {/* Tags */}
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-[0.08em] text-ink-subtle mb-1">
+                    Tags
+                  </label>
+                  <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-md bg-surface-2 border border-hairline min-h-[34px]">
+                    {tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono bg-surface-1 border border-hairline text-ink-muted"
+                      >
+                        #{tag}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTag(tag)}
+                          className="text-ink-subtle hover:text-ink ml-0.5"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleAddTag}
+                      placeholder={tags.length === 0 ? "Add tags (press Enter)..." : ""}
+                      className="bg-transparent text-xs font-mono text-ink placeholder:text-ink-subtle/40 focus:outline-none flex-1 min-w-[120px] px-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="px-5 py-3 border-t border-hairline bg-surface-1 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            {error ? (
+              <span className="text-xs text-danger font-mono">{error}</span>
+            ) : (
+              <span className="text-[11px] font-mono text-ink-subtle hidden sm:inline">
+                <kbd className="px-1 py-0.5 rounded bg-surface-2 border border-hairline text-[10px]">⌘↵</kbd> save · <kbd className="px-1 py-0.5 rounded bg-surface-2 border border-hairline text-[10px]">Esc</kbd> cancel
               </span>
-            </div>
-            <textarea
-              rows={4}
-              placeholder={`<Button onClick={() => alert("clicked!")}>\n  Click me\n</Button>`}
-              value={previewCode}
-              onChange={(e) => setPreviewCode(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-md bg-canvas border border-hairline focus:border-primary focus:outline-none text-xs font-mono text-ink placeholder:text-ink-tertiary transition-colors leading-relaxed"
-            />
+            )}
           </div>
 
-          {/* Tags */}
-          <div>
-            <label className="block text-xs font-medium text-ink-muted mb-1.5">
-              Tags
-            </label>
-            <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-md bg-surface-2 border border-hairline focus-within:border-primary transition-colors">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-surface-3 text-ink border border-hairline"
-                >
-                  #{tag}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTag(tag)}
-                    className="text-ink-muted hover:text-ink cursor-pointer"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-              <input
-                type="text"
-                placeholder={
-                  tags.length === 0
-                    ? "Type tag and press Enter (e.g. button, animated, glass)..."
-                    : "Add more..."
-                }
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={handleAddTag}
-                className="flex-1 min-w-[140px] bg-transparent text-xs text-ink placeholder:text-ink-tertiary focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Footer Actions */}
-          <div className="pt-4 border-t border-hairline flex items-center justify-end gap-2">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleClose}
               disabled={createComponent.isPending}
-              className="px-3.5 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-hairline text-xs font-medium text-ink-muted hover:text-ink transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-md text-xs font-mono text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={() => handleSubmit()}
               disabled={createComponent.isPending}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-primary hover:bg-primary-hover text-white text-xs font-medium tracking-tight shadow-sm shadow-primary/25 transition-all duration-150 disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium bg-accent hover:bg-accent/90 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
             >
-              {createComponent.isPending ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Save Component</span>
-                </>
-              )}
+              {createComponent.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              <span>Create Component</span>
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

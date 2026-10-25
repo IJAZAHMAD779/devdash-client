@@ -5,8 +5,7 @@ import { Search, Plus, Star, PanelLeftClose } from "lucide-react";
 import { Note } from "@/types/note";
 import { useToggleNoteFavorite } from "@/hooks/use-notes";
 import { sound } from "@/lib/audio";
-import { cn } from "@/lib/utils";
-import { stripMarkdown } from "@/components/tasks/task-utils";
+import { cn, stripMarkdown } from "@/lib/utils";
 
 interface Props {
   notes: Note[];

@@ -133,7 +133,7 @@ export default function ResourcesPage() {
   };
 
   return (
-    <div className="flex-1 h-screen max-h-screen bg-canvas text-ink flex flex-col overflow-hidden">
+    <div className="flex-1 h-[calc(100dvh-3.5rem)] md:h-screen max-h-[calc(100dvh-3.5rem)] md:max-h-screen bg-canvas text-ink flex flex-col overflow-hidden">
       {/* Top Header — unified h-14 height matching sidebar brand header */}
       <div className="h-14 px-4 sm:px-6 border-b border-hairline flex items-center justify-between gap-6 bg-surface-1/40 flex-shrink-0 select-none">
         <div className="flex items-center gap-8 h-full min-w-0">

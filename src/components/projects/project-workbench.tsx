@@ -11,6 +11,7 @@ import {
   RefreshCw,
   X,
   ArrowRight,
+  ArrowLeft,
   PanelLeftOpen,
 } from "lucide-react";
 import { Project } from "@/types/project";
@@ -96,7 +97,21 @@ export function ProjectWorkbench({
 
   return (
     <div className={cn("flex-1 overflow-y-auto bg-canvas text-text-primary flex flex-col p-4 sm:p-6 lg:p-8 no-scrollbar", className)}>
-      {/* Top Mobile Bar / Expand Explorer Bar */}
+      {/* Top Mobile Bar / Return to Explorer */}
+      {onBackToExplorer && (
+        <div className="md:hidden mb-3">
+          <button
+            type="button"
+            onClick={onBackToExplorer}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-surface-1 hover:bg-surface-2 border border-line text-xs font-mono text-muted hover:text-text-primary transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>All Projects</span>
+          </button>
+        </div>
+      )}
+
+      {/* Expand Explorer Bar */}
       {isExplorerCollapsed && onToggleExplorer && (
         <div className="mb-4">
           <button

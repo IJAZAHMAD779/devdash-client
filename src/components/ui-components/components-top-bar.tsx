@@ -148,19 +148,19 @@ export function ComponentsTopBar({
   return (
     <div className={cn("flex flex-col gap-4 pb-4 border-b border-hairline", className)}>
       {/* Row 1: Title, Total Count, View switcher, Synthesizer ghost CTA, New Component */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 min-w-0">
         {/* Title + Muted Mono Total Count */}
-        <div className="flex items-baseline gap-2.5">
-          <h1 className="text-lg font-semibold tracking-[-0.6px] text-ink">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <h1 className="text-base sm:text-lg font-semibold tracking-[-0.6px] text-ink truncate">
             UI Components
           </h1>
-          <span className="font-mono text-xs text-ink-subtle">
-            {totalCount} {totalCount === 1 ? "component" : "components"}
+          <span className="font-mono text-xs text-ink-subtle shrink-0">
+            {totalCount}
           </span>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* View Toggle */}
           <div
             role="group"
@@ -214,11 +214,12 @@ export function ComponentsTopBar({
               sound.playClick(900);
               onOpenSynthesizer();
             }}
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[6px] text-xs font-medium text-ink-muted hover:text-ink hover:bg-surface-2 border border-hairline transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-[6px] text-xs font-medium text-ink-muted hover:text-ink hover:bg-surface-2 border border-hairline transition-colors cursor-pointer"
             title="Open AI Synthesizer"
           >
             <Blocks className="w-3.5 h-3.5 text-ink-subtle" />
-            <span>AI Synthesizer</span>
+            <span className="hidden sm:inline">AI Synthesizer</span>
+            <span className="sm:hidden">AI</span>
           </button>
 
           {/* New Component: Only accent-filled button with quiet N hint */}
@@ -230,10 +231,11 @@ export function ComponentsTopBar({
               sound.playClick(900);
               onNewComponent();
             }}
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[6px] bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors shadow-sm focus-visible:ring-1 focus-visible:ring-accent cursor-pointer"
+            className="inline-flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-[6px] bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors shadow-sm focus-visible:ring-1 focus-visible:ring-accent cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>New Component</span>
+            <span className="hidden sm:inline">New Component</span>
+            <span className="sm:hidden">New</span>
             <span className="hidden sm:inline-block text-[11px] font-mono text-white/70 ml-0.5">
               N
             </span>

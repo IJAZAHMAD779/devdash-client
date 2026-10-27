@@ -276,7 +276,7 @@ function ProjectsPageInner() {
 
             {/* View 1: Workbench Dual-Pane (Explorer + Command Center) */}
             {allProjects && allProjects.length > 0 && viewMode === "workbench" && (
-              <div className="flex-1 flex overflow-hidden h-[calc(100vh-6.5rem)] min-h-0">
+              <div className="flex-1 flex overflow-hidden h-[calc(100dvh-9.5rem)] md:h-[calc(100vh-6.5rem)] min-h-0">
                 <div
                   className={cn(
                     "h-full shrink-0 transition-all duration-200",

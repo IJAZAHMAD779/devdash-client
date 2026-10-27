@@ -97,19 +97,19 @@ export function SnippetsTopBar({
   return (
     <div className={cn("flex flex-col gap-4 pb-4 border-b border-hairline", className)}>
       {/* Row 1: Title, Total Count, View switcher, New Snippet */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 min-w-0">
         {/* Title + Muted Mono Total Count */}
-        <div className="flex items-baseline gap-2.5">
-          <h1 className="text-lg font-semibold tracking-[-0.6px] text-ink">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <h1 className="text-base sm:text-lg font-semibold tracking-[-0.6px] text-ink truncate">
             Code Snippets Vault
           </h1>
-          <span className="font-mono text-xs text-ink-subtle">
-            {totalCount} {totalCount === 1 ? "snippet" : "snippets"}
+          <span className="font-mono text-xs text-ink-subtle shrink-0">
+            {totalCount}
           </span>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* View Toggle */}
           <div
             role="group"
@@ -163,10 +163,11 @@ export function SnippetsTopBar({
               sound.playClick(900);
               onNewSnippet();
             }}
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[6px] bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors shadow-sm focus-visible:ring-1 focus-visible:ring-accent cursor-pointer"
+            className="inline-flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-[6px] bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors shadow-sm focus-visible:ring-1 focus-visible:ring-accent cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>New Snippet</span>
+            <span className="hidden sm:inline">New Snippet</span>
+            <span className="sm:hidden">New</span>
             <span className="hidden sm:inline-block text-[11px] font-mono text-white/70 ml-0.5">
               N
             </span>

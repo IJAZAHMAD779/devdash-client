@@ -14,6 +14,8 @@ import {
   Component,
   BookOpen,
   LogIn,
+  Gamepad2,
+  Bot,
 } from "lucide-react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { DevDashLogo } from "@/components/ui/devdash-logo";
@@ -33,6 +35,7 @@ const navigationItems: NavItem[] = [
   { name: "Snippets", href: "/snippets", icon: Code2 },
   { name: "Components", href: "/components", icon: Component },
   { name: "Resources", href: "/resources", icon: BookOpen },
+  { name: "Games", href: "/games", icon: Gamepad2 },
 ];
 
 export function MobileNav() {
@@ -63,6 +66,12 @@ export function MobileNav() {
     window.dispatchEvent(
       new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true })
     );
+  };
+
+  const handleOpenAi = () => {
+    sound.playClick(900);
+    setIsOpen(false);
+    window.dispatchEvent(new CustomEvent("open-devdash-ai"));
   };
 
   const currentRouteName =
@@ -99,6 +108,16 @@ export function MobileNav() {
           <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-surface-2 border border-hairline text-ink-subtle">
             {currentRouteName}
           </span>
+
+          <button
+            type="button"
+            onClick={handleOpenAi}
+            title="DevDash AI"
+            aria-label="DevDash AI"
+            className="p-2 rounded-lg text-ink-subtle hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
+          >
+            <Bot className="w-4 h-4 text-accent" />
+          </button>
 
           <button
             type="button"
@@ -158,8 +177,8 @@ export function MobileNav() {
               </button>
             </div>
 
-            {/* Quick Search Button */}
-            <div className="p-3 border-b border-hairline">
+            {/* Quick Search & AI Actions */}
+            <div className="p-3 border-b border-hairline space-y-2">
               <button
                 type="button"
                 onClick={handleOpenSearch}
@@ -171,6 +190,20 @@ export function MobileNav() {
                 </span>
                 <kbd className="px-1.5 py-0.5 rounded bg-surface-3 font-mono text-[10px] text-ink-tertiary">
                   ⌘K
+                </kbd>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenAi}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 border border-hairline text-ink text-xs transition-colors cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <Bot className="w-3.5 h-3.5 text-accent" />
+                  <span className="font-medium">DevDash AI Copilot</span>
+                </span>
+                <kbd className="px-1.5 py-0.5 rounded bg-surface-3 font-mono text-[10px] text-ink-tertiary">
+                  ⌘J
                 </kbd>
               </button>
             </div>

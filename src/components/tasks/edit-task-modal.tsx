@@ -100,7 +100,7 @@ export function EditTaskModal({ task, isOpen, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         className={cn(
-          "t-modal relative w-full max-w-md rounded-xl bg-surface-1 border border-hairline-strong shadow-2xl overflow-hidden z-10 flex flex-col max-h-[90vh]",
+          "t-modal relative w-full max-w-md rounded-xl bg-surface-1 border border-hairline-strong shadow-2xl overflow-hidden z-10 flex flex-col max-h-[calc(100dvh-2rem)]",
           isOpen && !isClosing && "is-open",
           isClosing && "is-closing"
         )}

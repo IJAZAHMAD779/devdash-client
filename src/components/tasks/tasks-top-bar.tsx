@@ -209,7 +209,7 @@ export function TasksTopBar({
       {/* Row 2: Search & Quiet Text-Style Popover Filters */}
       <div className="px-4 sm:px-6 py-2 border-t border-line flex flex-wrap items-center justify-between gap-2.5">
         {/* Left: Search input (32px, 6px radius, surface-2, / to focus) */}
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="relative flex-1 min-w-[140px] sm:min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-subtle pointer-events-none" />
           <input
             ref={searchInputRef}

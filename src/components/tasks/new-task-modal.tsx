@@ -149,7 +149,7 @@ export function NewTaskModal({
       }}
     >
       <div
-        className="w-full max-w-[560px] rounded-[8px] bg-surface-1 border border-line-strong shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150 select-text"
+        className="w-full max-w-[560px] max-h-[calc(100dvh-2rem)] rounded-[8px] bg-surface-1 border border-line-strong shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150 select-text"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -173,7 +173,7 @@ export function NewTaskModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto">
           {error && (
             <div className="p-2.5 rounded-[6px] bg-danger/10 border border-danger/25 text-danger text-xs font-mono">
               {error}
